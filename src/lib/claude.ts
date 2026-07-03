@@ -1,7 +1,7 @@
 import { supabase } from "./supabaseClient";
 import type { ChatTurn } from "./types";
 
-const FUNCTIONS_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/claude-proxy`;
+const FUNCTIONS_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/claude-proxy-1`;
 
 interface AskOptions {
   system: string;
