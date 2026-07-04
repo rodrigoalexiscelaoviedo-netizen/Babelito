@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { LogOut, RefreshCw, Volume2 } from "lucide-react";
+import { LogOut, RefreshCw, Volume2, Bell, BellOff } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabaseClient";
 import { getVoices, speak } from "../lib/speech";
+import { requestNotificationPermission, getNotificationPermission } from "../lib/notifications";
 
 export default function Profile() {
   const { profile, session, refreshProfile, signOut } = useAuth();
@@ -14,6 +15,18 @@ export default function Profile() {
   const [variant, setVariant] = useState(profile?.english_variant ?? "British");
   const [saved, setSaved] = useState(false);
   const [busy, setBusy] = useState(false);
+
+  // Notification settings
+  const profileRaw = profile as unknown as Record<string, unknown>;
+  const [notifTime, setNotifTime] = useState<string>(
+    (profileRaw?.notification_time as string) ?? "09:00"
+  );
+  const [notifEnabled, setNotifEnabled] = useState(
+    getNotificationPermission() === "granted" && Boolean(profileRaw?.notification_time)
+  );
+  const [notifStatus, setNotifStatus] = useState<"idle" | "granted" | "denied">(
+    getNotificationPermission() === "granted" ? "granted" : "idle"
+  );
 
   // Voice settings
   const [voiceAccent, setVoiceAccent] = useState(profile?.voice_accent ?? "en-GB");
@@ -63,12 +76,29 @@ export default function Profile() {
         voice_name: voiceName || null,
         voice_rate: voiceRate,
         voice_accent: voiceAccent,
+        notification_time: notifEnabled ? notifTime : null,
+        notification_sent_today: false,
       })
       .eq("id", session.user.id);
     await refreshProfile();
     setSaved(true);
     setBusy(false);
     setTimeout(() => setSaved(false), 2000);
+  }
+
+  async function handleToggleNotif(enabled: boolean) {
+    if (enabled) {
+      const result = await requestNotificationPermission();
+      if (result === "granted") {
+        setNotifEnabled(true);
+        setNotifStatus("granted");
+      } else {
+        setNotifEnabled(false);
+        setNotifStatus("denied");
+      }
+    } else {
+      setNotifEnabled(false);
+    }
   }
 
   async function retest() {
@@ -179,6 +209,50 @@ export default function Profile() {
               <span>1.5× fast</span>
             </div>
           </Field>
+        </div>
+
+        {/* ─── Notification settings ─── */}
+        <div className="card p-5 space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="font-display font-bold">Daily reminder</h3>
+            {notifStatus === "granted" ? (
+              <Bell size={16} className="text-mint" />
+            ) : (
+              <BellOff size={16} className="text-paper-faint" />
+            )}
+          </div>
+
+          <label className="flex items-center gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              className="w-4 h-4 accent-coral"
+              checked={notifEnabled}
+              onChange={(e) => handleToggleNotif(e.target.checked)}
+            />
+            <span className="text-sm font-medium">Activate daily notifications</span>
+          </label>
+
+          {notifEnabled && (
+            <Field label="Reminder time">
+              <input
+                type="time"
+                className="input"
+                value={notifTime}
+                onChange={(e) => setNotifTime(e.target.value)}
+              />
+            </Field>
+          )}
+
+          {notifStatus === "denied" && (
+            <p className="text-coral text-xs">
+              Permission was denied. Enable notifications for this site in your browser settings.
+            </p>
+          )}
+
+          <p className="text-xs text-paper-faint leading-relaxed">
+            Notifications fire at the chosen time while the app is open in the browser.
+            On some Android devices they may not arrive if the browser is closed due to battery optimisation.
+          </p>
         </div>
 
         <button className="btn-coral w-full" onClick={save} disabled={busy}>

@@ -33,14 +33,29 @@ export function buildConversationPrompt({ profile, recentErrors = [], topic }: B
     (profile.profile_json?.context as string) ??
     "everyday life and work";
 
+  const grammarErrors = recentErrors.filter((e) => e.error_type !== "pronunciation_error");
+  const pronunciationErrors = recentErrors
+    .filter((e) => e.error_type === "pronunciation_error")
+    .map((e) => e.original_text)
+    .filter((t): t is string => Boolean(t));
+
   const errorFocus =
-    recentErrors.length > 0
+    grammarErrors.length > 0
       ? `RECURRING ERRORS to watch for (from their real sessions): ${[
-          ...new Set(recentErrors.map((e) => errorLabel(e.error_type))),
+          ...new Set(grammarErrors.map((e) => errorLabel(e.error_type))),
         ]
           .slice(0, 5)
           .join(", ")}.`
       : "No error history yet — observe and start building their error profile.";
+
+  const pronunciationFocus =
+    pronunciationErrors.length > 0
+      ? `\nPRONUNCIATION DIFFICULTIES: The learner has struggled with these specific words: ${[
+          ...new Set(pronunciationErrors),
+        ]
+          .slice(0, 6)
+          .join(", ")}. When possible, suggest sentences that practise those sounds, or briefly address them in the conversation.`
+      : "";
 
   return `You are Babelito, a warm, encouraging ${variant} English coach.
 
@@ -52,7 +67,7 @@ LEARNER PROFILE:
 - Interests / context to draw topics from: ${interests}
 - Focus accent/variant: ${variant} English
 
-${errorFocus}
+${errorFocus}${pronunciationFocus}
 
 HOW TO SPEAK:
 ${registerFor(level)}
