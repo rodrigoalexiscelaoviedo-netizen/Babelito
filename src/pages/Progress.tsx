@@ -14,7 +14,7 @@ import { Flame, ChevronDown, ChevronUp } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabaseClient";
 import { errorLabel, errorHint } from "../lib/errorTypes";
-import { getStreak } from "../lib/dailyLesson";
+import { getStreak, getFreezeCount } from "../lib/dailyLesson";
 import { getReports, type SessionReport } from "../lib/sessionReport";
 import { deckSize } from "../lib/srs";
 import Loader from "../components/Loader";
@@ -32,6 +32,7 @@ export default function Progress() {
   const [vocab, setVocab] = useState<VocabRow[]>([]);
   const [storyProg, setStoryProg] = useState<StoryProgRow[]>([]);
   const [streak, setStreak] = useState(0);
+  const [freezes, setFreezes] = useState(0);
   const [reports, setReports] = useState<SessionReport[]>([]);
   const [expandedReport, setExpandedReport] = useState<string | null>(null);
   const [deck, setDeck] = useState(0);
@@ -39,7 +40,7 @@ export default function Progress() {
   useEffect(() => {
     if (!profile) return;
     (async () => {
-      const [{ data: e }, { data: s }, { data: v }, { data: sp }, streakCount, latestReports, deckCount] =
+      const [{ data: e }, { data: s }, { data: v }, { data: sp }, streakCount, latestReports, deckCount, freezeCount] =
         await Promise.all([
           supabase.from("errors").select("error_type").eq("user_id", profile.id),
           supabase.from("sessions").select("created_at, duration_seconds").eq("user_id", profile.id),
@@ -48,12 +49,14 @@ export default function Progress() {
           getStreak(profile.id),
           getReports(profile.id, 5),
           deckSize(profile.id),
+          getFreezeCount(profile.id),
         ]);
       setErrs((e as ErrRow[]) ?? []);
       setSessions((s as SessRow[]) ?? []);
       setVocab((v as VocabRow[]) ?? []);
       setStoryProg((sp as StoryProgRow[]) ?? []);
       setStreak(streakCount);
+      setFreezes(freezeCount);
       setReports(latestReports);
       setDeck(deckCount);
       setLoading(false);
@@ -96,6 +99,9 @@ export default function Progress() {
             <span className="text-xs">Daily streak</span>
           </div>
           <p className="font-display text-2xl font-bold text-coral">{streak}</p>
+          {freezes > 0 && (
+            <p className="text-[10px] text-paper-faint mt-0.5">❄️ {freezes} freeze{freezes !== 1 ? "s" : ""}</p>
+          )}
         </div>
         <Stat label="Sessions" value={String(sessions.length)} />
         <Stat label="Minutes" value={String(totalMinutes)} />

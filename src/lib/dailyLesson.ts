@@ -155,33 +155,103 @@ export async function completeLesson(userId: string): Promise<void> {
     .eq("lesson_date", today);
 }
 
-export async function getStreak(userId: string): Promise<number> {
+/**
+ * Monthly freeze reset: if last_freeze_reset is from a previous month, restore to 2.
+ * Returns the current (possibly just-refreshed) freeze count.
+ */
+async function ensureFreezesFresh(userId: string): Promise<{ freezesLeft: number }> {
+  const { data } = await supabase
+    .from("profiles")
+    .select("streak_freezes, last_freeze_reset")
+    .eq("id", userId)
+    .maybeSingle();
+
+  const today = new Date();
+  const currentYM = `${today.getFullYear()}-${today.getMonth()}`;
+  const lastReset = data?.last_freeze_reset ? new Date(data.last_freeze_reset as string) : null;
+  const lastYM = lastReset ? `${lastReset.getFullYear()}-${lastReset.getMonth()}` : null;
+
+  if (lastYM !== currentYM) {
+    // New month — restore freezes
+    supabase
+      .from("profiles")
+      .update({ streak_freezes: 2, last_freeze_reset: todayISO() })
+      .eq("id", userId);
+    return { freezesLeft: 2 };
+  }
+
+  return { freezesLeft: (data?.streak_freezes as number) ?? 0 };
+}
+
+export interface StreakInfo {
+  streak: number;
+  freezesLeft: number;
+}
+
+/**
+ * Returns streak and remaining freezes.
+ * When consume=true (default), persists freeze usage to DB.
+ * Use consume=false for read-only views (Progress, Nav badge).
+ */
+export async function getStreakInfo(userId: string, consume = true): Promise<StreakInfo> {
+  const { freezesLeft: initialFreezes } = await ensureFreezesFresh(userId);
+
   const { data } = await supabase
     .from("daily_lessons")
     .select("lesson_date")
     .eq("user_id", userId)
     .eq("completed", true)
     .order("lesson_date", { ascending: false })
-    .limit(365);
+    .limit(400);
 
-  if (!data || data.length === 0) return 0;
+  if (!data || data.length === 0) return { streak: 0, freezesLeft: initialFreezes };
 
   const completedDates = new Set((data as { lesson_date: string }[]).map((r) => r.lesson_date));
-  let streak = 0;
   const cursor = new Date();
   let cursorStr = cursor.toISOString().slice(0, 10);
+  let streak = 0;
+  let freezesUsed = 0;
 
-  // Allow streak if today not yet done but yesterday was
+  // Grace period: if today not done yet, start from yesterday
   if (!completedDates.has(cursorStr)) {
     cursor.setDate(cursor.getDate() - 1);
     cursorStr = cursor.toISOString().slice(0, 10);
   }
 
-  while (completedDates.has(cursorStr)) {
-    streak++;
+  for (let i = 0; i < 400; i++) {
+    if (completedDates.has(cursorStr)) {
+      streak++;
+    } else if (freezesUsed < initialFreezes) {
+      // Freeze covers one missing day — streak continues, day not counted
+      freezesUsed++;
+    } else {
+      break;
+    }
     cursor.setDate(cursor.getDate() - 1);
     cursorStr = cursor.toISOString().slice(0, 10);
   }
 
-  return streak;
+  const freezesLeft = Math.max(0, initialFreezes - freezesUsed);
+
+  if (consume && freezesUsed > 0) {
+    supabase
+      .from("profiles")
+      .update({ streak_freezes: freezesLeft })
+      .eq("id", userId);
+  }
+
+  return { streak, freezesLeft };
+}
+
+export async function getStreak(userId: string): Promise<number> {
+  return (await getStreakInfo(userId, false)).streak;
+}
+
+export async function getFreezeCount(userId: string): Promise<number> {
+  const { data } = await supabase
+    .from("profiles")
+    .select("streak_freezes")
+    .eq("id", userId)
+    .maybeSingle();
+  return (data?.streak_freezes as number) ?? 0;
 }

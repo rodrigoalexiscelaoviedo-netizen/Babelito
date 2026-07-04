@@ -1,4 +1,5 @@
 import { supabase } from "./supabaseClient";
+import { getStreak } from "./dailyLesson";
 
 export type NotificationPermission = "granted" | "denied" | "default";
 
@@ -44,8 +45,30 @@ export async function scheduleNotification(userId: string): Promise<void> {
     // Fire if current time is within the same minute as notification_time
     if (now.getHours() !== targetH || now.getMinutes() !== targetM) return;
 
+    // Check today's lesson completion and streak to compose a relevant message
+    const today = new Date().toISOString().slice(0, 10);
+    const [{ data: todayLesson }, streakCount] = await Promise.all([
+      supabase
+        .from("daily_lessons")
+        .select("completed")
+        .eq("user_id", userId)
+        .eq("lesson_date", today)
+        .maybeSingle(),
+      getStreak(userId),
+    ]);
+
+    // Don't notify if already completed today
+    if (todayLesson?.completed) return;
+
+    let body: string;
+    if (streakCount > 0) {
+      body = `Tu racha de ${streakCount} día${streakCount !== 1 ? "s" : ""} te espera 🔥 — 5 minutos y la mantenés.`;
+    } else {
+      body = "Time for your daily English practice! A few minutes is all you need. 💪";
+    }
+
     const notification = new Notification("Babelito 🇬🇧", {
-      body: "Time for your daily English practice! A few minutes is all you need.",
+      body,
       icon: "/favicon.ico",
       badge: "/favicon.ico",
       tag: "babelito-daily",

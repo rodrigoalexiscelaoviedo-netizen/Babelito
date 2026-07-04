@@ -17,7 +17,7 @@ import {
 import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabaseClient";
 import { errorLabel } from "../lib/errorTypes";
-import { getTodayLesson, completeLesson, getStreak, type DailyLesson } from "../lib/dailyLesson";
+import { getTodayLesson, completeLesson, getStreakInfo, type DailyLesson } from "../lib/dailyLesson";
 import { lookupWord, type WordDefinition } from "../lib/dictionary";
 import { speak } from "../lib/speech";
 import { useVoicePrefs } from "../lib/useVoicePrefs";
@@ -35,6 +35,9 @@ export default function Dashboard() {
   const voicePrefs = useVoicePrefs();
   const [stats, setStats] = useState<Stats | null>(null);
   const [streak, setStreak] = useState(0);
+  const [freezesLeft, setFreezesLeft] = useState(0);
+  const [showCelebration, setShowCelebration] = useState(false);
+  const [celebMsg, setCelebMsg] = useState("");
   const [lesson, setLesson] = useState<DailyLesson | null>(null);
   const [wordDef, setWordDef] = useState<WordDefinition | null>(null);
   const [loadingLesson, setLoadingLesson] = useState(true);
@@ -49,7 +52,7 @@ export default function Dashboard() {
   useEffect(() => {
     if (!profile) return;
     (async () => {
-      const [{ data: sessions }, { data: errs }, { count: learned }, todayLesson, streakCount, due] =
+      const [{ data: sessions }, { data: errs }, { count: learned }, todayLesson, streakInfo, due] =
         await Promise.all([
           supabase.from("sessions").select("created_at").eq("user_id", profile.id),
           supabase.from("errors").select("error_type").eq("user_id", profile.id),
@@ -58,7 +61,7 @@ export default function Dashboard() {
             .select("id", { count: "exact", head: true })
             .eq("user_id", profile.id),
           getTodayLesson(profile.id),
-          getStreak(profile.id),
+          getStreakInfo(profile.id),
           countDue(profile.id),
         ]);
 
@@ -70,7 +73,8 @@ export default function Dashboard() {
       }
 
       setStats({ sessions: sessions?.length ?? 0, topError, chunksLearned: learned ?? 0 });
-      setStreak(streakCount);
+      setStreak(streakInfo.streak);
+      setFreezesLeft(streakInfo.freezesLeft);
       setLesson(todayLesson);
       setReviewsDue(due);
       setLoadingLesson(false);
@@ -84,13 +88,25 @@ export default function Dashboard() {
     })();
   }, [profile]);
 
+  const CONGRATS = [
+    "¡Práctica completa! Your English keeps growing. 💪",
+    "Another day, another step toward fluency. Keep it up!",
+    "¡Lo lograste! Consistency is the real secret to speaking well.",
+    "One more day on your streak — you're building a real habit!",
+    "¡Excelente trabajo! Every session counts. See you tomorrow.",
+  ];
+
   async function handleComplete() {
     if (!profile || !lesson) return;
     setCompleting(true);
     try {
       await completeLesson(profile.id);
       setLesson({ ...lesson, completed: true });
-      setStreak((s) => s + 1);
+      const newStreak = streak + 1;
+      setStreak(newStreak);
+      setCelebMsg(CONGRATS[Math.floor(Math.random() * CONGRATS.length)]);
+      setShowCelebration(true);
+      setTimeout(() => setShowCelebration(false), 4500);
     } finally {
       setCompleting(false);
     }
@@ -113,6 +129,66 @@ export default function Dashboard() {
 
   return (
     <div className="animate-fade-up">
+      {/* ── Celebration overlay ── */}
+      {showCelebration && (
+        <>
+          <style>{`
+            @keyframes bbl-scale-up { from { transform: scale(0.75); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+            @keyframes bbl-float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+            .bbl-celebrate { animation: bbl-scale-up 0.35s cubic-bezier(0.34,1.56,0.64,1) both; }
+            .bbl-float { animation: bbl-float 1.8s ease-in-out infinite; }
+          `}</style>
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center"
+            style={{ background: "rgba(10,16,30,0.88)", backdropFilter: "blur(6px)" }}
+            onClick={() => setShowCelebration(false)}
+          >
+            <div className="card max-w-xs w-full mx-4 p-8 text-center bbl-celebrate">
+              {/* Confetti strip */}
+              <svg viewBox="0 0 260 48" className="w-full mb-2" aria-hidden="true">
+                {[
+                  { x: 10,  y: 18, r: 6,  fill: "#FF6B5E" },
+                  { x: 35,  y: 8,  r: 4,  fill: "#36C5A8" },
+                  { x: 60,  y: 28, r: 5,  fill: "#F7C948" },
+                  { x: 90,  y: 12, r: 7,  fill: "#FF6B5E" },
+                  { x: 120, y: 30, r: 4,  fill: "#36C5A8" },
+                  { x: 148, y: 10, r: 6,  fill: "#F7C948" },
+                  { x: 175, y: 24, r: 5,  fill: "#FF6B5E" },
+                  { x: 205, y: 8,  r: 4,  fill: "#36C5A8" },
+                  { x: 235, y: 32, r: 6,  fill: "#F7C948" },
+                  { x: 255, y: 15, r: 3,  fill: "#FF6B5E" },
+                ].map((c, i) => (
+                  <circle key={i} cx={c.x} cy={c.y} r={c.r} fill={c.fill} opacity={0.85} />
+                ))}
+                {[
+                  { x: 22, y: 36, w: 10, h: 5, fill: "#F7C948", rx: 2 },
+                  { x: 108, y: 38, w: 8,  h: 4, fill: "#36C5A8", rx: 2 },
+                  { x: 190, y: 40, w: 12, h: 5, fill: "#FF6B5E", rx: 2 },
+                ].map((r, i) => (
+                  <rect key={i} x={r.x} y={r.y} width={r.w} height={r.h} fill={r.fill} rx={r.rx} opacity={0.8} />
+                ))}
+              </svg>
+
+              {/* Flame + streak number */}
+              <div className="bbl-float mb-1">
+                <Flame size={44} className="text-coral mx-auto" />
+              </div>
+              <p className="font-display text-7xl font-extrabold text-coral leading-none mb-1">{streak}</p>
+              <p className="font-display text-lg font-bold mb-4">{streak === 1 ? "day" : "days"} streak 🎉</p>
+
+              {/* Message */}
+              <p className="text-sm text-paper-muted leading-relaxed mb-4">{celebMsg}</p>
+
+              {/* Freezes */}
+              {freezesLeft > 0 && (
+                <p className="text-xs text-paper-faint mb-3">❄️ {freezesLeft} freeze{freezesLeft !== 1 ? "s" : ""} available this month</p>
+              )}
+
+              <p className="text-xs text-paper-faint">Tap anywhere to continue</p>
+            </div>
+          </div>
+        </>
+      )}
       <header className="mb-8">
         <p className="eyebrow mb-2">{greeting}</p>
         <h1 className="font-display text-3xl md:text-4xl font-extrabold">
@@ -125,10 +201,18 @@ export default function Dashboard() {
       <div className="card p-5 mb-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="font-display font-bold text-lg">Tu práctica de hoy</h2>
-          <span className="flex items-center gap-1.5 text-coral font-display font-bold">
-            <Flame size={16} className="text-coral" />
-            {streak} {streak === 1 ? "day" : "days"}
-          </span>
+          <div className="flex flex-col items-end gap-0.5">
+            <span className="flex items-center gap-1.5 text-coral font-display font-bold">
+              {streak > 0 && !lesson?.completed && (
+                <span className="inline-block w-2 h-2 rounded-full bg-coral animate-pulse" title="Streak at risk" />
+              )}
+              <Flame size={16} className="text-coral" />
+              {streak} {streak === 1 ? "day" : "days"}
+            </span>
+            {freezesLeft > 0 && (
+              <span className="text-[10px] text-paper-faint">❄️ {freezesLeft} freeze{freezesLeft !== 1 ? "s" : ""}</span>
+            )}
+          </div>
         </div>
 
         {loadingLesson ? (
@@ -291,6 +375,9 @@ export default function Dashboard() {
           <p className="font-display text-2xl font-bold">
             {streak} <span className="text-sm font-normal text-paper-muted">days</span>
           </p>
+          {freezesLeft > 0 && (
+            <p className="text-[10px] text-paper-faint mt-0.5">❄️ {freezesLeft}</p>
+          )}
         </div>
         <div className="card p-4">
           <div className="flex items-center gap-2 text-paper-muted mb-1">
