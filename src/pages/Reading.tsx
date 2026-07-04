@@ -1,12 +1,14 @@
 import { useEffect, useRef, useState } from "react";
-import { ArrowLeft, BookOpen } from "lucide-react";
+import { ArrowLeft, BookOpen, Volume2, Pause, Play } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabaseClient";
 import { READING_TEXTS, type ReadingText } from "../lib/readingTexts";
 import type { WordDefinition } from "../lib/dictionary";
 import type { VocabMap, WordStatus } from "../lib/vocabulary";
+import { speak, pauseSpeech, resumeSpeech } from "../lib/speech";
 import { useVoicePrefs } from "../lib/useVoicePrefs";
 import ClickableText from "../components/ClickableText";
+import ShadowingBlock from "../components/ShadowingBlock";
 import Loader from "../components/Loader";
 
 const LEVEL_BADGE: Record<string, string> = {
@@ -14,6 +16,12 @@ const LEVEL_BADGE: Record<string, string> = {
   B1: "bg-gold/20 text-[#F4C431]",
   B2: "bg-coral/20 text-coral",
 };
+
+/** Returns the first complete sentence (ending in . ! ?) from a text. */
+function firstSentence(text: string): string {
+  const match = text.match(/[^.!?]*[.!?]/);
+  return match ? match[0].trim() : text.split(" ").slice(0, 12).join(" ");
+}
 
 export default function Reading() {
   const [view, setView] = useState<"library" | "reader">("library");
@@ -95,6 +103,8 @@ function Reader({ text, onBack }: { text: ReadingText; onBack: () => void }) {
   const [vocabMap, setVocabMap] = useState<VocabMap>({});
   const [loadingVocab, setLoadingVocab] = useState(true);
   const [scrollProgress, setScrollProgress] = useState(0);
+  const [speaking, setSpeaking] = useState(false);
+  const [paused, setPaused] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -129,6 +139,26 @@ function Reader({ text, onBack }: { text: ReadingText; onBack: () => void }) {
     return () => el.removeEventListener("scroll", onScroll);
   }, []);
 
+  function handleFullNarration() {
+    speak(text.content, {
+      voiceName: voicePrefs.voiceName ?? undefined,
+      rate: voicePrefs.voiceRate,
+      lang: voicePrefs.voiceAccent,
+    });
+    setSpeaking(true);
+    setPaused(false);
+  }
+
+  function handlePauseResume() {
+    if (paused) {
+      resumeSpeech();
+      setPaused(false);
+    } else {
+      pauseSpeech();
+      setPaused(true);
+    }
+  }
+
   function handleVocabUpdate(word: string, status: WordStatus, def: WordDefinition) {
     setVocabMap((prev) => ({
       ...prev,
@@ -138,8 +168,11 @@ function Reader({ text, onBack }: { text: ReadingText; onBack: () => void }) {
 
   if (loadingVocab) return <Loader />;
 
+  const shadowSentence = firstSentence(text.content);
+
   return (
     <div className="flex flex-col h-[calc(100vh-7rem)] md:h-[calc(100vh-5rem)] max-w-2xl mx-auto">
+      {/* Header */}
       <div className="flex items-center gap-3 mb-3">
         <button onClick={onBack} className="text-paper-muted hover:text-paper transition">
           <ArrowLeft size={18} />
@@ -148,13 +181,34 @@ function Reader({ text, onBack }: { text: ReadingText; onBack: () => void }) {
           <p className="font-display font-bold truncate">{text.title}</p>
           <p className="text-xs text-paper-muted">{text.author}</p>
         </div>
+        {/* Full narration controls */}
+        <div className="flex items-center gap-1 shrink-0">
+          {speaking && (
+            <button
+              onClick={handlePauseResume}
+              className="text-paper-faint hover:text-mint transition"
+              aria-label={paused ? "Resume narration" : "Pause narration"}
+            >
+              {paused ? <Play size={15} /> : <Pause size={15} />}
+            </button>
+          )}
+          <button
+            onClick={handleFullNarration}
+            className="flex items-center gap-1 text-xs text-paper-faint hover:text-coral transition"
+            aria-label="Listen to full text"
+          >
+            <Volume2 size={15} /> Listen
+          </button>
+        </div>
       </div>
 
+      {/* Scroll progress */}
       <div className="h-1 w-full bg-ink-600 rounded-full mb-4">
         <div className="h-1 bg-coral rounded-full transition-all" style={{ width: `${scrollProgress}%` }} />
       </div>
 
-      <div ref={containerRef} className="flex-1 overflow-y-auto">
+      {/* Scrollable text area */}
+      <div ref={containerRef} className="flex-1 overflow-y-auto space-y-4">
         <ClickableText
           text={text.content}
           vocabMap={vocabMap}
@@ -163,6 +217,15 @@ function Reader({ text, onBack }: { text: ReadingText; onBack: () => void }) {
           source="reading"
           onVocabUpdate={handleVocabUpdate}
         />
+
+        {/* Shadowing block — first sentence as practice phrase */}
+        <div className="mt-6 pb-4">
+          <ShadowingBlock
+            text={shadowSentence}
+            lang={voicePrefs.voiceAccent ?? "en-GB"}
+            label="Shadowing practice"
+          />
+        </div>
       </div>
     </div>
   );

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { ArrowLeft, BookText, Loader2, Pause, Play, Volume2 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabaseClient";
+import ShadowingBlock from "../components/ShadowingBlock";
 import type { Level } from "../lib/types";
 import {
   getStories,
@@ -349,6 +350,15 @@ function StoryReader({
           source="story"
           highlightLearning
           onVocabUpdate={handleVocabUpdate}
+        />
+      </div>
+
+      {/* Shadowing block — first sentence of story */}
+      <div className="pt-3">
+        <ShadowingBlock
+          text={story.content.match(/[^.!?]*[.!?]/)?.[0]?.trim() ?? story.content.split(" ").slice(0, 10).join(" ")}
+          lang={voicePrefs.voiceAccent ?? "en-GB"}
+          label="Shadowing practice"
         />
       </div>
 

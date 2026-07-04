@@ -1,8 +1,11 @@
 import { useEffect, useState } from "react";
-import { Check, RotateCcw, Dumbbell } from "lucide-react";
+import { Check, RotateCcw, Dumbbell, Volume2 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabaseClient";
 import type { Chunk } from "../lib/types";
+import { speak } from "../lib/speech";
+import { useVoicePrefs } from "../lib/useVoicePrefs";
+import ShadowingBlock from "../components/ShadowingBlock";
 import Loader from "../components/Loader";
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -109,7 +112,10 @@ export default function Chunks() {
 }
 
 function FlipCard({ chunk, learned, onToggle }: { chunk: Chunk; learned: boolean; onToggle: () => void }) {
+  const voicePrefs = useVoicePrefs();
   const [face, setFace] = useState(0); // 0 eng, 1 spa, 2 example, 3 british
+  const [showShadow, setShowShadow] = useState(false);
+
   const faces = [
     { tag: "English", body: chunk.english },
     { tag: "Español", body: chunk.spanish },
@@ -117,8 +123,19 @@ function FlipCard({ chunk, learned, onToggle }: { chunk: Chunk; learned: boolean
     { tag: "British", body: chunk.british_version ?? "—" },
   ];
   const f = faces[face];
+
+  function handleListen(e: React.MouseEvent) {
+    e.stopPropagation();
+    speak(chunk.english, {
+      voiceName: voicePrefs.voiceName ?? undefined,
+      rate: voicePrefs.voiceRate,
+      lang: voicePrefs.voiceAccent ?? "en-GB",
+    });
+  }
+
   return (
-    <div className={`card p-5 flex flex-col justify-between min-h-[150px] ${learned ? "border-mint/40" : ""}`}>
+    <div className={`card p-5 flex flex-col gap-3 ${learned ? "border-mint/40" : ""}`}>
+      {/* Flip area */}
       <button className="text-left flex-1" onClick={() => setFace((face + 1) % faces.length)}>
         <span className="font-mono text-[10px] uppercase tracking-widest text-paper-faint">
           {f.tag}
@@ -127,14 +144,33 @@ function FlipCard({ chunk, learned, onToggle }: { chunk: Chunk; learned: boolean
           {f.body}
         </p>
       </button>
-      <div className="flex items-center justify-between mt-4">
-        <button
-          onClick={() => setFace((face + 1) % faces.length)}
-          className="text-paper-faint hover:text-paper transition"
-          aria-label="Flip"
-        >
-          <RotateCcw size={15} />
-        </button>
+
+      {/* Controls row */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setFace((face + 1) % faces.length)}
+            className="text-paper-faint hover:text-paper transition"
+            aria-label="Flip"
+          >
+            <RotateCcw size={15} />
+          </button>
+          {/* Listen button */}
+          <button
+            onClick={handleListen}
+            className="flex items-center gap-1 text-xs text-paper-faint hover:text-coral transition"
+            aria-label="Listen"
+          >
+            <Volume2 size={15} /> Listen
+          </button>
+          {/* Toggle shadowing */}
+          <button
+            onClick={() => setShowShadow((s) => !s)}
+            className="text-xs text-paper-faint hover:text-mint transition"
+          >
+            {showShadow ? "Hide drill" : "Repeat"}
+          </button>
+        </div>
         <button
           onClick={onToggle}
           className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition ${
@@ -144,6 +180,15 @@ function FlipCard({ chunk, learned, onToggle }: { chunk: Chunk; learned: boolean
           <Check size={13} /> {learned ? "Learned" : "Mark learned"}
         </button>
       </div>
+
+      {/* Shadowing block (expandable) */}
+      {showShadow && (
+        <ShadowingBlock
+          text={chunk.english}
+          lang={voicePrefs.voiceAccent ?? "en-GB"}
+          label="Listen & repeat"
+        />
+      )}
     </div>
   );
 }
@@ -213,14 +258,16 @@ function DrillMode({ chunks, onExit }: { chunks: Chunk[]; onExit: () => void }) 
           Reveal answer
         </button>
       ) : (
-        <div className="animate-fade-up">
-          <div className="card border-mint/40 p-4 mb-4">
+        <div className="animate-fade-up space-y-3">
+          <div className="card border-mint/40 p-4">
             <span className="font-mono text-[10px] uppercase tracking-widest text-mint">Answer</span>
             <p className="font-display text-lg font-semibold mt-1">{c.english}</p>
             {c.british_version && (
               <p className="text-sm text-paper-muted mt-1">British: {c.british_version}</p>
             )}
           </div>
+          {/* Shadowing in drill reveal */}
+          <ShadowingBlock text={c.english} label="Say it now" />
           <div className="grid grid-cols-2 gap-3">
             <button className="btn-ghost" onClick={() => next(false)}>
               Missed it
