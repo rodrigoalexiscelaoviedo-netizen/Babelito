@@ -4,6 +4,7 @@ import { lookupWord, type WordDefinition } from "../lib/dictionary";
 import { upsertWord, type VocabMap, type WordStatus } from "../lib/vocabulary";
 import { speak } from "../lib/speech";
 import type { VoicePrefs } from "../lib/useVoicePrefs";
+import { addToReview } from "../lib/srs";
 
 interface ClickableTextProps {
   text: string;
@@ -58,6 +59,15 @@ export default function ClickableText({
       phonetic: wordDef.phonetic,
       source,
     });
+    if (status === "learning") {
+      // Auto-add to oral review deck; silently ignores duplicates
+      await addToReview(userId, {
+        item_type: "word",
+        content: selectedWord,
+        prompt: wordDef.definition_es || selectedWord,
+        source_ref: selectedWord,
+      });
+    }
     onVocabUpdate(selectedWord, status, wordDef);
   }
 

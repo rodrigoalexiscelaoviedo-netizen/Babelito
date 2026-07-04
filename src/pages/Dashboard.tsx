@@ -12,6 +12,7 @@ import {
   Circle,
   Volume2,
   Loader2,
+  Layers,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabaseClient";
@@ -20,6 +21,7 @@ import { getTodayLesson, completeLesson, getStreak, type DailyLesson } from "../
 import { lookupWord, type WordDefinition } from "../lib/dictionary";
 import { speak } from "../lib/speech";
 import { useVoicePrefs } from "../lib/useVoicePrefs";
+import { countDue } from "../lib/srs";
 
 interface Stats {
   sessions: number;
@@ -39,6 +41,7 @@ export default function Dashboard() {
   const [completing, setCompleting] = useState(false);
 
   // Which of the 3 daily tasks the user has checked off
+  const [reviewsDue, setReviewsDue] = useState(0);
   const [checked, setChecked] = useState({ chunk: false, convo: false, word: false });
 
   const allChecked = checked.chunk && checked.convo && checked.word;
@@ -46,7 +49,7 @@ export default function Dashboard() {
   useEffect(() => {
     if (!profile) return;
     (async () => {
-      const [{ data: sessions }, { data: errs }, { count: learned }, todayLesson, streakCount] =
+      const [{ data: sessions }, { data: errs }, { count: learned }, todayLesson, streakCount, due] =
         await Promise.all([
           supabase.from("sessions").select("created_at").eq("user_id", profile.id),
           supabase.from("errors").select("error_type").eq("user_id", profile.id),
@@ -56,6 +59,7 @@ export default function Dashboard() {
             .eq("user_id", profile.id),
           getTodayLesson(profile.id),
           getStreak(profile.id),
+          countDue(profile.id),
         ]);
 
       let topError: string | null = null;
@@ -68,6 +72,7 @@ export default function Dashboard() {
       setStats({ sessions: sessions?.length ?? 0, topError, chunksLearned: learned ?? 0 });
       setStreak(streakCount);
       setLesson(todayLesson);
+      setReviewsDue(due);
       setLoadingLesson(false);
 
       // If word exists, look it up
@@ -240,6 +245,21 @@ export default function Dashboard() {
                 )}
               </div>
             </div>
+
+            {reviewsDue > 0 && (
+              <Link
+                to="/review"
+                className="flex items-center justify-between p-3 rounded-xl bg-gold/10 border border-gold/30 hover:border-gold/60 transition"
+              >
+                <div className="flex items-center gap-2">
+                  <Layers size={16} className="text-gold" />
+                  <span className="text-sm font-medium text-gold">
+                    {reviewsDue} review{reviewsDue !== 1 ? "s" : ""} due
+                  </span>
+                </div>
+                <span className="text-xs text-gold/70">Practice now →</span>
+              </Link>
+            )}
 
             <button
               className="btn-coral w-full mt-2 flex items-center justify-center gap-2"

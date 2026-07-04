@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Check, RotateCcw, Dumbbell, Volume2 } from "lucide-react";
+import { Check, RotateCcw, Dumbbell, Volume2, Layers } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabaseClient";
 import type { Chunk } from "../lib/types";
@@ -7,6 +7,7 @@ import { speak } from "../lib/speech";
 import { useVoicePrefs } from "../lib/useVoicePrefs";
 import ShadowingBlock from "../components/ShadowingBlock";
 import Loader from "../components/Loader";
+import { addToReview } from "../lib/srs";
 
 const CATEGORY_LABELS: Record<string, string> = {
   meetings: "Meetings",
@@ -112,9 +113,23 @@ export default function Chunks() {
 }
 
 function FlipCard({ chunk, learned, onToggle }: { chunk: Chunk; learned: boolean; onToggle: () => void }) {
+  const { profile } = useAuth();
   const voicePrefs = useVoicePrefs();
   const [face, setFace] = useState(0); // 0 eng, 1 spa, 2 example, 3 british
   const [showShadow, setShowShadow] = useState(false);
+  const [addedToReview, setAddedToReview] = useState(false);
+
+  async function handleAddReview(e: React.MouseEvent) {
+    e.stopPropagation();
+    if (!profile) return;
+    await addToReview(profile.id, {
+      item_type: "chunk",
+      content: chunk.english,
+      prompt: chunk.spanish,
+      source_ref: String(chunk.id),
+    });
+    setAddedToReview(true);
+  }
 
   const faces = [
     { tag: "English", body: chunk.english },
@@ -169,6 +184,16 @@ function FlipCard({ chunk, learned, onToggle }: { chunk: Chunk; learned: boolean
             className="text-xs text-paper-faint hover:text-mint transition"
           >
             {showShadow ? "Hide drill" : "Repeat"}
+          </button>
+          {/* Add to review */}
+          <button
+            onClick={handleAddReview}
+            className={`flex items-center gap-1 text-xs transition ${
+              addedToReview ? "text-gold" : "text-paper-faint hover:text-gold"
+            }`}
+            title="Add to oral review deck"
+          >
+            <Layers size={14} /> {addedToReview ? "In deck" : "Review"}
           </button>
         </div>
         <button

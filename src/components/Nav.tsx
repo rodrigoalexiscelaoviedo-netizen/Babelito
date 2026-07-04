@@ -1,4 +1,5 @@
 import { NavLink } from "react-router-dom";
+import { useEffect, useState } from "react";
 import {
   LayoutDashboard,
   MessageCircle,
@@ -10,7 +11,10 @@ import {
   BookOpen,
   BookText,
   Mic,
+  Layers,
 } from "lucide-react";
+import { useAuth } from "../context/AuthContext";
+import { countDue } from "../lib/srs";
 
 const LINKS = [
   { to: "/", label: "Home", icon: LayoutDashboard, end: true },
@@ -21,11 +25,20 @@ const LINKS = [
   { to: "/reading", label: "Reading", icon: BookOpen },
   { to: "/stories", label: "Stories", icon: BookText },
   { to: "/sounds", label: "Sounds", icon: Mic },
+  { to: "/review", label: "Review", icon: Layers },
   { to: "/progress", label: "Progress", icon: BarChart3 },
   { to: "/profile", label: "Profile", icon: User },
 ];
 
 export default function Nav() {
+  const { profile } = useAuth();
+  const [reviewCount, setReviewCount] = useState(0);
+
+  useEffect(() => {
+    if (!profile) return;
+    countDue(profile.id).then(setReviewCount);
+  }, [profile]);
+
   return (
     <>
       {/* Sidebar desktop */}
@@ -51,7 +64,12 @@ export default function Nav() {
               }
             >
               <Icon size={18} />
-              {label}
+              <span className="flex-1">{label}</span>
+              {to === "/review" && reviewCount > 0 && (
+                <span className="ml-auto text-[10px] font-bold bg-gold text-ink-900 rounded-full px-1.5 py-0.5 leading-none">
+                  {reviewCount}
+                </span>
+              )}
             </NavLink>
           ))}
         </nav>
@@ -66,12 +84,19 @@ export default function Nav() {
               to={to}
               end={end}
               className={({ isActive }) =>
-                `flex flex-1 flex-col items-center gap-0.5 py-2 text-[10px] font-medium transition ${
+                `flex flex-1 flex-col items-center gap-0.5 py-2 text-[10px] font-medium transition relative ${
                   isActive ? "text-coral" : "text-paper-muted"
                 }`
               }
             >
-              <Icon size={20} />
+              <div className="relative">
+                <Icon size={20} />
+                {to === "/review" && reviewCount > 0 && (
+                  <span className="absolute -top-1 -right-1 text-[8px] font-bold bg-gold text-ink-900 rounded-full w-3.5 h-3.5 flex items-center justify-center leading-none">
+                    {reviewCount > 9 ? "9+" : reviewCount}
+                  </span>
+                )}
+              </div>
               {label}
             </NavLink>
           ))}

@@ -16,6 +16,7 @@ import { supabase } from "../lib/supabaseClient";
 import { errorLabel, errorHint } from "../lib/errorTypes";
 import { getStreak } from "../lib/dailyLesson";
 import { getReports, type SessionReport } from "../lib/sessionReport";
+import { deckSize } from "../lib/srs";
 import Loader from "../components/Loader";
 
 interface ErrRow { error_type: string }
@@ -33,11 +34,12 @@ export default function Progress() {
   const [streak, setStreak] = useState(0);
   const [reports, setReports] = useState<SessionReport[]>([]);
   const [expandedReport, setExpandedReport] = useState<string | null>(null);
+  const [deck, setDeck] = useState(0);
 
   useEffect(() => {
     if (!profile) return;
     (async () => {
-      const [{ data: e }, { data: s }, { data: v }, { data: sp }, streakCount, latestReports] =
+      const [{ data: e }, { data: s }, { data: v }, { data: sp }, streakCount, latestReports, deckCount] =
         await Promise.all([
           supabase.from("errors").select("error_type").eq("user_id", profile.id),
           supabase.from("sessions").select("created_at, duration_seconds").eq("user_id", profile.id),
@@ -45,6 +47,7 @@ export default function Progress() {
           supabase.from("story_progress").select("completed").eq("user_id", profile.id).eq("completed", true),
           getStreak(profile.id),
           getReports(profile.id, 5),
+          deckSize(profile.id),
         ]);
       setErrs((e as ErrRow[]) ?? []);
       setSessions((s as SessRow[]) ?? []);
@@ -52,6 +55,7 @@ export default function Progress() {
       setStoryProg((sp as StoryProgRow[]) ?? []);
       setStreak(streakCount);
       setReports(latestReports);
+      setDeck(deckCount);
       setLoading(false);
     })();
   }, [profile]);
@@ -85,7 +89,7 @@ export default function Progress() {
       <p className="eyebrow mb-2">Your progress</p>
       <h1 className="font-display text-3xl font-extrabold mb-8">How you're doing</h1>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-8">
         <div className="card p-4">
           <div className="flex items-center gap-1.5 text-paper-muted mb-1">
             <Flame size={14} className="text-coral" />
@@ -96,6 +100,7 @@ export default function Progress() {
         <Stat label="Sessions" value={String(sessions.length)} />
         <Stat label="Minutes" value={String(totalMinutes)} />
         <Stat label="Stories done" value={String(storyProg.length)} />
+        <Stat label="Review deck" value={String(deck)} />
       </div>
 
       {/* Vocabulary card */}
