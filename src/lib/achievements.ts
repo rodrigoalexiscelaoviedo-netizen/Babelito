@@ -89,7 +89,7 @@ export const ACHIEVEMENTS: AchievementDef[] = [
 export async function checkAchievements(userId: string): Promise<AchievementDef[]> {
   const [{ data: existing }, { count: convCount }, { count: storyCount }, { count: reviewCount }, { count: errorCount }, { count: vocabCount }, streak] =
     await Promise.all([
-      supabase.from("achievements").select("key").eq("user_id", userId),
+      supabase.from("achievements").select("achievement_key").eq("user_id", userId),
       supabase.from("sessions").select("id", { count: "exact", head: true }).eq("user_id", userId).eq("session_type", "conversation"),
       supabase.from("story_progress").select("id", { count: "exact", head: true }).eq("user_id", userId).eq("completed", true),
       supabase.from("review_items").select("id", { count: "exact", head: true }).eq("user_id", userId).not("last_reviewed", "is", null),
@@ -98,7 +98,7 @@ export async function checkAchievements(userId: string): Promise<AchievementDef[
       getStreak(userId),
     ]);
 
-  const unlockedKeys = new Set((existing ?? []).map((r: { key: string }) => r.key));
+  const unlockedKeys = new Set((existing ?? []).map((r: { achievement_key: string }) => r.achievement_key));
 
   const conditions: Record<string, boolean> = {
     first_conversation: (convCount ?? 0) >= 1,
@@ -119,7 +119,7 @@ export async function checkAchievements(userId: string): Promise<AchievementDef[
     await supabase.from("achievements").insert(
       newlyUnlocked.map((def) => ({
         user_id: userId,
-        key: def.key,
+        achievement_key: def.key,
         seen: false,
       }))
     );
@@ -132,11 +132,11 @@ export async function checkAchievements(userId: string): Promise<AchievementDef[
 export async function getAchievements(userId: string): Promise<AchievementWithStatus[]> {
   const { data } = await supabase
     .from("achievements")
-    .select("key, seen, created_at")
+    .select("achievement_key, seen, unlocked_at")
     .eq("user_id", userId);
 
   const map = new Map(
-    (data ?? []).map((r: { key: string; seen: boolean; created_at: string }) => [r.key, r])
+    (data ?? []).map((r: { achievement_key: string; seen: boolean; unlocked_at: string }) => [r.achievement_key, r])
   );
 
   return ACHIEVEMENTS.map((def) => {
@@ -145,7 +145,7 @@ export async function getAchievements(userId: string): Promise<AchievementWithSt
       ...def,
       unlocked: !!row,
       seen: row?.seen ?? true,
-      unlocked_at: row?.created_at ?? null,
+      unlocked_at: row?.unlocked_at ?? null,
     };
   });
 }
@@ -157,5 +157,5 @@ export async function markSeen(userId: string, keys: string[]): Promise<void> {
     .from("achievements")
     .update({ seen: true })
     .eq("user_id", userId)
-    .in("key", keys);
+    .in("achievement_key", keys);
 }
