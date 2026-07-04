@@ -10,9 +10,12 @@ import {
   Area,
   CartesianGrid,
 } from "recharts";
+import { Flame, ChevronDown, ChevronUp } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabaseClient";
 import { errorLabel, errorHint } from "../lib/errorTypes";
+import { getStreak } from "../lib/dailyLesson";
+import { getReports, type SessionReport } from "../lib/sessionReport";
 import Loader from "../components/Loader";
 
 interface ErrRow { error_type: string }
@@ -27,20 +30,28 @@ export default function Progress() {
   const [sessions, setSessions] = useState<SessRow[]>([]);
   const [vocab, setVocab] = useState<VocabRow[]>([]);
   const [storyProg, setStoryProg] = useState<StoryProgRow[]>([]);
+  const [streak, setStreak] = useState(0);
+  const [reports, setReports] = useState<SessionReport[]>([]);
+  const [expandedReport, setExpandedReport] = useState<string | null>(null);
 
   useEffect(() => {
     if (!profile) return;
     (async () => {
-      const [{ data: e }, { data: s }, { data: v }, { data: sp }] = await Promise.all([
-        supabase.from("errors").select("error_type").eq("user_id", profile.id),
-        supabase.from("sessions").select("created_at, duration_seconds").eq("user_id", profile.id),
-        supabase.from("user_vocabulary").select("status").eq("user_id", profile.id),
-        supabase.from("story_progress").select("completed").eq("user_id", profile.id).eq("completed", true),
-      ]);
+      const [{ data: e }, { data: s }, { data: v }, { data: sp }, streakCount, latestReports] =
+        await Promise.all([
+          supabase.from("errors").select("error_type").eq("user_id", profile.id),
+          supabase.from("sessions").select("created_at, duration_seconds").eq("user_id", profile.id),
+          supabase.from("user_vocabulary").select("status").eq("user_id", profile.id),
+          supabase.from("story_progress").select("completed").eq("user_id", profile.id).eq("completed", true),
+          getStreak(profile.id),
+          getReports(profile.id, 5),
+        ]);
       setErrs((e as ErrRow[]) ?? []);
       setSessions((s as SessRow[]) ?? []);
       setVocab((v as VocabRow[]) ?? []);
       setStoryProg((sp as StoryProgRow[]) ?? []);
+      setStreak(streakCount);
+      setReports(latestReports);
       setLoading(false);
     })();
   }, [profile]);
@@ -75,7 +86,13 @@ export default function Progress() {
       <h1 className="font-display text-3xl font-extrabold mb-8">How you're doing</h1>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
-        <Stat label="Current level" value={profile?.current_level ?? "—"} />
+        <div className="card p-4">
+          <div className="flex items-center gap-1.5 text-paper-muted mb-1">
+            <Flame size={14} className="text-coral" />
+            <span className="text-xs">Daily streak</span>
+          </div>
+          <p className="font-display text-2xl font-bold text-coral">{streak}</p>
+        </div>
         <Stat label="Sessions" value={String(sessions.length)} />
         <Stat label="Minutes" value={String(totalMinutes)} />
         <Stat label="Stories done" value={String(storyProg.length)} />
@@ -129,6 +146,83 @@ export default function Progress() {
             <Area type="monotone" dataKey="sessions" stroke="#FF6B5E" strokeWidth={2} fill="url(#g)" />
           </AreaChart>
         </ResponsiveContainer>
+      </div>
+
+      {/* Recent session reports */}
+      <div className="card p-5 mb-6">
+        <h3 className="font-display font-bold mb-1">Recent session reports</h3>
+        <p className="text-sm text-paper-muted mb-4">AI-generated after each conversation or roleplay.</p>
+        {reports.length === 0 ? (
+          <p className="text-paper-muted text-sm py-4 text-center">
+            No reports yet. End a conversation or roleplay session to generate one.
+          </p>
+        ) : (
+          <div className="space-y-2">
+            {reports.map((r) => {
+              const isOpen = expandedReport === r.id;
+              const date = new Date(r.created_at).toLocaleDateString("en", {
+                day: "numeric",
+                month: "short",
+                hour: "2-digit",
+                minute: "2-digit",
+              });
+              return (
+                <div key={r.id} className="border border-ink-600 rounded-xl overflow-hidden">
+                  <button
+                    onClick={() => setExpandedReport(isOpen ? null : r.id)}
+                    className="w-full flex items-center justify-between px-4 py-3 hover:bg-ink-700 transition"
+                  >
+                    <div className="text-left">
+                      <p className="text-sm font-medium capitalize">{r.kind} session</p>
+                      <p className="text-xs text-paper-muted">{date}</p>
+                    </div>
+                    {isOpen ? <ChevronUp size={16} className="text-paper-faint" /> : <ChevronDown size={16} className="text-paper-faint" />}
+                  </button>
+                  {isOpen && (
+                    <div className="px-4 pb-4 pt-1 space-y-3 border-t border-ink-600">
+                      <p className="text-sm text-paper-muted leading-relaxed">{r.summary}</p>
+                      {r.did_well.length > 0 && (
+                        <div>
+                          <p className="text-xs text-mint uppercase tracking-widest font-mono mb-1">Did well</p>
+                          <ul className="space-y-0.5">
+                            {r.did_well.map((item, i) => (
+                              <li key={i} className="text-sm flex gap-2">
+                                <span className="text-mint">✓</span> {item}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                      {r.key_errors.length > 0 && (
+                        <div>
+                          <p className="text-xs text-coral uppercase tracking-widest font-mono mb-1">Key errors</p>
+                          <div className="space-y-1.5">
+                            {r.key_errors.map((e, i) => (
+                              <div key={i} className="text-sm">
+                                <span className="text-coral line-through">{e.error}</span>
+                                <span className="text-mint"> → {e.correction}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      {r.suggested_chunks.length > 0 && (
+                        <div>
+                          <p className="text-xs text-gold uppercase tracking-widest font-mono mb-1">Suggested chunks</p>
+                          <ul className="space-y-0.5">
+                            {r.suggested_chunks.map((chunk, i) => (
+                              <li key={i} className="font-mono text-xs text-paper-muted">"{chunk}"</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* Top errores */}

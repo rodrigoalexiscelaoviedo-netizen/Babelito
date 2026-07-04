@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { Mic, Send, Volume2, Square, Pause, Play } from "lucide-react";
+import { useLocation } from "react-router-dom";
+import { Mic, Send, Volume2, Square, Pause, Play, Loader2, X, ChevronDown, ChevronUp } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabaseClient";
 import { askCoach } from "../lib/claude";
@@ -15,13 +16,18 @@ import {
 import { useVoicePrefs, type VoicePrefs } from "../lib/useVoicePrefs";
 import type { ChatTurn, DetectedError } from "../lib/types";
 import VoiceOrb from "../components/VoiceOrb";
+import { generateReport, type SessionReport } from "../lib/sessionReport";
 
 const TOPICS = ["Your work", "Your weekend", "A goal you have", "Something you enjoy", "Free chat"];
 
 export default function Conversation() {
   const { profile } = useAuth();
+  const location = useLocation();
   const voicePrefs = useVoicePrefs();
-  const [topic, setTopic] = useState<string | null>(null);
+
+  // Support pre-seeded topic from Dashboard daily lesson
+  const locationTopic = (location.state as { topic?: string } | null)?.topic ?? null;
+  const [topic, setTopic] = useState<string | null>(locationTopic);
   const [turns, setTurns] = useState<ChatTurn[]>([]);
   const [input, setInput] = useState("");
   const [thinking, setThinking] = useState(false);
@@ -29,6 +35,11 @@ export default function Conversation() {
   const [interim, setInterim] = useState("");
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [startedAt] = useState(() => Date.now());
+
+  // Report state
+  const [generatingReport, setGeneratingReport] = useState(false);
+  const [report, setReport] = useState<SessionReport | null>(null);
+  const [reportError, setReportError] = useState("");
 
   const recognizerRef = useRef<Recognizer | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -114,6 +125,20 @@ export default function Conversation() {
     }
   }
 
+  async function handleEndSession() {
+    if (!profile || turns.length < 2) return;
+    setGeneratingReport(true);
+    setReportError("");
+    try {
+      const r = await generateReport(profile.id, sessionId, "conversation", turns);
+      setReport(r);
+    } catch (e) {
+      setReportError(e instanceof Error ? e.message : "Could not generate report.");
+    } finally {
+      setGeneratingReport(false);
+    }
+  }
+
   function toggleMic() {
     if (listening) {
       recognizerRef.current?.stop();
@@ -130,6 +155,10 @@ export default function Conversation() {
     recognizerRef.current = rec;
     rec.start();
     setListening(true);
+  }
+
+  if (report) {
+    return <ReportPanel report={report} onClose={() => setReport(null)} />;
   }
 
   if (turns.length === 0) {
@@ -153,6 +182,18 @@ export default function Conversation() {
               {t}
             </button>
           ))}
+          {/* Show daily topic if it's not in the list */}
+          {locationTopic && !TOPICS.includes(locationTopic) && (
+            <button
+              onClick={() => setTopic(locationTopic)}
+              className={`card px-4 py-4 text-left font-medium transition sm:col-span-2 ${
+                topic === locationTopic ? "ring-2 ring-coral border-coral" : "hover:border-ink-500"
+              }`}
+            >
+              {locationTopic}
+              <span className="ml-2 text-xs text-coral font-mono">· today's topic</span>
+            </button>
+          )}
         </div>
         <button
           className="btn-coral w-full"
@@ -172,6 +213,25 @@ export default function Conversation() {
 
   return (
     <div className="flex flex-col h-[calc(100vh-7rem)] md:h-[calc(100vh-5rem)] max-w-2xl mx-auto">
+      {/* Header with end button */}
+      <div className="flex items-center justify-between mb-2">
+        <p className="text-xs text-paper-muted font-mono uppercase tracking-widest">
+          {topic ?? "Free chat"}
+        </p>
+        <button
+          onClick={handleEndSession}
+          disabled={generatingReport || turns.length < 2}
+          className="flex items-center gap-1.5 text-xs text-paper-muted hover:text-coral transition disabled:opacity-40"
+        >
+          {generatingReport ? (
+            <><Loader2 size={13} className="animate-spin" /> Generating report…</>
+          ) : (
+            "Finish & see report →"
+          )}
+        </button>
+      </div>
+      {reportError && <p className="text-coral text-xs mb-2">{reportError}</p>}
+
       <div ref={scrollRef} className="flex-1 overflow-y-auto pr-1 space-y-4">
         {turns.map((t, i) => (
           <div key={i} className={`flex ${t.role === "user" ? "justify-end" : "justify-start"}`}>
@@ -330,3 +390,75 @@ function CoachMessage({
     </div>
   );
 }
+
+function ReportPanel({ report, onClose }: { report: SessionReport; onClose: () => void }) {
+  return (
+    <div className="animate-fade-up max-w-xl mx-auto">
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <p className="eyebrow mb-1">Session report</p>
+          <h1 className="font-display text-2xl font-extrabold">How it went</h1>
+        </div>
+        <button onClick={onClose} className="text-paper-muted hover:text-paper">
+          <X size={20} />
+        </button>
+      </div>
+
+      <div className="card p-5 mb-4">
+        <p className="text-paper leading-relaxed">{report.summary}</p>
+      </div>
+
+      {report.did_well.length > 0 && (
+        <div className="card p-5 mb-4 border-mint/20">
+          <p className="eyebrow text-mint mb-3">What you did well</p>
+          <ul className="space-y-1.5">
+            {report.did_well.map((item, i) => (
+              <li key={i} className="flex items-start gap-2 text-sm">
+                <span className="text-mint mt-0.5">✓</span>
+                {item}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {report.key_errors.length > 0 && (
+        <div className="card p-5 mb-4 border-coral/20">
+          <p className="eyebrow text-coral mb-3">Key errors</p>
+          <div className="space-y-3">
+            {report.key_errors.map((e, i) => (
+              <div key={i} className="text-sm">
+                <p className="text-coral line-through">{e.error}</p>
+                <p className="text-mint">→ {e.correction}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {report.suggested_chunks.length > 0 && (
+        <div className="card p-5 mb-6">
+          <p className="eyebrow text-gold mb-3">Chunks you could use next time</p>
+          <ul className="space-y-1.5">
+            {report.suggested_chunks.map((chunk, i) => (
+              <li key={i} className="font-mono text-sm text-paper-muted">
+                "{chunk}"
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      <p className="text-xs text-paper-faint text-center mb-4">
+        Generated by AI · Gemini via Supabase Edge Function
+      </p>
+      <button className="btn-coral w-full" onClick={onClose}>
+        Back to conversation
+      </button>
+    </div>
+  );
+}
+
+export { ReportPanel };
+export type { SessionReport };
+export { ChevronDown, ChevronUp };
