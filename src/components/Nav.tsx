@@ -20,7 +20,7 @@ const LINKS = [
   { to: "/roleplay", label: "Roleplay", icon: Drama },
   { to: "/reading", label: "Reading", icon: BookOpen },
   { to: "/stories", label: "Stories", icon: BookText },
-  { to: "/pronunciation", label: "Sounds", icon: Mic },
+  { to: "/sounds", label: "Sounds", icon: Mic },
   { to: "/progress", label: "Progress", icon: BarChart3 },
   { to: "/profile", label: "Profile", icon: User },
 ];
