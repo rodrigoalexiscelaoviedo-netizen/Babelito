@@ -12,6 +12,7 @@ import {
   BookText,
   Mic,
   Layers,
+  Headphones,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { countDue } from "../lib/srs";
@@ -26,6 +27,7 @@ const LINKS = [
   { to: "/stories", label: "Stories", icon: BookText },
   { to: "/sounds", label: "Sounds", icon: Mic },
   { to: "/review", label: "Review", icon: Layers },
+  { to: "/listening", label: "Listening", icon: Headphones },
   { to: "/progress", label: "Progress", icon: BarChart3 },
   { to: "/profile", label: "Profile", icon: User },
 ];
