@@ -1,15 +1,13 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowLeft, BookOpen, Volume2, X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { ArrowLeft, BookOpen } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabaseClient";
 import { READING_TEXTS, type ReadingText } from "../lib/readingTexts";
-import { lookupWord, type WordDefinition } from "../lib/dictionary";
-import { upsertWord, type WordStatus } from "../lib/vocabulary";
-import { speak } from "../lib/speech";
+import type { WordDefinition } from "../lib/dictionary";
+import type { VocabMap, WordStatus } from "../lib/vocabulary";
 import { useVoicePrefs } from "../lib/useVoicePrefs";
+import ClickableText from "../components/ClickableText";
 import Loader from "../components/Loader";
-
-type VocabMap = Record<string, { status: WordStatus; definition?: string; example?: string; phonetic?: string }>;
 
 const LEVEL_BADGE: Record<string, string> = {
   A2: "bg-mint/20 text-mint",
@@ -91,21 +89,14 @@ export default function Reading() {
   );
 }
 
-// ─── Reader ───────────────────────────────────────────────────────────────────
-
 function Reader({ text, onBack }: { text: ReadingText; onBack: () => void }) {
   const { profile } = useAuth();
   const voicePrefs = useVoicePrefs();
   const [vocabMap, setVocabMap] = useState<VocabMap>({});
   const [loadingVocab, setLoadingVocab] = useState(true);
-  const [selectedWord, setSelectedWord] = useState<string | null>(null);
-  const [wordDef, setWordDef] = useState<WordDefinition | null>(null);
-  const [loadingDef, setLoadingDef] = useState(false);
   const [scrollProgress, setScrollProgress] = useState(0);
-  const defCache = useRef<Map<string, WordDefinition>>(new Map());
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Load user vocabulary
   useEffect(() => {
     if (!profile) return;
     (async () => {
@@ -115,7 +106,7 @@ function Reader({ text, onBack }: { text: ReadingText; onBack: () => void }) {
         .eq("user_id", profile.id);
       if (data) {
         const map: VocabMap = {};
-        for (const row of data as Array<{word:string;status:WordStatus;definition?:string;example?:string;phonetic?:string}>) {
+        for (const row of data as Array<{ word: string; status: WordStatus; definition?: string; example?: string; phonetic?: string }>) {
           map[row.word] = { status: row.status, definition: row.definition ?? undefined, example: row.example ?? undefined, phonetic: row.phonetic ?? undefined };
         }
         setVocabMap(map);
@@ -124,7 +115,6 @@ function Reader({ text, onBack }: { text: ReadingText; onBack: () => void }) {
     })();
   }, [profile]);
 
-  // Scroll progress
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
@@ -139,58 +129,17 @@ function Reader({ text, onBack }: { text: ReadingText; onBack: () => void }) {
     return () => el.removeEventListener("scroll", onScroll);
   }, []);
 
-  async function handleWordClick(raw: string) {
-    const word = raw.toLowerCase().replace(/[^a-z']/g, "");
-    if (!word) return;
-    setSelectedWord(word);
-    setWordDef(null);
-
-    if (defCache.current.has(word)) {
-      setWordDef(defCache.current.get(word)!);
-      return;
-    }
-    setLoadingDef(true);
-    const def = await lookupWord(word);
-    defCache.current.set(word, def);
-    setWordDef(def);
-    setLoadingDef(false);
-  }
-
-  async function markStatus(status: WordStatus) {
-    if (!selectedWord || !profile || !wordDef) return;
-    await upsertWord(profile.id, selectedWord, {
-      status,
-      definition: wordDef.definition_es,
-      example: wordDef.example,
-      phonetic: wordDef.phonetic,
-      source: "reading",
-    });
+  function handleVocabUpdate(word: string, status: WordStatus, def: WordDefinition) {
     setVocabMap((prev) => ({
       ...prev,
-      [selectedWord]: {
-        status,
-        definition: wordDef.definition_es,
-        example: wordDef.example,
-        phonetic: wordDef.phonetic,
-      },
+      [word]: { status, definition: def.definition_es, example: def.example, phonetic: def.phonetic },
     }));
-  }
-
-  function wordClass(raw: string): string {
-    const word = raw.toLowerCase().replace(/[^a-z']/g, "");
-    const entry = vocabMap[word];
-    if (!entry || entry.status === "new") return "text-coral/80 cursor-pointer hover:text-coral transition";
-    if (entry.status === "learning") return "text-[#F4C431]/80 cursor-pointer hover:text-[#F4C431] transition";
-    return "cursor-pointer hover:text-paper-muted transition"; // known
   }
 
   if (loadingVocab) return <Loader />;
 
-  const tokens = tokenize(text.content);
-
   return (
     <div className="flex flex-col h-[calc(100vh-7rem)] md:h-[calc(100vh-5rem)] max-w-2xl mx-auto">
-      {/* Header */}
       <div className="flex items-center gap-3 mb-3">
         <button onClick={onBack} className="text-paper-muted hover:text-paper transition">
           <ArrowLeft size={18} />
@@ -201,145 +150,20 @@ function Reader({ text, onBack }: { text: ReadingText; onBack: () => void }) {
         </div>
       </div>
 
-      {/* Progress bar */}
       <div className="h-1 w-full bg-ink-600 rounded-full mb-4">
-        <div
-          className="h-1 bg-coral rounded-full transition-all"
-          style={{ width: `${scrollProgress}%` }}
+        <div className="h-1 bg-coral rounded-full transition-all" style={{ width: `${scrollProgress}%` }} />
+      </div>
+
+      <div ref={containerRef} className="flex-1 overflow-y-auto">
+        <ClickableText
+          text={text.content}
+          vocabMap={vocabMap}
+          userId={profile!.id}
+          voicePrefs={voicePrefs}
+          source="reading"
+          onVocabUpdate={handleVocabUpdate}
         />
       </div>
-
-      {/* Text area */}
-      <div
-        ref={containerRef}
-        className="flex-1 overflow-y-auto leading-8 text-paper text-base"
-        onClick={() => selectedWord && setSelectedWord(null)}
-      >
-        {tokens.map((token, i) => {
-          if (!isWord(token)) return <span key={i}>{token}</span>;
-          return (
-            <span
-              key={i}
-              className={wordClass(token)}
-              onClick={(e) => {
-                e.stopPropagation();
-                handleWordClick(token);
-              }}
-            >
-              {token}
-            </span>
-          );
-        })}
-      </div>
-
-      {/* Word panel */}
-      {selectedWord && (
-        <div className="card mt-3 p-4 relative">
-          <button
-            onClick={() => setSelectedWord(null)}
-            className="absolute top-3 right-3 text-paper-faint hover:text-paper"
-          >
-            <X size={15} />
-          </button>
-
-          <div className="flex items-start gap-3 mb-3">
-            <div className="flex-1 min-w-0">
-              <p className="font-display font-bold text-lg">{selectedWord}</p>
-              {wordDef?.phonetic && (
-                <p className="font-mono text-sm text-paper-muted">{wordDef.phonetic}</p>
-              )}
-            </div>
-            <button
-              onClick={() =>
-                speak(selectedWord, {
-                  voiceName: voicePrefs.voiceName ?? undefined,
-                  rate: voicePrefs.voiceRate,
-                  lang: voicePrefs.voiceAccent,
-                })
-              }
-              className="text-paper-faint hover:text-coral transition mt-1"
-              aria-label="Pronounce"
-            >
-              <Volume2 size={18} />
-            </button>
-          </div>
-
-          {loadingDef && <p className="text-paper-muted text-sm">Looking up…</p>}
-          {wordDef && !loadingDef && (
-            <div className="space-y-1 mb-4">
-              <p className="text-sm">
-                <span className="text-paper-muted">ES: </span>
-                {wordDef.definition_es}
-              </p>
-              <p className="text-sm">
-                <span className="text-paper-muted">EN: </span>
-                {wordDef.definition_en}
-              </p>
-              {wordDef.example && (
-                <p className="text-xs text-paper-faint italic mt-1">"{wordDef.example}"</p>
-              )}
-            </div>
-          )}
-
-          <div className="flex gap-2">
-            <StatusBtn
-              label="New"
-              active={vocabMap[selectedWord]?.status === "new"}
-              color="bg-coral/20 text-coral hover:bg-coral/30"
-              onClick={() => markStatus("new")}
-              disabled={loadingDef || !wordDef}
-            />
-            <StatusBtn
-              label="Learning"
-              active={vocabMap[selectedWord]?.status === "learning"}
-              color="bg-[#F4C431]/20 text-[#F4C431] hover:bg-[#F4C431]/30"
-              onClick={() => markStatus("learning")}
-              disabled={loadingDef || !wordDef}
-            />
-            <StatusBtn
-              label="I know it"
-              active={vocabMap[selectedWord]?.status === "known"}
-              color="bg-mint/20 text-mint hover:bg-mint/30"
-              onClick={() => markStatus("known")}
-              disabled={loadingDef || !wordDef}
-            />
-          </div>
-        </div>
-      )}
     </div>
   );
-}
-
-function StatusBtn({
-  label,
-  active,
-  color,
-  onClick,
-  disabled,
-}: {
-  label: string;
-  active: boolean;
-  color: string;
-  onClick: () => void;
-  disabled?: boolean;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      disabled={disabled}
-      className={`flex-1 py-1.5 rounded-lg text-sm font-medium transition ${color} ${active ? "ring-2 ring-white/20" : ""} disabled:opacity-40`}
-    >
-      {label}
-    </button>
-  );
-}
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function tokenize(text: string): string[] {
-  return text.split(/(\s+)/);
-}
-
-function isWord(token: string): boolean {
-  return /[a-zA-Z]/.test(token);
 }

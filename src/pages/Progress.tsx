@@ -18,6 +18,7 @@ import Loader from "../components/Loader";
 interface ErrRow { error_type: string }
 interface SessRow { created_at: string; duration_seconds: number }
 interface VocabRow { status: string }
+interface StoryProgRow { completed: boolean }
 
 export default function Progress() {
   const { profile } = useAuth();
@@ -25,18 +26,21 @@ export default function Progress() {
   const [errs, setErrs] = useState<ErrRow[]>([]);
   const [sessions, setSessions] = useState<SessRow[]>([]);
   const [vocab, setVocab] = useState<VocabRow[]>([]);
+  const [storyProg, setStoryProg] = useState<StoryProgRow[]>([]);
 
   useEffect(() => {
     if (!profile) return;
     (async () => {
-      const [{ data: e }, { data: s }, { data: v }] = await Promise.all([
+      const [{ data: e }, { data: s }, { data: v }, { data: sp }] = await Promise.all([
         supabase.from("errors").select("error_type").eq("user_id", profile.id),
         supabase.from("sessions").select("created_at, duration_seconds").eq("user_id", profile.id),
         supabase.from("user_vocabulary").select("status").eq("user_id", profile.id),
+        supabase.from("story_progress").select("completed").eq("user_id", profile.id).eq("completed", true),
       ]);
       setErrs((e as ErrRow[]) ?? []);
       setSessions((s as SessRow[]) ?? []);
       setVocab((v as VocabRow[]) ?? []);
+      setStoryProg((sp as StoryProgRow[]) ?? []);
       setLoading(false);
     })();
   }, [profile]);
@@ -74,7 +78,7 @@ export default function Progress() {
         <Stat label="Current level" value={profile?.current_level ?? "—"} />
         <Stat label="Sessions" value={String(sessions.length)} />
         <Stat label="Minutes" value={String(totalMinutes)} />
-        <Stat label="Errors logged" value={String(errs.length)} />
+        <Stat label="Stories done" value={String(storyProg.length)} />
       </div>
 
       {/* Vocabulary card */}

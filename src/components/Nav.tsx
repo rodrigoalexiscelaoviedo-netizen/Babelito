@@ -8,6 +8,7 @@ import {
   BarChart3,
   User,
   BookOpen,
+  BookText,
 } from "lucide-react";
 
 const LINKS = [
@@ -17,6 +18,7 @@ const LINKS = [
   { to: "/correct", label: "Correct", icon: PencilLine },
   { to: "/roleplay", label: "Roleplay", icon: Drama },
   { to: "/reading", label: "Reading", icon: BookOpen },
+  { to: "/stories", label: "Stories", icon: BookText },
   { to: "/progress", label: "Progress", icon: BarChart3 },
   { to: "/profile", label: "Profile", icon: User },
 ];

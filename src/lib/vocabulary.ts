@@ -2,6 +2,11 @@ import { supabase } from "./supabaseClient";
 
 export type WordStatus = "new" | "learning" | "known";
 
+export type VocabMap = Record<
+  string,
+  { status: WordStatus; definition?: string; example?: string; phonetic?: string }
+>;
+
 export interface VocabWord {
   id: string;
   user_id: string;
