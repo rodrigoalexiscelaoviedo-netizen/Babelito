@@ -118,6 +118,26 @@ body {
 .status-streak   { color: #F5B454; }
 .status-streak-bg { background-color: rgb(245 180 84 / 0.15); color: #F5B454; }
 
+/* ── Maica mascot animations ─────────────────────────────────────────────── */
+@keyframes maica-breathe { 0%,100%{transform:translateY(0px)} 50%{transform:translateY(1.5px)} }
+@keyframes maica-tail    { 0%,100%{transform:translateX(0px)} 50%{transform:translateX(4px)} }
+@keyframes maica-blink   { 0%,87%,100%{transform:scaleY(1)} 92%{transform:scaleY(0.08)} }
+@keyframes maica-paw     { 0%,100%{transform:translateY(0px)} 50%{transform:translateY(-5px)} }
+@keyframes maica-z       { 0%{opacity:0;transform:translateY(0px) scale(0.55)} 25%{opacity:1} 75%{opacity:0.8} 100%{opacity:0;transform:translateY(-20px) scale(1)} }
+@keyframes maica-star    { 0%,100%{transform:scale(0.7);opacity:0.5} 50%{transform:scale(1.2);opacity:1} }
+.maica-breathe { animation: maica-breathe 3.5s ease-in-out infinite; }
+.maica-tail    { animation: maica-tail    2.2s ease-in-out infinite; }
+.maica-el      { animation: maica-blink   4.5s ease-in-out infinite; }
+.maica-er      { animation: maica-blink   4.5s ease-in-out 0.1s infinite; }
+.maica-paw     { animation: maica-paw     2s   ease-in-out infinite; }
+.maica-paw2    { animation: maica-paw     2s   ease-in-out 0.15s infinite; }
+.maica-z1      { animation: maica-z       2.2s ease-in-out infinite; }
+.maica-z2      { animation: maica-z       2.2s ease-in-out 0.73s  infinite; }
+.maica-z3      { animation: maica-z       2.2s ease-in-out 1.46s  infinite; }
+.maica-s1      { animation: maica-star    1.4s ease-in-out infinite; }
+.maica-s2      { animation: maica-star    1.4s ease-in-out 0.5s  infinite; }
+.maica-s3      { animation: maica-star    1.4s ease-in-out 0.9s  infinite; }
+
 /* Respeta usuarios que piden menos movimiento */
 @media (prefers-reduced-motion: reduce) {
   *,

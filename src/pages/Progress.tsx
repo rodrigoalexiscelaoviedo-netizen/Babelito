@@ -33,6 +33,7 @@ import { getReports, type SessionReport } from "../lib/sessionReport";
 import { deckSize } from "../lib/srs";
 import { getAchievements, type AchievementWithStatus } from "../lib/achievements";
 import Loader from "../components/Loader";
+import Maica from "../components/Maica";
 
 interface ErrRow { error_type: string }
 interface SessRow { created_at: string; duration_seconds: number }
@@ -381,7 +382,7 @@ export default function Progress() {
         <p className="text-sm text-paper-muted mb-4">Words you've tracked while reading.</p>
         {vocabTotal === 0 ? (
           <div className="empty-state">
-            <BookText size={36} className="empty-state-icon text-mint/40" />
+            <Maica mood="curious" size="md" className="mb-1" />
             <p className="empty-state-title">Sin palabras aún</p>
             <p className="empty-state-sub">
               Explorá el módulo de lectura y tocá las palabras que no conocés para guardarlas.
@@ -438,7 +439,7 @@ export default function Progress() {
         <p className="text-sm text-paper-muted mb-4">AI-generated after each conversation or roleplay.</p>
         {reports.length === 0 ? (
           <div className="empty-state">
-            <MessageCircle size={36} className="empty-state-icon text-coral/40" />
+            <Maica mood="curious" size="md" className="mb-1" />
             <p className="empty-state-title">Sin reportes aún</p>
             <p className="empty-state-sub">
               Terminá una conversación o roleplay y tu coach genera un reporte detallado.
@@ -522,12 +523,7 @@ export default function Progress() {
         <p className="text-sm text-paper-muted mb-4">Your most frequent mistakes — these feed your coach.</p>
         {topErrors.length === 0 ? (
           <div className="empty-state">
-            <svg viewBox="0 0 48 48" className="w-9 h-9 empty-state-icon opacity-40" fill="none" aria-hidden="true">
-              <circle cx="24" cy="24" r="20" stroke="#36C5A8" strokeWidth="2.5" />
-              <path d="M16 28 Q24 18 32 28" stroke="#36C5A8" strokeWidth="2.5" strokeLinecap="round" fill="none" />
-              <circle cx="18" cy="22" r="2" fill="#36C5A8" />
-              <circle cx="30" cy="22" r="2" fill="#36C5A8" />
-            </svg>
+            <Maica mood="curious" size="md" className="mb-1" />
             <p className="empty-state-title">¡Todo limpio por ahora!</p>
             <p className="empty-state-sub">
               Tus errores aparecen acá después de practicar con el coach. Empezá una conversación.

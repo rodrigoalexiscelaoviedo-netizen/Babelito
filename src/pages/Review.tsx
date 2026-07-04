@@ -8,6 +8,7 @@ import { useVoicePrefs } from "../lib/useVoicePrefs";
 import { recognizeSpeech, comparePhrases } from "../lib/pronunciation";
 import { speechSupported } from "../lib/speech";
 import Loader from "../components/Loader";
+import Maica from "../components/Maica";
 import { checkAchievements, markSeen, type AchievementDef } from "../lib/achievements";
 import AchievementCelebration from "../components/AchievementCelebration";
 
@@ -89,13 +90,7 @@ export default function Review() {
     return (
       <div className="animate-fade-up max-w-md mx-auto pt-12">
         <div className="card p-8 text-center">
-          {/* SVG: mazo vacío con destello de oro */}
-          <svg viewBox="0 0 72 72" className="w-16 h-16 mx-auto mb-4" fill="none" aria-hidden="true">
-            <rect x="10" y="20" width="38" height="26" rx="5" fill="#2C3852" stroke="#F5B454" strokeWidth="1.5" />
-            <rect x="16" y="14" width="38" height="26" rx="5" fill="#1A2236" stroke="#5A6379" strokeWidth="1.5" />
-            <rect x="22" y="8" width="38" height="26" rx="5" fill="#131A2B" stroke="#2C3852" strokeWidth="1.5" />
-            <path d="M34 28 L38 32 L46 24" stroke="#F5B454" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
+          <Maica mood="curious" size="md" className="mx-auto mb-2" />
           <h1 className="font-display text-2xl font-extrabold mb-2">Tu mazo está listo</h1>
           <p className="text-paper-muted text-sm mb-6">
             No hay repasos pendientes hoy. Agregá chunks o palabras para seguir practicando hablado.

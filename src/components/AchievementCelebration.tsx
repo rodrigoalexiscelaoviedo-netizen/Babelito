@@ -1,24 +1,7 @@
 import { useEffect } from "react";
-import {
-  MessageCircle,
-  BookOpen,
-  Layers,
-  Mic,
-  BookMarked,
-  Flame,
-  Trophy,
-} from "lucide-react";
 import type { AchievementDef } from "../lib/achievements";
+import Maica from "./Maica";
 
-const ICON_MAP: Record<string, React.ReactNode> = {
-  MessageCircle: <MessageCircle size={52} className="text-coral mx-auto" />,
-  BookOpen: <BookOpen size={52} className="text-mint mx-auto" />,
-  Layers: <Layers size={52} className="text-gold mx-auto" />,
-  Mic: <Mic size={52} className="text-coral mx-auto" />,
-  BookMarked: <BookMarked size={52} className="text-mint mx-auto" />,
-  Flame: <Flame size={52} className="text-coral mx-auto" />,
-  Trophy: <Trophy size={52} className="text-gold mx-auto" />,
-};
 
 interface Props {
   achievements: AchievementDef[];
@@ -70,14 +53,16 @@ export default function AchievementCelebration({ achievements, onClose }: Props)
 
           {single ? (
             <>
-              <div className="mb-4">{ICON_MAP[single.icon] ?? <Trophy size={52} className="text-gold mx-auto" />}</div>
+              <div className="mb-2">
+                <Maica mood="celebrating" size="md" className="mx-auto" />
+              </div>
               <h2 className="font-display text-2xl font-extrabold mb-2">{single.title}</h2>
               <p className="text-sm text-paper-muted leading-relaxed">{single.description}</p>
             </>
           ) : (
             <>
-              <Trophy size={44} className="text-gold mx-auto mb-3" />
-              <div className="space-y-2 mt-2 mb-2">
+              <Maica mood="celebrating" size="sm" className="mx-auto mb-1" />
+              <div className="space-y-2 mt-1 mb-2">
                 {achievements.map((a) => (
                   <div key={a.key} className="flex items-center gap-2 justify-center">
                     <span className="text-xs text-gold">✦</span>

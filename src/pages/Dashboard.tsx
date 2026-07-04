@@ -24,6 +24,7 @@ import { countDue } from "../lib/srs";
 import { checkAchievements, markSeen, type AchievementDef } from "../lib/achievements";
 import AchievementCelebration from "../components/AchievementCelebration";
 import { BrandDots } from "../components/Loader";
+import Maica, { type MaicaMood } from "../components/Maica";
 
 interface Stats {
   sessions: number;
@@ -133,6 +134,18 @@ export default function Dashboard() {
   const hour = new Date().getHours();
   const greeting = hour < 12 ? "Good morning" : hour < 19 ? "Good afternoon" : "Good evening";
 
+  const maicaMood: MaicaMood = lesson?.completed
+    ? "celebrating"
+    : streak === 0 && (stats?.sessions ?? 0) > 0
+    ? "sleeping"
+    : "happy";
+
+  const maicaText = lesson?.completed
+    ? "¡Maica está orgullosa! 🐾"
+    : streak === 0 && (stats?.sessions ?? 0) > 0
+    ? "Maica te extrañó 🐾"
+    : "¡Maica te está esperando! 🐾";
+
   const modules = [
     { to: "/conversation", label: "Talk to your coach", desc: "Live conversation with feedback", icon: MessageCircle, accent: "coral" },
     { to: "/roleplay", label: "Roleplay a scene", desc: "Interviews, calls, meetings", icon: Drama, accent: "mint" },
@@ -182,9 +195,9 @@ export default function Dashboard() {
                 ))}
               </svg>
 
-              {/* Flame + streak number */}
+              {/* Maica celebrating + streak number */}
               <div className="bbl-float mb-1">
-                <Flame size={44} className="text-coral mx-auto" />
+                <Maica mood="celebrating" size="md" className="mx-auto" />
               </div>
               <p className="font-display text-7xl font-extrabold text-coral leading-none mb-1">{streak}</p>
               <p className="font-display text-lg font-bold mb-4">{streak === 1 ? "day" : "days"} streak 🎉</p>
@@ -213,12 +226,15 @@ export default function Dashboard() {
           setNewAchievements([]);
         }}
       />
-      <header className="mb-8">
-        <p className="eyebrow mb-2">{greeting}</p>
-        <h1 className="font-display text-3xl md:text-4xl font-extrabold">
-          {greeting}, {firstName}.
-        </h1>
-        <p className="text-paper-muted mt-1">Ready for a few minutes of English?</p>
+      <header className="mb-8 flex items-start justify-between gap-4">
+        <div className="flex-1 min-w-0">
+          <p className="eyebrow mb-2">{greeting}</p>
+          <h1 className="font-display text-3xl md:text-4xl font-extrabold">
+            {greeting}, {firstName}.
+          </h1>
+          <p className="text-paper-muted mt-1">{maicaText}</p>
+        </div>
+        <Maica mood={maicaMood} size="md" className="shrink-0 mt-1" />
       </header>
 
       {/* Daily practice card */}
