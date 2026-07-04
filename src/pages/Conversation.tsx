@@ -1,10 +1,18 @@
 import { useEffect, useRef, useState } from "react";
-import { Mic, Send, Volume2, Square } from "lucide-react";
+import { Mic, Send, Volume2, Square, Pause, Play } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabaseClient";
 import { askCoach } from "../lib/claude";
 import { buildConversationPrompt, parseErrors } from "../lib/buildSystemPrompt";
-import { createRecognizer, speechSupported, speak, type Recognizer } from "../lib/speech";
+import {
+  createRecognizer,
+  speechSupported,
+  speak,
+  pauseSpeech,
+  resumeSpeech,
+  type Recognizer,
+} from "../lib/speech";
+import { useVoicePrefs, type VoicePrefs } from "../lib/useVoicePrefs";
 import type { ChatTurn, DetectedError } from "../lib/types";
 import VoiceOrb from "../components/VoiceOrb";
 
@@ -12,6 +20,7 @@ const TOPICS = ["Your work", "Your weekend", "A goal you have", "Something you e
 
 export default function Conversation() {
   const { profile } = useAuth();
+  const voicePrefs = useVoicePrefs();
   const [topic, setTopic] = useState<string | null>(null);
   const [turns, setTurns] = useState<ChatTurn[]>([]);
   const [input, setInput] = useState("");
@@ -25,7 +34,6 @@ export default function Conversation() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const systemRef = useRef<string>("");
 
-  // Construye el system prompt una vez por sesión (con errores recientes reales)
   useEffect(() => {
     if (!profile) return;
     (async () => {
@@ -77,7 +85,6 @@ export default function Conversation() {
 
       const sid = await ensureSession();
       if (sid) {
-        // guardar errores detectados
         if (errorTypes.length) {
           await supabase.from("errors").insert(
             errorTypes.map((t) => ({
@@ -88,7 +95,6 @@ export default function Conversation() {
             }))
           );
         }
-        // actualizar transcript + duración
         await supabase
           .from("sessions")
           .update({
@@ -126,7 +132,6 @@ export default function Conversation() {
     setListening(true);
   }
 
-  // Pantalla inicial: elegir tema
   if (turns.length === 0) {
     return (
       <div className="animate-fade-up max-w-2xl mx-auto">
@@ -178,7 +183,11 @@ export default function Conversation() {
               }`}
             >
               {t.role === "assistant" ? (
-                <CoachMessage text={t.content} variant={profile?.english_variant ?? "British"} />
+                <CoachMessage
+                  text={t.content}
+                  variant={profile?.english_variant ?? "British"}
+                  voicePrefs={voicePrefs}
+                />
               ) : (
                 t.content
               )}
@@ -198,7 +207,6 @@ export default function Conversation() {
         )}
       </div>
 
-      {/* Composer */}
       <div className="pt-3">
         {listening && (
           <div className="mb-2">
@@ -245,13 +253,52 @@ export default function Conversation() {
   );
 }
 
-/** Renderiza la respuesta del coach resaltando los bloques de feedback. */
-function CoachMessage({ text, variant }: { text: string; variant: string }) {
+function CoachMessage({
+  text,
+  variant,
+  voicePrefs,
+}: {
+  text: string;
+  variant: string;
+  voicePrefs: VoicePrefs;
+}) {
+  const [paused, setPaused] = useState(false);
+  const [speaking, setSpeaking] = useState(false);
+
+  function handleSpeak() {
+    speak(text, {
+      voiceName: voicePrefs.voiceName ?? undefined,
+      rate: voicePrefs.voiceRate,
+      lang: voicePrefs.voiceAccent || (variant === "American" ? "en-US" : "en-GB"),
+    });
+    setSpeaking(true);
+    setPaused(false);
+  }
+
+  function handlePauseResume() {
+    if (paused) {
+      resumeSpeech();
+      setPaused(false);
+    } else {
+      pauseSpeech();
+      setPaused(true);
+    }
+  }
+
   return (
     <div>
-      <div className="flex justify-end mb-1">
+      <div className="flex justify-end gap-1 mb-1">
+        {speaking && (
+          <button
+            onClick={handlePauseResume}
+            className="text-paper-faint hover:text-mint transition"
+            aria-label={paused ? "Resume" : "Pause"}
+          >
+            {paused ? <Play size={14} /> : <Pause size={14} />}
+          </button>
+        )}
         <button
-          onClick={() => speak(text, variant === "American" ? "en-US" : "en-GB")}
+          onClick={handleSpeak}
           className="text-paper-faint hover:text-coral transition"
           aria-label="Read aloud"
         >

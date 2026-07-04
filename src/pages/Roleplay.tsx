@@ -1,11 +1,25 @@
 import { useEffect, useRef, useState } from "react";
-import { Send, Briefcase, Users, Phone, Wine, TrendingUp, Coffee, Drama } from "lucide-react";
+import {
+  Send,
+  Briefcase,
+  Users,
+  Phone,
+  Wine,
+  TrendingUp,
+  Coffee,
+  Drama,
+  Volume2,
+  Pause,
+  Play,
+} from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabaseClient";
 import { askCoach } from "../lib/claude";
 import { buildRoleplayPrompt, parseErrors } from "../lib/buildSystemPrompt";
 import { SCENARIOS, type Scenario } from "../lib/scenarios";
+import { speak, pauseSpeech, resumeSpeech } from "../lib/speech";
+import { useVoicePrefs } from "../lib/useVoicePrefs";
 import type { ChatTurn } from "../lib/types";
 
 const SCENARIO_ICONS: Record<string, LucideIcon> = {
@@ -18,7 +32,6 @@ const SCENARIO_ICONS: Record<string, LucideIcon> = {
 };
 
 export default function Roleplay() {
-  const { profile } = useAuth();
   const [scenario, setScenario] = useState<Scenario | null>(null);
 
   if (!scenario) {
@@ -60,16 +73,41 @@ export default function Roleplay() {
 
 function RoleplayChat({ scenario, onExit }: { scenario: Scenario; onExit: () => void }) {
   const { profile } = useAuth();
-  const [turns, setTurns] = useState<ChatTurn[]>([{ role: "assistant", content: scenario.opening }]);
+  const voicePrefs = useVoicePrefs();
+  const [turns, setTurns] = useState<ChatTurn[]>([
+    { role: "assistant", content: scenario.opening },
+  ]);
   const [input, setInput] = useState("");
   const [thinking, setThinking] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
+  const [activeSpeakIdx, setActiveSpeakIdx] = useState<number | null>(null);
+  const [paused, setPaused] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const systemRef = useRef(profile ? buildRoleplayPrompt(profile, scenario) : "");
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [turns, thinking]);
+
+  function handleSpeak(text: string, index: number) {
+    speak(text, {
+      voiceName: voicePrefs.voiceName ?? undefined,
+      rate: voicePrefs.voiceRate,
+      lang: voicePrefs.voiceAccent || (profile?.english_variant === "American" ? "en-US" : "en-GB"),
+    });
+    setActiveSpeakIdx(index);
+    setPaused(false);
+  }
+
+  function handlePauseResume() {
+    if (paused) {
+      resumeSpeech();
+      setPaused(false);
+    } else {
+      pauseSpeech();
+      setPaused(true);
+    }
+  }
 
   async function send(text: string) {
     if (!text.trim() || !profile) return;
@@ -94,14 +132,25 @@ function RoleplayChat({ scenario, onExit }: { scenario: Scenario; onExit: () => 
         setSessionId(sid);
       }
       if (sid) {
-        await supabase.from("sessions").update({ messages: updated, ended_at: new Date().toISOString() }).eq("id", sid);
+        await supabase
+          .from("sessions")
+          .update({ messages: updated, ended_at: new Date().toISOString() })
+          .eq("id", sid);
         if (errorTypes.length)
           await supabase.from("errors").insert(
-            errorTypes.map((t) => ({ user_id: profile.id, session_id: sid, error_type: t, original_text: text.trim() }))
+            errorTypes.map((t) => ({
+              user_id: profile.id,
+              session_id: sid,
+              error_type: t,
+              original_text: text.trim(),
+            }))
           );
       }
     } catch (e) {
-      setTurns((t) => [...t, { role: "assistant", content: `⚠️ ${e instanceof Error ? e.message : "Error."}` }]);
+      setTurns((t) => [
+        ...t,
+        { role: "assistant", content: `⚠️ ${e instanceof Error ? e.message : "Error."}` },
+      ]);
     } finally {
       setThinking(false);
     }
@@ -123,11 +172,35 @@ function RoleplayChat({ scenario, onExit }: { scenario: Scenario; onExit: () => 
         {turns.map((t, i) => (
           <div key={i} className={`flex ${t.role === "user" ? "justify-end" : "justify-start"}`}>
             <div
-              className={`max-w-[85%] rounded-xl2 px-4 py-3 whitespace-pre-wrap leading-relaxed ${
+              className={`max-w-[85%] rounded-xl2 px-4 py-3 ${
                 t.role === "user" ? "bg-coral text-ink-900" : "card"
               }`}
             >
-              {t.content}
+              {t.role === "assistant" ? (
+                <div>
+                  <div className="flex justify-end gap-1 mb-1">
+                    {activeSpeakIdx === i && (
+                      <button
+                        onClick={handlePauseResume}
+                        className="text-paper-faint hover:text-mint transition"
+                        aria-label={paused ? "Resume" : "Pause"}
+                      >
+                        {paused ? <Play size={14} /> : <Pause size={14} />}
+                      </button>
+                    )}
+                    <button
+                      onClick={() => handleSpeak(t.content, i)}
+                      className="text-paper-faint hover:text-coral transition"
+                      aria-label="Read aloud"
+                    >
+                      <Volume2 size={15} />
+                    </button>
+                  </div>
+                  <p className="whitespace-pre-wrap leading-relaxed">{t.content}</p>
+                </div>
+              ) : (
+                <p className="whitespace-pre-wrap leading-relaxed">{t.content}</p>
+              )}
             </div>
           </div>
         ))}

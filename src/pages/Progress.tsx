@@ -17,29 +17,32 @@ import Loader from "../components/Loader";
 
 interface ErrRow { error_type: string }
 interface SessRow { created_at: string; duration_seconds: number }
+interface VocabRow { status: string }
 
 export default function Progress() {
   const { profile } = useAuth();
   const [loading, setLoading] = useState(true);
   const [errs, setErrs] = useState<ErrRow[]>([]);
   const [sessions, setSessions] = useState<SessRow[]>([]);
+  const [vocab, setVocab] = useState<VocabRow[]>([]);
 
   useEffect(() => {
     if (!profile) return;
     (async () => {
-      const [{ data: e }, { data: s }] = await Promise.all([
+      const [{ data: e }, { data: s }, { data: v }] = await Promise.all([
         supabase.from("errors").select("error_type").eq("user_id", profile.id),
         supabase.from("sessions").select("created_at, duration_seconds").eq("user_id", profile.id),
+        supabase.from("user_vocabulary").select("status").eq("user_id", profile.id),
       ]);
       setErrs((e as ErrRow[]) ?? []);
       setSessions((s as SessRow[]) ?? []);
+      setVocab((v as VocabRow[]) ?? []);
       setLoading(false);
     })();
   }, [profile]);
 
   if (loading) return <Loader />;
 
-  // Top errores
   const tally: Record<string, number> = {};
   errs.forEach((e) => (tally[e.error_type] = (tally[e.error_type] ?? 0) + 1));
   const topErrors = Object.entries(tally)
@@ -47,7 +50,6 @@ export default function Progress() {
     .sort((a, b) => b.count - a.count)
     .slice(0, 5);
 
-  // Actividad últimos 14 días
   const days: { day: string; sessions: number }[] = [];
   for (let i = 13; i >= 0; i--) {
     const d = new Date();
@@ -60,6 +62,8 @@ export default function Progress() {
   }
 
   const totalMinutes = Math.round(sessions.reduce((acc, s) => acc + (s.duration_seconds ?? 0), 0) / 60);
+  const vocabTotal = vocab.length;
+  const vocabKnown = vocab.filter((v) => v.status === "known").length;
 
   return (
     <div className="animate-fade-up">
@@ -71,6 +75,34 @@ export default function Progress() {
         <Stat label="Sessions" value={String(sessions.length)} />
         <Stat label="Minutes" value={String(totalMinutes)} />
         <Stat label="Errors logged" value={String(errs.length)} />
+      </div>
+
+      {/* Vocabulary card */}
+      <div className="card p-5 mb-6">
+        <h3 className="font-display font-bold mb-1">Vocabulary</h3>
+        <p className="text-sm text-paper-muted mb-4">Words you've tracked while reading.</p>
+        {vocabTotal === 0 ? (
+          <p className="text-paper-muted text-sm py-4 text-center">
+            No words tracked yet. Try the Reading module and click on words to look them up.
+          </p>
+        ) : (
+          <div className="flex items-center gap-6">
+            <div>
+              <p className="font-display text-3xl font-bold">{vocabTotal}</p>
+              <p className="text-xs text-paper-muted mt-0.5">total words</p>
+            </div>
+            <div className="flex-1 h-3 bg-ink-600 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-mint rounded-full transition-all"
+                style={{ width: vocabTotal > 0 ? `${Math.round((vocabKnown / vocabTotal) * 100)}%` : "0%" }}
+              />
+            </div>
+            <div className="text-right">
+              <p className="font-display text-3xl font-bold text-mint">{vocabKnown}</p>
+              <p className="text-xs text-paper-muted mt-0.5">known</p>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Actividad */}

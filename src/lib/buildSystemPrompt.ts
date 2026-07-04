@@ -7,7 +7,6 @@ interface BuildArgs {
   topic?: string;
 }
 
-// Cómo de complejo habla el coach según el nivel del usuario.
 function registerFor(level: string | null): string {
   switch (level) {
     case "A1":
@@ -24,11 +23,6 @@ function registerFor(level: string | null): string {
   }
 }
 
-/**
- * Arma el system prompt del coach. Es 100% dinámico: nada hardcodeado a una
- * persona. Sale del perfil + el nivel vigente + los errores que el usuario
- * viene cometiendo de verdad en sus sesiones.
- */
 export function buildConversationPrompt({ profile, recentErrors = [], topic }: BuildArgs): string {
   const name = profile.name ?? "the learner";
   const level = profile.current_level ?? "B1";
@@ -83,7 +77,10 @@ INTERACTION RULES:
 → [One short sentence on the main thing to fix. No grammar jargon. Tie it to differences with Spanish when relevant.]
 
 **Pronunciation:**
-→ [Pick 1–2 words from their message. Give a simple phonetic hint in ${variant} RP and mark the stressed syllable. Add a 3-word shadowing phrase.]
+→ MANDATORY — never skip or shorten this section. Pick 1–2 words from their message (prioritise commonly mispronounced words). For EACH chosen word, provide ALL of the following on a single line, in this exact order:
+   (1) the word, (2) full IPA phonetic transcription between forward slashes — e.g. /wɜːd/ — THIS IS NON-NEGOTIABLE, never omit the IPA, (3) the stressed syllable written in UPPERCASE within the IPA — e.g. /wɜːD/ or /ˈHELpfʊl/, (4) a 3-word shadowing mini-phrase the learner can repeat.
+   Format example: "should /ʃUd/ — Just should try"
+   If their message has no good candidates, pick a useful word from YOUR own reply. The IPA part is required in every single response — no exceptions.
 
 [End with a follow-up question to keep them talking.]
 
@@ -118,7 +115,10 @@ using only: omitting_subject, missing_to, missing_to_listen, adjective_plural, f
 }
 
 /** Prompt para roleplay: el coach toma un personaje. */
-export function buildRoleplayPrompt(profile: Profile, scenario: { title: string; coach_role: string; description: string }): string {
+export function buildRoleplayPrompt(
+  profile: Profile,
+  scenario: { title: string; coach_role: string; description: string }
+): string {
   const level = profile.current_level ?? "B1";
   const variant = profile.english_variant ?? "British";
   return `You are role-playing a scenario to help ${profile.name ?? "the learner"} (level ${level}) practice ${variant} English.

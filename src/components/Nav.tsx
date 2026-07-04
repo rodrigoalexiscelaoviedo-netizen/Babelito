@@ -7,6 +7,7 @@ import {
   Drama,
   BarChart3,
   User,
+  BookOpen,
 } from "lucide-react";
 
 const LINKS = [
@@ -15,6 +16,7 @@ const LINKS = [
   { to: "/chunks", label: "Chunks", icon: Library },
   { to: "/correct", label: "Correct", icon: PencilLine },
   { to: "/roleplay", label: "Roleplay", icon: Drama },
+  { to: "/reading", label: "Reading", icon: BookOpen },
   { to: "/progress", label: "Progress", icon: BarChart3 },
   { to: "/profile", label: "Profile", icon: User },
 ];

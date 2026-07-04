@@ -12,6 +12,7 @@ const Conversation = lazy(() => import("./pages/Conversation"));
 const Chunks = lazy(() => import("./pages/Chunks"));
 const Correction = lazy(() => import("./pages/Correction"));
 const Roleplay = lazy(() => import("./pages/Roleplay"));
+const Reading = lazy(() => import("./pages/Reading"));
 const Progress = lazy(() => import("./pages/Progress"));
 const Profile = lazy(() => import("./pages/Profile"));
 
@@ -51,6 +52,7 @@ export default function App() {
         <Route path="/chunks" element={<Shell><Chunks /></Shell>} />
         <Route path="/correct" element={<Shell><Correction /></Shell>} />
         <Route path="/roleplay" element={<Shell><Roleplay /></Shell>} />
+        <Route path="/reading" element={<Shell><Reading /></Shell>} />
         <Route path="/progress" element={<Shell><Progress /></Shell>} />
         <Route path="/profile" element={<Shell><Profile /></Shell>} />
       </Routes>

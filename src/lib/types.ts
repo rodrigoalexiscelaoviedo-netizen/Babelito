@@ -16,6 +16,10 @@ export interface Profile {
   profile_json: Record<string, unknown>;
   created_at: string;
   updated_at: string;
+  // Voice settings (added in DB migration)
+  voice_name: string | null;
+  voice_rate: number | null;
+  voice_accent: string | null;
 }
 
 export type SessionType = "conversation" | "roleplay" | "text_correction";
