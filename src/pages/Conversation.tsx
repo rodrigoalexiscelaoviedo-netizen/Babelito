@@ -19,6 +19,7 @@ import VoiceOrb from "../components/VoiceOrb";
 import { generateReport, type SessionReport } from "../lib/sessionReport";
 import { checkAchievements, markSeen, type AchievementDef } from "../lib/achievements";
 import AchievementCelebration from "../components/AchievementCelebration";
+import { BrandDots } from "../components/Loader";
 
 const TOPICS = ["Your work", "Your weekend", "A goal you have", "Something you enjoy", "Free chat"];
 
@@ -250,7 +251,7 @@ export default function Conversation() {
           className="flex items-center gap-1.5 text-xs text-paper-muted hover:text-coral transition disabled:opacity-40"
         >
           {generatingReport ? (
-            <><Loader2 size={13} className="animate-spin" /> Generating report…</>
+            <span className="flex items-center gap-2"><BrandDots /> Generating report…</span>
           ) : (
             "Finish & see report →"
           )}

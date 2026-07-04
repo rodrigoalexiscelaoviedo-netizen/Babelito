@@ -49,10 +49,30 @@ export default {
           "70%": { transform: "scale(1.25)", opacity: "0" },
           "100%": { opacity: "0" },
         },
+        // Micro-rebote para checks y logros
+        "check-pop": {
+          "0%":   { transform: "scale(0)", opacity: "0" },
+          "60%":  { transform: "scale(1.25)" },
+          "80%":  { transform: "scale(0.92)" },
+          "100%": { transform: "scale(1)", opacity: "1" },
+        },
+        // Loader de marca: tres puntos que pulsean en onda
+        "wave-dot": {
+          "0%, 80%, 100%": { transform: "scaleY(0.4)", opacity: "0.4" },
+          "40%": { transform: "scaleY(1)", opacity: "1" },
+        },
+        // Entrada suave para cards en lista
+        "card-in": {
+          "0%": { opacity: "0", transform: "translateY(6px)" },
+          "100%": { opacity: "1", transform: "translateY(0)" },
+        },
       },
       animation: {
         "fade-up": "fade-up 0.4s ease-out both",
         "pulse-ring": "pulse-ring 1.5s ease-out infinite",
+        "check-pop": "check-pop 0.35s cubic-bezier(0.34,1.56,0.64,1) both",
+        "wave-dot": "wave-dot 1.2s ease-in-out infinite",
+        "card-in": "card-in 0.3s ease-out both",
       },
     },
   },

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ArrowLeft, BookText, Loader2, Pause, Play, Volume2 } from "lucide-react";
+import { ArrowLeft, BookText, Pause, Play, Volume2 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabaseClient";
 import ShadowingBlock from "../components/ShadowingBlock";
@@ -21,6 +21,7 @@ import ClickableText from "../components/ClickableText";
 import Loader from "../components/Loader";
 import { checkAchievements, markSeen, type AchievementDef } from "../lib/achievements";
 import AchievementCelebration from "../components/AchievementCelebration";
+import { BrandDots } from "../components/Loader";
 
 type View = "library" | "reading" | "quiz";
 
@@ -184,7 +185,7 @@ export default function Stories() {
           disabled={generating || !genTopic.trim()}
         >
           {generating ? (
-            <><Loader2 size={16} className="animate-spin" /> Generating…</>
+            <span className="flex items-center gap-2"><BrandDots /> Generating…</span>
           ) : (
             "Generate story →"
           )}

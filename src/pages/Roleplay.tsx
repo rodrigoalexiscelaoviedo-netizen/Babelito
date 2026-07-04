@@ -11,10 +11,10 @@ import {
   Volume2,
   Pause,
   Play,
-  Loader2,
   X,
   Mic,
 } from "lucide-react";
+import { BrandDots } from "../components/Loader";
 import type { LucideIcon } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabaseClient";
@@ -55,7 +55,7 @@ export default function Roleplay() {
               <button
                 key={s.id}
                 onClick={() => setScenario(s)}
-                className="card p-5 text-left hover:border-coral/50 transition group"
+                className="card card-lift p-5 text-left group"
               >
                 <div className="flex items-center justify-between">
                   <Icon size={24} className="text-coral" />
@@ -276,7 +276,7 @@ function RoleplayChat({ scenario, onExit }: { scenario: Scenario; onExit: () => 
             className="flex items-center gap-1.5 text-xs text-paper-muted hover:text-coral transition disabled:opacity-40"
           >
             {generatingReport ? (
-              <><Loader2 size={13} className="animate-spin" /> Generating…</>
+              <span className="flex items-center gap-2"><BrandDots /> Generating…</span>
             ) : (
               "End & report →"
             )}
@@ -350,7 +350,7 @@ function RoleplayChat({ scenario, onExit }: { scenario: Scenario; onExit: () => 
                 className="flex items-center gap-1.5 text-xs font-medium text-gold hover:text-gold/80 transition"
                 onClick={() => { const t = retryText; setRetryText(null); send(t); }}
               >
-                <Loader2 size={12} /> Reintentar
+                <BrandDots /> Reintentar
               </button>
             </div>
           </div>

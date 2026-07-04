@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { Mic, Square, Volume2, Loader2, CheckCircle2, XCircle, Layers } from "lucide-react";
+import { Mic, Square, Volume2, Loader2, CheckCircle2, XCircle, Layers, ArrowRight, BookOpen, Library } from "lucide-react";
+import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { getDueItems, applyReview, type ReviewItem, type ReviewQuality } from "../lib/srs";
 import { speak } from "../lib/speech";
@@ -86,12 +87,28 @@ export default function Review() {
 
   if (phase === "empty") {
     return (
-      <div className="animate-fade-up max-w-md mx-auto text-center pt-16">
-        <Layers size={40} className="mx-auto text-paper-faint mb-4" />
-        <h1 className="font-display text-2xl font-extrabold mb-2">All caught up!</h1>
-        <p className="text-paper-muted">
-          No reviews due today. Add chunks or words to your review deck to start practising.
-        </p>
+      <div className="animate-fade-up max-w-md mx-auto pt-12">
+        <div className="card p-8 text-center">
+          {/* SVG: mazo vacío con destello de oro */}
+          <svg viewBox="0 0 72 72" className="w-16 h-16 mx-auto mb-4" fill="none" aria-hidden="true">
+            <rect x="10" y="20" width="38" height="26" rx="5" fill="#2C3852" stroke="#F5B454" strokeWidth="1.5" />
+            <rect x="16" y="14" width="38" height="26" rx="5" fill="#1A2236" stroke="#5A6379" strokeWidth="1.5" />
+            <rect x="22" y="8" width="38" height="26" rx="5" fill="#131A2B" stroke="#2C3852" strokeWidth="1.5" />
+            <path d="M34 28 L38 32 L46 24" stroke="#F5B454" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          <h1 className="font-display text-2xl font-extrabold mb-2">Tu mazo está listo</h1>
+          <p className="text-paper-muted text-sm mb-6">
+            No hay repasos pendientes hoy. Agregá chunks o palabras para seguir practicando hablado.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <Link to="/chunks" className="btn-mint text-sm">
+              <Library size={15} /> Chunks library
+            </Link>
+            <Link to="/reading" className="btn-ghost text-sm">
+              <BookOpen size={15} /> Reading <ArrowRight size={13} />
+            </Link>
+          </div>
+        </div>
       </div>
     );
   }

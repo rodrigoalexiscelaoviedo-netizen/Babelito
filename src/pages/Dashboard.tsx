@@ -11,7 +11,6 @@ import {
   CheckCircle2,
   Circle,
   Volume2,
-  Loader2,
   Layers,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
@@ -24,6 +23,7 @@ import { useVoicePrefs } from "../lib/useVoicePrefs";
 import { countDue } from "../lib/srs";
 import { checkAchievements, markSeen, type AchievementDef } from "../lib/achievements";
 import AchievementCelebration from "../components/AchievementCelebration";
+import { BrandDots } from "../components/Loader";
 
 interface Stats {
   sessions: number;
@@ -241,11 +241,11 @@ export default function Dashboard() {
 
         {loadingLesson ? (
           <div className="flex justify-center py-6">
-            <Loader2 size={20} className="animate-spin text-paper-muted" />
+            <BrandDots size="md" />
           </div>
         ) : lesson?.completed ? (
           <div className="text-center py-6">
-            <CheckCircle2 size={36} className="text-mint mx-auto mb-2" />
+            <CheckCircle2 size={36} className="text-mint mx-auto mb-2 animate-check-pop" />
             <p className="font-display font-bold text-mint">All done for today!</p>
             <p className="text-xs text-paper-muted mt-1">Come back tomorrow to keep your streak.</p>
           </div>
@@ -375,7 +375,7 @@ export default function Dashboard() {
               onClick={handleComplete}
             >
               {completing ? (
-                <><Loader2 size={16} className="animate-spin" /> Saving…</>
+                <span className="flex items-center gap-2"><BrandDots /> Guardando…</span>
               ) : (
                 "Complete today's practice ✓"
               )}
@@ -449,7 +449,7 @@ export default function Dashboard() {
           <Link
             key={m.to}
             to={m.to}
-            className="card p-6 hover:border-ink-500 transition group relative overflow-hidden"
+            className="card card-lift p-6 group relative overflow-hidden"
           >
             <m.icon
               size={28}

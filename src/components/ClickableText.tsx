@@ -183,7 +183,7 @@ export default function ClickableText({
             <StatusBtn
               label="Learning"
               active={vocabMap[selectedWord]?.status === "learning"}
-              color="bg-[#F4C431]/20 text-[#F4C431] hover:bg-[#F4C431]/30"
+              color="bg-gold/20 text-gold hover:bg-gold/30"
               onClick={() => markStatus("learning")}
               disabled={loadingDef || !wordDef}
             />

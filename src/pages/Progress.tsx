@@ -21,7 +21,10 @@ import {
   BookMarked,
   Trophy,
   Lock,
+  BookText,
+  ArrowRight,
 } from "lucide-react";
+import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabaseClient";
 import { errorLabel, errorHint } from "../lib/errorTypes";
@@ -377,9 +380,16 @@ export default function Progress() {
         <h3 className="font-display font-bold mb-1">Vocabulary</h3>
         <p className="text-sm text-paper-muted mb-4">Words you've tracked while reading.</p>
         {vocabTotal === 0 ? (
-          <p className="text-paper-muted text-sm py-4 text-center">
-            No words tracked yet. Try the Reading module and click on words to look them up.
-          </p>
+          <div className="empty-state">
+            <BookText size={36} className="empty-state-icon text-mint/40" />
+            <p className="empty-state-title">Sin palabras aún</p>
+            <p className="empty-state-sub">
+              Explorá el módulo de lectura y tocá las palabras que no conocés para guardarlas.
+            </p>
+            <Link to="/reading" className="btn-mint mt-1 text-sm px-4 py-2">
+              Ir a Reading <ArrowRight size={14} />
+            </Link>
+          </div>
         ) : (
           <div className="flex items-center gap-6">
             <div>
@@ -427,9 +437,16 @@ export default function Progress() {
         <h3 className="font-display font-bold mb-1">Recent session reports</h3>
         <p className="text-sm text-paper-muted mb-4">AI-generated after each conversation or roleplay.</p>
         {reports.length === 0 ? (
-          <p className="text-paper-muted text-sm py-4 text-center">
-            No reports yet. End a conversation or roleplay session to generate one.
-          </p>
+          <div className="empty-state">
+            <MessageCircle size={36} className="empty-state-icon text-coral/40" />
+            <p className="empty-state-title">Sin reportes aún</p>
+            <p className="empty-state-sub">
+              Terminá una conversación o roleplay y tu coach genera un reporte detallado.
+            </p>
+            <Link to="/conversation" className="btn-coral mt-1 text-sm px-4 py-2">
+              Hablar con el coach <ArrowRight size={14} />
+            </Link>
+          </div>
         ) : (
           <div className="space-y-2">
             {reports.map((r) => {
@@ -504,9 +521,21 @@ export default function Progress() {
         <h3 className="font-display font-bold mb-1">What to work on</h3>
         <p className="text-sm text-paper-muted mb-4">Your most frequent mistakes — these feed your coach.</p>
         {topErrors.length === 0 ? (
-          <p className="text-paper-muted text-sm py-6 text-center">
-            No errors logged yet. Have a conversation and your coach will start mapping them here.
-          </p>
+          <div className="empty-state">
+            <svg viewBox="0 0 48 48" className="w-9 h-9 empty-state-icon opacity-40" fill="none" aria-hidden="true">
+              <circle cx="24" cy="24" r="20" stroke="#36C5A8" strokeWidth="2.5" />
+              <path d="M16 28 Q24 18 32 28" stroke="#36C5A8" strokeWidth="2.5" strokeLinecap="round" fill="none" />
+              <circle cx="18" cy="22" r="2" fill="#36C5A8" />
+              <circle cx="30" cy="22" r="2" fill="#36C5A8" />
+            </svg>
+            <p className="empty-state-title">¡Todo limpio por ahora!</p>
+            <p className="empty-state-sub">
+              Tus errores aparecen acá después de practicar con el coach. Empezá una conversación.
+            </p>
+            <Link to="/conversation" className="btn-ghost mt-1 text-sm px-4 py-2">
+              Conversar con el coach <ArrowRight size={14} />
+            </Link>
+          </div>
         ) : (
           <>
             <ResponsiveContainer width="100%" height={topErrors.length * 46}>
