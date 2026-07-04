@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   BarChart,
   Bar,
@@ -10,20 +10,167 @@ import {
   Area,
   CartesianGrid,
 } from "recharts";
-import { Flame, ChevronDown, ChevronUp } from "lucide-react";
+import {
+  Flame,
+  ChevronDown,
+  ChevronUp,
+  MessageCircle,
+  BookOpen,
+  Layers,
+  Mic,
+  BookMarked,
+  Trophy,
+  Lock,
+} from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabaseClient";
 import { errorLabel, errorHint } from "../lib/errorTypes";
 import { getStreak, getFreezeCount } from "../lib/dailyLesson";
 import { getReports, type SessionReport } from "../lib/sessionReport";
 import { deckSize } from "../lib/srs";
+import { getAchievements, type AchievementWithStatus } from "../lib/achievements";
 import Loader from "../components/Loader";
 
 interface ErrRow { error_type: string }
 interface SessRow { created_at: string; duration_seconds: number }
-interface VocabRow { status: string }
+interface VocabRow { status: string; created_at: string }
 interface StoryProgRow { completed: boolean }
+interface DailyRow { lesson_date: string; completed: boolean }
 
+// ── Animated counter ─────────────────────────────────────────────────────────
+function AnimatedNum({ target, duration = 900 }: { target: number; duration?: number }) {
+  const [display, setDisplay] = useState(0);
+  const rafRef = useRef<number>(0);
+  useEffect(() => {
+    let start: number | null = null;
+    const step = (ts: number) => {
+      if (!start) start = ts;
+      const p = Math.min((ts - start) / duration, 1);
+      setDisplay(Math.round(p * target));
+      if (p < 1) rafRef.current = requestAnimationFrame(step);
+    };
+    rafRef.current = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(rafRef.current);
+  }, [target, duration]);
+  return <>{display}</>;
+}
+
+// ── SVG ring ─────────────────────────────────────────────────────────────────
+function Ring({
+  value,
+  max,
+  color,
+  size = 88,
+  stroke = 9,
+}: {
+  value: number;
+  max: number;
+  color: string;
+  size?: number;
+  stroke?: number;
+}) {
+  const r = (size - stroke) / 2;
+  const circ = 2 * Math.PI * r;
+  const pct = max > 0 ? Math.min(value / max, 1) : 0;
+  const [offset, setOffset] = useState(circ);
+
+  useEffect(() => {
+    const t = setTimeout(() => setOffset(circ * (1 - pct)), 80);
+    return () => clearTimeout(t);
+  }, [pct, circ]);
+
+  return (
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#2C3852" strokeWidth={stroke} />
+      <circle
+        cx={size / 2}
+        cy={size / 2}
+        r={r}
+        fill="none"
+        stroke={color}
+        strokeWidth={stroke}
+        strokeLinecap="round"
+        strokeDasharray={circ}
+        strokeDashoffset={offset}
+        transform={`rotate(-90 ${size / 2} ${size / 2})`}
+        style={{ transition: "stroke-dashoffset 0.9s ease-out" }}
+      />
+    </svg>
+  );
+}
+
+// ── Ring stat card ────────────────────────────────────────────────────────────
+function RingStat({
+  label,
+  value,
+  max,
+  unit,
+  sub,
+  color,
+}: {
+  label: string;
+  value: number;
+  max: number;
+  unit?: string;
+  sub?: string;
+  color: string;
+}) {
+  return (
+    <div className="card p-4 flex flex-col items-center gap-1.5">
+      <div className="relative">
+        <Ring value={value} max={max} color={color} />
+        <div className="absolute inset-0 flex flex-col items-center justify-center">
+          <span className="font-display text-xl font-extrabold leading-none">
+            <AnimatedNum target={value} />
+          </span>
+          {unit && <span className="text-[9px] text-paper-faint mt-0.5">{unit}</span>}
+        </div>
+      </div>
+      <p className="text-xs text-paper-muted font-medium">{label}</p>
+      {sub && <p className="text-[10px] text-paper-faint">{sub}</p>}
+    </div>
+  );
+}
+
+// ── Achievement icon map ──────────────────────────────────────────────────────
+const ACH_ICONS: Record<string, React.ReactNode> = {
+  MessageCircle: <MessageCircle size={22} />,
+  BookOpen: <BookOpen size={22} />,
+  Layers: <Layers size={22} />,
+  Mic: <Mic size={22} />,
+  BookMarked: <BookMarked size={22} />,
+  Flame: <Flame size={22} />,
+  Trophy: <Trophy size={22} />,
+};
+
+const COLOR_TOKEN: Record<string, string> = {
+  coral: "text-coral",
+  mint: "text-mint",
+  gold: "text-gold",
+};
+
+// ── Weekly summary bar ────────────────────────────────────────────────────────
+function WeekBar({ label, value, max, color }: { label: string; value: number; max: number; color: string }) {
+  const [width, setWidth] = useState(0);
+  useEffect(() => {
+    const t = setTimeout(() => setWidth(max > 0 ? Math.min((value / max) * 100, 100) : 0), 100);
+    return () => clearTimeout(t);
+  }, [value, max]);
+  return (
+    <div className="flex items-center gap-3">
+      <span className="text-xs text-paper-muted w-24 shrink-0">{label}</span>
+      <div className="flex-1 h-2 bg-ink-600 rounded-full overflow-hidden">
+        <div
+          className="h-full rounded-full transition-all duration-700"
+          style={{ width: `${width}%`, background: color }}
+        />
+      </div>
+      <span className="text-xs font-display font-bold w-8 text-right">{value}</span>
+    </div>
+  );
+}
+
+// ── Main component ────────────────────────────────────────────────────────────
 export default function Progress() {
   const { profile } = useAuth();
   const [loading, setLoading] = useState(true);
@@ -31,40 +178,54 @@ export default function Progress() {
   const [sessions, setSessions] = useState<SessRow[]>([]);
   const [vocab, setVocab] = useState<VocabRow[]>([]);
   const [storyProg, setStoryProg] = useState<StoryProgRow[]>([]);
+  const [dailyRows, setDailyRows] = useState<DailyRow[]>([]);
   const [streak, setStreak] = useState(0);
   const [freezes, setFreezes] = useState(0);
   const [reports, setReports] = useState<SessionReport[]>([]);
   const [expandedReport, setExpandedReport] = useState<string | null>(null);
   const [deck, setDeck] = useState(0);
+  const [achievements, setAchievements] = useState<AchievementWithStatus[]>([]);
 
   useEffect(() => {
     if (!profile) return;
     (async () => {
-      const [{ data: e }, { data: s }, { data: v }, { data: sp }, streakCount, latestReports, deckCount, freezeCount] =
+      const weekAgo = new Date();
+      weekAgo.setDate(weekAgo.getDate() - 7);
+      const weekAgoISO = weekAgo.toISOString();
+
+      const [{ data: e }, { data: s }, { data: v }, { data: sp }, { data: dl }, streakCount, latestReports, deckCount, freezeCount, achList] =
         await Promise.all([
           supabase.from("errors").select("error_type").eq("user_id", profile.id),
           supabase.from("sessions").select("created_at, duration_seconds").eq("user_id", profile.id),
-          supabase.from("user_vocabulary").select("status").eq("user_id", profile.id),
+          supabase.from("user_vocabulary").select("status, created_at").eq("user_id", profile.id),
           supabase.from("story_progress").select("completed").eq("user_id", profile.id).eq("completed", true),
+          supabase.from("daily_lessons").select("lesson_date, completed").eq("user_id", profile.id).gte("lesson_date", weekAgo.toISOString().slice(0, 10)),
           getStreak(profile.id),
           getReports(profile.id, 5),
           deckSize(profile.id),
           getFreezeCount(profile.id),
+          getAchievements(profile.id),
         ]);
+
       setErrs((e as ErrRow[]) ?? []);
       setSessions((s as SessRow[]) ?? []);
       setVocab((v as VocabRow[]) ?? []);
       setStoryProg((sp as StoryProgRow[]) ?? []);
+      setDailyRows((dl as DailyRow[]) ?? []);
       setStreak(streakCount);
       setFreezes(freezeCount);
       setReports(latestReports);
       setDeck(deckCount);
+      setAchievements(achList);
       setLoading(false);
+
+      void weekAgoISO; // used above via weekAgo.toISOString()
     })();
   }, [profile]);
 
   if (loading) return <Loader />;
 
+  // ── Derived stats ──────────────────────────────────────────────────────────
   const tally: Record<string, number> = {};
   errs.forEach((e) => (tally[e.error_type] = (tally[e.error_type] ?? 0) + 1));
   const topErrors = Object.entries(tally)
@@ -87,29 +248,131 @@ export default function Progress() {
   const vocabTotal = vocab.length;
   const vocabKnown = vocab.filter((v) => v.status === "known").length;
 
+  // ── Weekly summary ─────────────────────────────────────────────────────────
+  const weekAgoDate = new Date();
+  weekAgoDate.setDate(weekAgoDate.getDate() - 7);
+  const weekSessions = sessions.filter((s) => new Date(s.created_at) >= weekAgoDate).length;
+  const weekMinutes = Math.round(
+    sessions
+      .filter((s) => new Date(s.created_at) >= weekAgoDate)
+      .reduce((acc, s) => acc + (s.duration_seconds ?? 0), 0) / 60
+  );
+  const weekWords = vocab.filter((v) => new Date(v.created_at) >= weekAgoDate).length;
+  const weekActiveDays = dailyRows.filter((d) => d.completed).length;
+
+  // ── Streak ring milestone ──────────────────────────────────────────────────
+  const streakMilestone = streak < 7 ? 7 : streak < 30 ? 30 : 100;
+  const streakSub =
+    streak >= 100
+      ? "🏆 Centurion"
+      : streak >= 30
+      ? `${streakMilestone - streak} to next`
+      : `${streakMilestone - streak} to ${streakMilestone}d`;
+
   return (
     <div className="animate-fade-up">
       <p className="eyebrow mb-2">Your progress</p>
-      <h1 className="font-display text-3xl font-extrabold mb-8">How you're doing</h1>
+      <h1 className="font-display text-3xl font-extrabold mb-6">How you're doing</h1>
 
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-8">
-        <div className="card p-4">
-          <div className="flex items-center gap-1.5 text-paper-muted mb-1">
-            <Flame size={14} className="text-coral" />
-            <span className="text-xs">Daily streak</span>
-          </div>
-          <p className="font-display text-2xl font-bold text-coral">{streak}</p>
-          {freezes > 0 && (
-            <p className="text-[10px] text-paper-faint mt-0.5">❄️ {freezes} freeze{freezes !== 1 ? "s" : ""}</p>
-          )}
-        </div>
-        <Stat label="Sessions" value={String(sessions.length)} />
-        <Stat label="Minutes" value={String(totalMinutes)} />
-        <Stat label="Stories done" value={String(storyProg.length)} />
-        <Stat label="Review deck" value={String(deck)} />
+      {/* ── Ring stats ─────────────────────────────────────────────────────── */}
+      <div className="grid grid-cols-3 md:grid-cols-6 gap-3 mb-8">
+        <RingStat
+          label="Streak"
+          value={streak}
+          max={streakMilestone}
+          unit="days"
+          sub={freezes > 0 ? `❄️ ${freezes}` : streakSub}
+          color="#FF6B5E"
+        />
+        <RingStat
+          label="Sessions"
+          value={sessions.length}
+          max={Math.max(50, sessions.length)}
+          unit="total"
+          color="#36C5A8"
+        />
+        <RingStat
+          label="Minutes"
+          value={totalMinutes}
+          max={Math.max(120, totalMinutes)}
+          unit="min"
+          color="#F7C948"
+        />
+        <RingStat
+          label="Review deck"
+          value={deck}
+          max={50}
+          unit="cards"
+          sub={deck >= 50 ? "Goal reached!" : `${50 - deck} to 50`}
+          color="#FF6B5E"
+        />
+        <RingStat
+          label="Vocabulary"
+          value={vocabTotal}
+          max={Math.max(100, vocabTotal)}
+          unit="words"
+          sub={`${vocabKnown} known`}
+          color="#36C5A8"
+        />
+        <RingStat
+          label="Stories"
+          value={storyProg.length}
+          max={Math.max(10, storyProg.length)}
+          unit="done"
+          color="#F7C948"
+        />
       </div>
 
-      {/* Vocabulary card */}
+      {/* ── Weekly summary ─────────────────────────────────────────────────── */}
+      <div className="card p-5 mb-6">
+        <h3 className="font-display font-bold mb-1">Tu semana</h3>
+        <p className="text-sm text-paper-muted mb-4">Last 7 days at a glance.</p>
+        <div className="space-y-3">
+          <WeekBar label="Active days" value={weekActiveDays} max={7} color="#FF6B5E" />
+          <WeekBar label="Sessions" value={weekSessions} max={7} color="#36C5A8" />
+          <WeekBar label="Minutes" value={weekMinutes} max={60} color="#F7C948" />
+          <WeekBar label="New words" value={weekWords} max={20} color="#36C5A8" />
+        </div>
+        {weekActiveDays === 7 && (
+          <p className="text-xs text-mint mt-3 text-center font-medium">🔥 Perfect week — 7/7 active days!</p>
+        )}
+      </div>
+
+      {/* ── Achievements gallery ────────────────────────────────────────────── */}
+      <div className="card p-5 mb-6">
+        <h3 className="font-display font-bold mb-1">Achievements</h3>
+        <p className="text-sm text-paper-muted mb-4">
+          {achievements.filter((a) => a.unlocked).length} / {achievements.length} unlocked
+        </p>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {achievements.map((a) => (
+            <div
+              key={a.key}
+              className={`rounded-xl p-3 flex flex-col items-center gap-1.5 text-center transition ${
+                a.unlocked
+                  ? "bg-ink-700 border border-ink-500"
+                  : "bg-ink-800 border border-ink-700 opacity-60"
+              }`}
+            >
+              <span className={a.unlocked ? COLOR_TOKEN[a.color] : "text-paper-faint"}>
+                {a.unlocked ? (ACH_ICONS[a.icon] ?? <Trophy size={22} />) : <Lock size={20} />}
+              </span>
+              <p className={`text-xs font-display font-bold leading-tight ${a.unlocked ? "text-paper" : "text-paper-faint"}`}>
+                {a.title}
+              </p>
+              {a.unlocked && a.unlocked_at ? (
+                <p className="text-[10px] text-paper-faint">
+                  {new Date(a.unlocked_at).toLocaleDateString("en", { day: "numeric", month: "short" })}
+                </p>
+              ) : (
+                <p className="text-[10px] text-paper-faint leading-tight">{a.hint}</p>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Vocabulary card ─────────────────────────────────────────────────── */}
       <div className="card p-5 mb-6">
         <h3 className="font-display font-bold mb-1">Vocabulary</h3>
         <p className="text-sm text-paper-muted mb-4">Words you've tracked while reading.</p>
@@ -137,7 +400,7 @@ export default function Progress() {
         )}
       </div>
 
-      {/* Actividad */}
+      {/* ── Activity chart ──────────────────────────────────────────────────── */}
       <div className="card p-5 mb-6">
         <h3 className="font-display font-bold mb-4">Last 14 days</h3>
         <ResponsiveContainer width="100%" height={160}>
@@ -159,7 +422,7 @@ export default function Progress() {
         </ResponsiveContainer>
       </div>
 
-      {/* Recent session reports */}
+      {/* ── Session reports ─────────────────────────────────────────────────── */}
       <div className="card p-5 mb-6">
         <h3 className="font-display font-bold mb-1">Recent session reports</h3>
         <p className="text-sm text-paper-muted mb-4">AI-generated after each conversation or roleplay.</p>
@@ -236,7 +499,7 @@ export default function Progress() {
         )}
       </div>
 
-      {/* Top errores */}
+      {/* ── Top errors ──────────────────────────────────────────────────────── */}
       <div className="card p-5">
         <h3 className="font-display font-bold mb-1">What to work on</h3>
         <p className="text-sm text-paper-muted mb-4">Your most frequent mistakes — these feed your coach.</p>
@@ -275,15 +538,6 @@ export default function Progress() {
           </>
         )}
       </div>
-    </div>
-  );
-}
-
-function Stat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="card p-4">
-      <p className="text-xs text-paper-muted mb-1">{label}</p>
-      <p className="font-display text-2xl font-bold">{value}</p>
     </div>
   );
 }

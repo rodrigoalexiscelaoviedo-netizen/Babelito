@@ -17,6 +17,8 @@ import { useVoicePrefs, type VoicePrefs } from "../lib/useVoicePrefs";
 import type { ChatTurn, DetectedError } from "../lib/types";
 import VoiceOrb from "../components/VoiceOrb";
 import { generateReport, type SessionReport } from "../lib/sessionReport";
+import { checkAchievements, markSeen, type AchievementDef } from "../lib/achievements";
+import AchievementCelebration from "../components/AchievementCelebration";
 
 const TOPICS = ["Your work", "Your weekend", "A goal you have", "Something you enjoy", "Free chat"];
 
@@ -41,6 +43,7 @@ export default function Conversation() {
   const [report, setReport] = useState<SessionReport | null>(null);
   const [reportError, setReportError] = useState("");
   const [retryText, setRetryText] = useState<string | null>(null);
+  const [newAchievements, setNewAchievements] = useState<AchievementDef[]>([]);
 
   const recognizerRef = useRef<Recognizer | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -139,6 +142,9 @@ export default function Conversation() {
     try {
       const r = await generateReport(profile.id, sessionId, "conversation", turns);
       setReport(r);
+      checkAchievements(profile.id).then((newly) => {
+        if (newly.length > 0) setNewAchievements(newly);
+      });
     } catch (e) {
       setReportError(e instanceof Error ? e.message : "Could not generate report.");
     } finally {
@@ -166,6 +172,19 @@ export default function Conversation() {
 
   if (report) {
     return <ReportPanel report={report} onClose={() => setReport(null)} />;
+  }
+
+  // Achievement overlay (shown over chat UI, not report)
+  if (newAchievements.length > 0) {
+    return (
+      <AchievementCelebration
+        achievements={newAchievements}
+        onClose={() => {
+          if (profile) markSeen(profile.id, newAchievements.map((a) => a.key));
+          setNewAchievements([]);
+        }}
+      />
+    );
   }
 
   if (turns.length === 0) {

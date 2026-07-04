@@ -7,6 +7,8 @@ import { useVoicePrefs } from "../lib/useVoicePrefs";
 import { recognizeSpeech, comparePhrases } from "../lib/pronunciation";
 import { speechSupported } from "../lib/speech";
 import Loader from "../components/Loader";
+import { checkAchievements, markSeen, type AchievementDef } from "../lib/achievements";
+import AchievementCelebration from "../components/AchievementCelebration";
 
 type SessionState = "loading" | "empty" | "prompt" | "recording" | "result" | "done";
 
@@ -19,6 +21,7 @@ export default function Review() {
   const [spoken, setSpoken] = useState("");
   const [quality, setQuality] = useState<ReviewQuality | null>(null);
   const [reviewedCount, setReviewedCount] = useState(0);
+  const [newAchievements, setNewAchievements] = useState<AchievementDef[]>([]);
 
   useEffect(() => {
     if (!profile) return;
@@ -67,6 +70,9 @@ export default function Review() {
     const nextIdx = idx + 1;
     if (nextIdx >= total) {
       setPhase("done");
+      checkAchievements(profile.id).then((newly) => {
+        if (newly.length > 0) setNewAchievements(newly);
+      });
     } else {
       setIdx(nextIdx);
       setSpoken("");
@@ -93,15 +99,24 @@ export default function Review() {
   // ─── Done ─────────────────────────────────────────────────────────────────
   if (phase === "done") {
     return (
-      <div className="animate-fade-up max-w-md mx-auto text-center pt-16">
-        <CheckCircle2 size={48} className="mx-auto text-mint mb-4" />
-        <h1 className="font-display text-3xl font-extrabold mb-2">Done!</h1>
-        <p className="text-paper-muted mb-1">
-          <span className="font-display font-bold text-mint text-xl">{reviewedCount}</span> item
-          {reviewedCount !== 1 ? "s" : ""} reviewed.
-        </p>
-        <p className="text-sm text-paper-faint mt-1">Come back tomorrow to keep your streak.</p>
-      </div>
+      <>
+        <AchievementCelebration
+          achievements={newAchievements}
+          onClose={() => {
+            if (profile) markSeen(profile.id, newAchievements.map((a) => a.key));
+            setNewAchievements([]);
+          }}
+        />
+        <div className="animate-fade-up max-w-md mx-auto text-center pt-16">
+          <CheckCircle2 size={48} className="mx-auto text-mint mb-4" />
+          <h1 className="font-display text-3xl font-extrabold mb-2">Done!</h1>
+          <p className="text-paper-muted mb-1">
+            <span className="font-display font-bold text-mint text-xl">{reviewedCount}</span> item
+            {reviewedCount !== 1 ? "s" : ""} reviewed.
+          </p>
+          <p className="text-sm text-paper-faint mt-1">Come back tomorrow to keep your streak.</p>
+        </div>
+      </>
     );
   }
 

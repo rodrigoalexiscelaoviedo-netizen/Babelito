@@ -19,6 +19,8 @@ import { speak, pauseSpeech, resumeSpeech } from "../lib/speech";
 import { useVoicePrefs } from "../lib/useVoicePrefs";
 import ClickableText from "../components/ClickableText";
 import Loader from "../components/Loader";
+import { checkAchievements, markSeen, type AchievementDef } from "../lib/achievements";
+import AchievementCelebration from "../components/AchievementCelebration";
 
 type View = "library" | "reading" | "quiz";
 
@@ -40,6 +42,7 @@ export default function Stories() {
   const [genTopic, setGenTopic] = useState("");
   const [genLevel, setGenLevel] = useState<Level>((profile?.current_level ?? "B1") as Level);
   const [generating, setGenerating] = useState(false);
+  const [newAchievements, setNewAchievements] = useState<AchievementDef[]>([]);
   const [genError, setGenError] = useState("");
 
   useEffect(() => {
@@ -103,6 +106,9 @@ export default function Stories() {
         onDone={async (score) => {
           if (profile) {
             await saveStoryProgress(profile.id, activeStory.id, score);
+            checkAchievements(profile.id).then((newly) => {
+              if (newly.length > 0) setNewAchievements(newly);
+            });
             setProgress((prev) => {
               const existing = prev.findIndex((p) => p.story_id === activeStory.id);
               const entry: StoryProgress = {
@@ -134,6 +140,13 @@ export default function Stories() {
 
   return (
     <div className="animate-fade-up">
+      <AchievementCelebration
+        achievements={newAchievements}
+        onClose={() => {
+          if (profile) markSeen(profile.id, newAchievements.map((a) => a.key));
+          setNewAchievements([]);
+        }}
+      />
       <p className="eyebrow mb-2">Stories</p>
       <h1 className="font-display text-3xl font-extrabold mb-2">Reading stories</h1>
       <p className="text-paper-muted mb-8">

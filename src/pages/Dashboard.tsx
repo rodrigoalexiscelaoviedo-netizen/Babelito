@@ -22,6 +22,8 @@ import { lookupWord, type WordDefinition } from "../lib/dictionary";
 import { speak } from "../lib/speech";
 import { useVoicePrefs } from "../lib/useVoicePrefs";
 import { countDue } from "../lib/srs";
+import { checkAchievements, markSeen, type AchievementDef } from "../lib/achievements";
+import AchievementCelebration from "../components/AchievementCelebration";
 
 interface Stats {
   sessions: number;
@@ -38,6 +40,7 @@ export default function Dashboard() {
   const [freezesLeft, setFreezesLeft] = useState(0);
   const [showCelebration, setShowCelebration] = useState(false);
   const [celebMsg, setCelebMsg] = useState("");
+  const [newAchievements, setNewAchievements] = useState<AchievementDef[]>([]);
   const [lesson, setLesson] = useState<DailyLesson | null>(null);
   const [wordDef, setWordDef] = useState<WordDefinition | null>(null);
   const [loadingLesson, setLoadingLesson] = useState(true);
@@ -75,6 +78,11 @@ export default function Dashboard() {
       setStats({ sessions: sessions?.length ?? 0, topError, chunksLearned: learned ?? 0 });
       setStreak(streakInfo.streak);
       setFreezesLeft(streakInfo.freezesLeft);
+
+      // Check achievements on load (fire-and-forget)
+      checkAchievements(profile.id).then((newly) => {
+        if (newly.length > 0) setNewAchievements(newly);
+      });
       setLesson(todayLesson);
       setReviewsDue(due);
       setLoadingLesson(false);
@@ -107,6 +115,11 @@ export default function Dashboard() {
       setCelebMsg(CONGRATS[Math.floor(Math.random() * CONGRATS.length)]);
       setShowCelebration(true);
       setTimeout(() => setShowCelebration(false), 4500);
+
+      // Check for newly unlocked achievements
+      checkAchievements(profile.id).then((newly) => {
+        if (newly.length > 0) setNewAchievements(newly);
+      });
     } finally {
       setCompleting(false);
     }
@@ -189,6 +202,17 @@ export default function Dashboard() {
           </div>
         </>
       )}
+
+      {/* ── Achievement celebration ── */}
+      <AchievementCelebration
+        achievements={newAchievements}
+        onClose={() => {
+          if (profile && newAchievements.length > 0) {
+            markSeen(profile.id, newAchievements.map((a) => a.key));
+          }
+          setNewAchievements([]);
+        }}
+      />
       <header className="mb-8">
         <p className="eyebrow mb-2">{greeting}</p>
         <h1 className="font-display text-3xl md:text-4xl font-extrabold">
