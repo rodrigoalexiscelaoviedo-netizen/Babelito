@@ -152,8 +152,15 @@ export default function Dashboard() {
                 <p className="text-xs text-paper-muted uppercase tracking-widest font-mono mb-0.5">
                   Chunk of the day
                 </p>
-                {lesson?.chunk_text ? (
-                  <p className="font-medium leading-snug">{lesson.chunk_text}</p>
+                {lesson?.chunk?.english ? (
+                  <>
+                    <p className="font-medium leading-snug">{lesson.chunk.english}</p>
+                    {lesson.chunk.spanish && (
+                      <p className="text-xs text-paper-faint mt-0.5 italic">{lesson.chunk.spanish}</p>
+                    )}
+                  </>
+                ) : lesson?.chunk_id ? (
+                  <p className="font-medium leading-snug text-paper-muted">Loading chunk…</p>
                 ) : (
                   <p className="text-paper-muted text-sm">No chunk available.</p>
                 )}

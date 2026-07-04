@@ -1,15 +1,23 @@
 import { supabase } from "./supabaseClient";
 
+export interface ChunkData {
+  id: number;
+  english: string;
+  spanish: string;
+  category: string | null;
+}
+
 export interface DailyLesson {
   id: string;
   user_id: string;
   lesson_date: string;
   chunk_id: number | null;
-  chunk_text: string | null;
   word: string | null;
   topic: string;
   completed: boolean;
   completed_at: string | null;
+  // Joined at read time — not a DB column
+  chunk?: ChunkData | null;
 }
 
 const CONVERSATION_TOPICS = [
@@ -27,6 +35,16 @@ function todayISO(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
+/** Fetches the chunk row for a given bigint id. Returns null if not found. */
+async function fetchChunk(chunkId: number): Promise<ChunkData | null> {
+  const { data } = await supabase
+    .from("chunks")
+    .select("id, english, spanish, category")
+    .eq("id", chunkId)
+    .maybeSingle();
+  return data as ChunkData | null;
+}
+
 export async function getTodayLesson(userId: string): Promise<DailyLesson> {
   const today = todayISO();
 
@@ -38,9 +56,15 @@ export async function getTodayLesson(userId: string): Promise<DailyLesson> {
     .eq("lesson_date", today)
     .maybeSingle();
 
-  if (existing) return existing as DailyLesson;
+  if (existing) {
+    const lesson = existing as DailyLesson;
+    if (lesson.chunk_id) {
+      lesson.chunk = await fetchChunk(lesson.chunk_id);
+    }
+    return lesson;
+  }
 
-  // Pick chunk: exclude chunks used in last 3 daily_lessons
+  // Exclude chunk_ids used in last 3 daily_lessons
   const { data: recentLessons } = await supabase
     .from("daily_lessons")
     .select("chunk_id")
@@ -53,29 +77,33 @@ export async function getTodayLesson(userId: string): Promise<DailyLesson> {
     .filter((id): id is number => id !== null);
 
   let chunkId: number | null = null;
-  let chunkText: string | null = null;
+  let chunk: ChunkData | null = null;
 
   // Try to find a chunk not used recently
-  const { data: allChunks } = await supabase
+  const exclusionList = recentChunkIds.length > 0
+    ? `(${recentChunkIds.join(",")})`
+    : "(0)";
+
+  const { data: freshChunks } = await supabase
     .from("chunks")
-    .select("id, text")
-    .not("id", "in", recentChunkIds.length > 0 ? `(${recentChunkIds.join(",")})` : "(0)")
+    .select("id, english, spanish, category")
+    .not("id", "in", exclusionList)
     .limit(20);
 
-  if (allChunks && allChunks.length > 0) {
-    const pick = allChunks[Math.floor(Math.random() * allChunks.length)] as { id: number; text: string };
+  if (freshChunks && freshChunks.length > 0) {
+    const pick = freshChunks[Math.floor(Math.random() * freshChunks.length)] as ChunkData;
     chunkId = pick.id;
-    chunkText = pick.text;
+    chunk = pick;
   } else {
     // Fallback: any chunk
-    const { data: anyChunk } = await supabase
+    const { data: anyChunks } = await supabase
       .from("chunks")
-      .select("id, text")
+      .select("id, english, spanish, category")
       .limit(10);
-    if (anyChunk && anyChunk.length > 0) {
-      const pick = anyChunk[Math.floor(Math.random() * anyChunk.length)] as { id: number; text: string };
+    if (anyChunks && anyChunks.length > 0) {
+      const pick = anyChunks[Math.floor(Math.random() * anyChunks.length)] as ChunkData;
       chunkId = pick.id;
-      chunkText = pick.text;
+      chunk = pick;
     }
   }
 
@@ -96,14 +124,13 @@ export async function getTodayLesson(userId: string): Promise<DailyLesson> {
   // Pick topic
   const topic = CONVERSATION_TOPICS[Math.floor(Math.random() * CONVERSATION_TOPICS.length)];
 
-  // Insert lesson
+  // Insert lesson — only columns that actually exist in daily_lessons
   const { data: inserted, error } = await supabase
     .from("daily_lessons")
     .insert({
       user_id: userId,
       lesson_date: today,
       chunk_id: chunkId,
-      chunk_text: chunkText,
       word,
       topic,
       completed: false,
@@ -113,7 +140,10 @@ export async function getTodayLesson(userId: string): Promise<DailyLesson> {
     .single();
 
   if (error) throw new Error(error.message);
-  return inserted as DailyLesson;
+
+  const lesson = inserted as DailyLesson;
+  lesson.chunk = chunk;
+  return lesson;
 }
 
 export async function completeLesson(userId: string): Promise<void> {
@@ -128,7 +158,7 @@ export async function completeLesson(userId: string): Promise<void> {
 export async function getStreak(userId: string): Promise<number> {
   const { data } = await supabase
     .from("daily_lessons")
-    .select("lesson_date, completed")
+    .select("lesson_date")
     .eq("user_id", userId)
     .eq("completed", true)
     .order("lesson_date", { ascending: false })
