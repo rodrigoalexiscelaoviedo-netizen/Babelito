@@ -112,7 +112,7 @@ function Reader({ text, onBack }: { text: ReadingText; onBack: () => void }) {
     (async () => {
       const { data } = await supabase
         .from("user_vocabulary")
-        .select("word, status, definition, example, phonetic")
+        .select("*")
         .eq("user_id", profile.id);
       if (data) {
         const map: VocabMap = {};

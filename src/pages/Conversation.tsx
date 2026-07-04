@@ -3,7 +3,7 @@ import { useLocation } from "react-router-dom";
 import { Mic, Send, Volume2, Square, Pause, Play, Loader2, X, ChevronDown, ChevronUp } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabaseClient";
-import { askCoach } from "../lib/claude";
+import { askCoach, RetryableError } from "../lib/claude";
 import { buildConversationPrompt, parseErrors } from "../lib/buildSystemPrompt";
 import {
   createRecognizer,
@@ -40,6 +40,7 @@ export default function Conversation() {
   const [generatingReport, setGeneratingReport] = useState(false);
   const [report, setReport] = useState<SessionReport | null>(null);
   const [reportError, setReportError] = useState("");
+  const [retryText, setRetryText] = useState<string | null>(null);
 
   const recognizerRef = useRef<Recognizer | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -116,10 +117,16 @@ export default function Conversation() {
           .eq("id", sid);
       }
     } catch (e) {
-      setTurns((t) => [
-        ...t,
-        { role: "assistant", content: `⚠️ ${e instanceof Error ? e.message : "Connection error."}` },
-      ]);
+      if (e instanceof RetryableError) {
+        setRetryText(text.trim());
+        // Remove the optimistic user turn from the list — user will retry
+        setTurns((prev) => prev.slice(0, -1));
+      } else {
+        setTurns((t) => [
+          ...t,
+          { role: "assistant", content: `⚠️ ${e instanceof Error ? e.message : "Connection error."}` },
+        ]);
+      }
     } finally {
       setThinking(false);
     }
@@ -254,6 +261,21 @@ export default function Conversation() {
             </div>
           </div>
         ))}
+        {retryText && !thinking && (
+          <div className="flex justify-start">
+            <div className="card px-4 py-3 border-gold/30 max-w-[85%]">
+              <p className="text-sm text-paper-muted mb-2">
+                El coach está con mucha demanda ahora mismo. Probá de nuevo.
+              </p>
+              <button
+                className="flex items-center gap-1.5 text-xs font-medium text-gold hover:text-gold/80 transition"
+                onClick={() => { const t = retryText; setRetryText(null); send(t); }}
+              >
+                <Loader2 size={12} /> Reintentar
+              </button>
+            </div>
+          </div>
+        )}
         {thinking && (
           <div className="flex justify-start">
             <div className="card px-4 py-3 text-paper-muted">

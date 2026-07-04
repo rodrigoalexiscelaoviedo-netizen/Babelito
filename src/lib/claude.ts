@@ -10,9 +10,18 @@ interface AskOptions {
   temperature?: number;
 }
 
+/** Thrown when Gemini is overloaded — the caller can show a retry button. */
+export class RetryableError extends Error {
+  readonly retryable = true;
+  constructor(message: string) {
+    super(message);
+    this.name = "RetryableError";
+  }
+}
+
 /**
- * Manda la conversación al proxy (que a su vez llama a Anthropic).
- * Devuelve el texto plano de la respuesta del coach.
+ * Manda la conversación al proxy (que a su vez llama a Gemini).
+ * Lanza RetryableError si la Edge Function indica que el servicio está saturado.
  */
 export async function askCoach({ system, messages, maxTokens = 1024, temperature = 0.7 }: AskOptions): Promise<string> {
   const { data: sessionData } = await supabase.auth.getSession();
@@ -29,6 +38,16 @@ export async function askCoach({ system, messages, maxTokens = 1024, temperature
   });
 
   const data = await res.json();
-  if (!res.ok) throw new Error(data?.error ?? "Error llamando al coach.");
+
+  if (!res.ok) {
+    // Edge Function signals a retryable overload (503/429 + { retryable: true })
+    if (data?.retryable === true) {
+      throw new RetryableError(
+        data.error ?? "El coach está con mucha demanda ahora mismo."
+      );
+    }
+    throw new Error(data?.error ?? "Error llamando al coach.");
+  }
+
   return (data.text as string) ?? "";
 }

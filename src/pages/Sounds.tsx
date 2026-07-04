@@ -21,13 +21,18 @@ export default function Sounds() {
     (async () => {
       const { data } = await supabase
         .from("errors")
-        .select("word")
+        .select("original_text")
         .eq("user_id", profile.id)
         .eq("error_type", "pronunciation_error");
 
       if (!data || data.length === 0) return;
 
-      const errorWords = new Set(data.map((r: { word: string }) => r.word.toLowerCase()));
+      const errorWords = new Set(
+        data
+          .map((r: { original_text: string | null }) => r.original_text ?? "")
+          .filter(Boolean)
+          .map((w) => w.toLowerCase())
+      );
 
       // Score each sound by how many of its words appear in error log
       const scores: Record<string, number> = {};

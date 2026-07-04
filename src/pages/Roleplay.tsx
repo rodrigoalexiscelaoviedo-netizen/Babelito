@@ -13,17 +13,19 @@ import {
   Play,
   Loader2,
   X,
+  Mic,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabaseClient";
-import { askCoach } from "../lib/claude";
+import { askCoach, RetryableError } from "../lib/claude";
 import { buildRoleplayPrompt, parseErrors } from "../lib/buildSystemPrompt";
 import { SCENARIOS, type Scenario } from "../lib/scenarios";
 import { speak, pauseSpeech, resumeSpeech } from "../lib/speech";
 import { useVoicePrefs } from "../lib/useVoicePrefs";
 import type { ChatTurn } from "../lib/types";
 import { generateReport, type SessionReport } from "../lib/sessionReport";
+import ShadowingBlock from "../components/ShadowingBlock";
 
 const SCENARIO_ICONS: Record<string, LucideIcon> = {
   Briefcase,
@@ -85,6 +87,8 @@ function RoleplayChat({ scenario, onExit }: { scenario: Scenario; onExit: () => 
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [activeSpeakIdx, setActiveSpeakIdx] = useState<number | null>(null);
   const [paused, setPaused] = useState(false);
+  const [retryText, setRetryText] = useState<string | null>(null);
+  const [shadowIdx, setShadowIdx] = useState<number | null>(null);
   const [generatingReport, setGeneratingReport] = useState(false);
   const [report, setReport] = useState<SessionReport | null>(null);
   const [reportError, setReportError] = useState("");
@@ -175,10 +179,15 @@ function RoleplayChat({ scenario, onExit }: { scenario: Scenario; onExit: () => 
           );
       }
     } catch (e) {
-      setTurns((t) => [
-        ...t,
-        { role: "assistant", content: `⚠️ ${e instanceof Error ? e.message : "Error."}` },
-      ]);
+      if (e instanceof RetryableError) {
+        setRetryText(text.trim());
+        setTurns((prev) => prev.slice(0, -1));
+      } else {
+        setTurns((t) => [
+          ...t,
+          { role: "assistant", content: `⚠️ ${e instanceof Error ? e.message : "Error."}` },
+        ]);
+      }
     } finally {
       setThinking(false);
     }
@@ -288,7 +297,7 @@ function RoleplayChat({ scenario, onExit }: { scenario: Scenario; onExit: () => 
             >
               {t.role === "assistant" ? (
                 <div>
-                  <div className="flex justify-end gap-1 mb-1">
+                  <div className="flex justify-end gap-1.5 mb-1">
                     {activeSpeakIdx === i && (
                       <button
                         onClick={handlePauseResume}
@@ -305,8 +314,25 @@ function RoleplayChat({ scenario, onExit }: { scenario: Scenario; onExit: () => 
                     >
                       <Volume2 size={15} />
                     </button>
+                    <button
+                      onClick={() => setShadowIdx(shadowIdx === i ? null : i)}
+                      className={`transition ${shadowIdx === i ? "text-mint" : "text-paper-faint hover:text-mint"}`}
+                      aria-label="Shadow this line"
+                      title="Repeat this line"
+                    >
+                      <Mic size={14} />
+                    </button>
                   </div>
                   <p className="whitespace-pre-wrap leading-relaxed">{t.content}</p>
+                  {shadowIdx === i && (
+                    <div className="mt-3">
+                      <ShadowingBlock
+                        text={t.content.match(/[^.!?]*[.!?]/)?.[0]?.trim() ?? t.content.split(" ").slice(0, 10).join(" ")}
+                        lang={voicePrefs.voiceAccent ?? "en-GB"}
+                        label="Repeat this line"
+                      />
+                    </div>
+                  )}
                 </div>
               ) : (
                 <p className="whitespace-pre-wrap leading-relaxed">{t.content}</p>
@@ -314,6 +340,21 @@ function RoleplayChat({ scenario, onExit }: { scenario: Scenario; onExit: () => 
             </div>
           </div>
         ))}
+        {retryText && !thinking && (
+          <div className="flex justify-start">
+            <div className="card px-4 py-3 border-gold/30">
+              <p className="text-sm text-paper-muted mb-2">
+                El coach está con mucha demanda ahora mismo. Probá de nuevo.
+              </p>
+              <button
+                className="flex items-center gap-1.5 text-xs font-medium text-gold hover:text-gold/80 transition"
+                onClick={() => { const t = retryText; setRetryText(null); send(t); }}
+              >
+                <Loader2 size={12} /> Reintentar
+              </button>
+            </div>
+          </div>
+        )}
         {thinking && (
           <div className="flex justify-start">
             <div className="card px-4 py-3 text-paper-muted">…</div>

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Check, RotateCcw, Dumbbell, Volume2, Layers } from "lucide-react";
+import { Check, RotateCcw, Dumbbell, Volume2, Layers, Mic } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabaseClient";
 import type { Chunk } from "../lib/types";
@@ -160,49 +160,47 @@ function FlipCard({ chunk, learned, onToggle }: { chunk: Chunk; learned: boolean
         </p>
       </button>
 
-      {/* Controls row */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setFace((face + 1) % faces.length)}
-            className="text-paper-faint hover:text-paper transition"
-            aria-label="Flip"
-          >
-            <RotateCcw size={15} />
-          </button>
-          {/* Listen button */}
-          <button
-            onClick={handleListen}
-            className="flex items-center gap-1 text-xs text-paper-faint hover:text-coral transition"
-            aria-label="Listen"
-          >
-            <Volume2 size={15} /> Listen
-          </button>
-          {/* Toggle shadowing */}
-          <button
-            onClick={() => setShowShadow((s) => !s)}
-            className="text-xs text-paper-faint hover:text-mint transition"
-          >
-            {showShadow ? "Hide drill" : "Repeat"}
-          </button>
-          {/* Add to review */}
-          <button
-            onClick={handleAddReview}
-            className={`flex items-center gap-1 text-xs transition ${
-              addedToReview ? "text-gold" : "text-paper-faint hover:text-gold"
-            }`}
-            title="Add to oral review deck"
-          >
-            <Layers size={14} /> {addedToReview ? "In deck" : "Review"}
-          </button>
-        </div>
+      {/* Action row — visible buttons for Listen and Repeat */}
+      <div className="flex items-center gap-2">
+        <button
+          onClick={handleListen}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-ink-600 hover:bg-ink-500 text-xs font-medium text-paper transition"
+          aria-label="Listen"
+        >
+          <Volume2 size={13} className="text-coral" /> Listen
+        </button>
+        <button
+          onClick={() => setShowShadow((s) => !s)}
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition ${
+            showShadow ? "bg-mint/20 text-mint" : "bg-ink-600 hover:bg-ink-500 text-paper"
+          }`}
+        >
+          <Mic size={13} /> {showShadow ? "Hide" : "Repeat"}
+        </button>
+        <button
+          onClick={handleAddReview}
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition ${
+            addedToReview ? "bg-gold/20 text-gold" : "bg-ink-600 hover:bg-ink-500 text-paper"
+          }`}
+          title="Add to oral review deck"
+        >
+          <Layers size={13} /> {addedToReview ? "In deck" : "Review"}
+        </button>
+        <div className="flex-1" />
+        <button
+          onClick={() => setFace((face + 1) % faces.length)}
+          className="text-paper-faint hover:text-paper transition"
+          aria-label="Flip"
+        >
+          <RotateCcw size={15} />
+        </button>
         <button
           onClick={onToggle}
           className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition ${
             learned ? "bg-mint text-ink-900" : "bg-ink-600 text-paper-muted hover:text-paper"
           }`}
         >
-          <Check size={13} /> {learned ? "Learned" : "Mark learned"}
+          <Check size={13} /> {learned ? "Learned" : "Mark"}
         </button>
       </div>
 
