@@ -1,12 +1,8 @@
-import { useState } from "react";
-import { Volume2, Mic, Square, Loader2, Pause, Play } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Volume2, Mic, CheckCircle2, Loader2, Pause, Play } from "lucide-react";
 import { speak, pauseSpeech, resumeSpeech, speechSupported } from "../lib/speech";
-import {
-  recognizeSpeech,
-  comparePhrases,
-  generatePronunciationFeedback,
-  savePronunciationError,
-} from "../lib/pronunciation";
+import { comparePhrases, generatePronunciationFeedback, savePronunciationError } from "../lib/pronunciation";
+import { useVoiceRecorder } from "../lib/useVoiceRecorder";
 import { useVoicePrefs } from "../lib/useVoicePrefs";
 import { useAuth } from "../context/AuthContext";
 
@@ -18,13 +14,13 @@ interface Props {
 
 type State = "idle" | "speaking" | "recording" | "processing" | "result" | "tip-loading" | "tip";
 
-// Words too short for the recogniser to reliably catch — skip error-saving for these
 const SHORT_WORDS = new Set(["a", "an", "the", "to", "of", "in", "on", "at", "or", "is", "it", "as", "be", "by", "do", "so", "up", "no", "he", "we", "me", "my"]);
 
 export default function ShadowingBlock({ text, lang, label = "Listen & repeat" }: Props) {
   const { profile } = useAuth();
   const voicePrefs = useVoicePrefs();
   const effectiveLang = lang ?? voicePrefs.voiceAccent ?? "en-GB";
+  const voiceRec = useVoiceRecorder(effectiveLang);
 
   const [state, setState] = useState<State>("idle");
   const [paused, setPaused] = useState(false);
@@ -34,6 +30,21 @@ export default function ShadowingBlock({ text, lang, label = "Listen & repeat" }
   const [drillPhrase, setDrillPhrase] = useState("");
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
+
+  const doneTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Timeout de seguridad: 30s sin tocar Done → disparamos automáticamente
+  useEffect(() => {
+    if (state === "recording") {
+      doneTimeoutRef.current = setTimeout(() => {
+        handleDone();
+      }, 30000);
+    } else {
+      if (doneTimeoutRef.current) clearTimeout(doneTimeoutRef.current);
+    }
+    return () => { if (doneTimeoutRef.current) clearTimeout(doneTimeoutRef.current); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state]);
 
   function handleListen() {
     speak(text, {
@@ -50,16 +61,11 @@ export default function ShadowingBlock({ text, lang, label = "Listen & repeat" }
   }
 
   function handlePauseResume() {
-    if (paused) {
-      resumeSpeech();
-      setPaused(false);
-    } else {
-      pauseSpeech();
-      setPaused(true);
-    }
+    if (paused) { resumeSpeech(); setPaused(false); }
+    else { pauseSpeech(); setPaused(true); }
   }
 
-  async function handleRecord() {
+  function handleRecord() {
     if (!speechSupported()) {
       setError("Speech recognition not available in this browser. Try Chrome.");
       return;
@@ -69,8 +75,12 @@ export default function ShadowingBlock({ text, lang, label = "Listen & repeat" }
     setSaved(false);
     setResult(null);
     setTip("");
+    voiceRec.start();
+  }
 
-    const spokenText = await recognizeSpeech(effectiveLang, 20000);
+  async function handleDone() {
+    if (doneTimeoutRef.current) clearTimeout(doneTimeoutRef.current);
+    const spokenText = voiceRec.stop();
     setState("processing");
 
     if (!spokenText) {
@@ -84,7 +94,6 @@ export default function ShadowingBlock({ text, lang, label = "Listen & repeat" }
     setResult(cmp);
     setState("result");
 
-    // Auto-save errors for words > 3 letters
     if (profile && cmp.incorrect.length > 0) {
       const toSave = cmp.incorrect.filter(
         (w) => w.length > 3 && !SHORT_WORDS.has(w.toLowerCase())
@@ -98,8 +107,6 @@ export default function ShadowingBlock({ text, lang, label = "Listen & repeat" }
 
   async function handleWhy() {
     if (!result) return;
-    const badWords = result.incorrect.join(", ");
-    // pick the first mismatched word as the target sound hint
     const targetSound = result.incorrect[0] ?? "";
     setState("tip-loading");
     try {
@@ -108,7 +115,7 @@ export default function ShadowingBlock({ text, lang, label = "Listen & repeat" }
       setDrillPhrase(fb.drillPhrase);
       setState("tip");
     } catch {
-      setTip(`Focus on the word "${badWords}" — listen carefully and repeat more slowly.`);
+      setTip(`Focus on the word "${result.incorrect.join(", ")}" — listen carefully and repeat more slowly.`);
       setDrillPhrase("");
       setState("tip");
     }
@@ -135,8 +142,12 @@ export default function ShadowingBlock({ text, lang, label = "Listen & repeat" }
         )}
       </div>
 
-      {/* Phrase to repeat */}
-      {state === "result" && result ? (
+      {/* Phrase / interim / result */}
+      {state === "recording" ? (
+        <p className="text-sm font-medium leading-snug text-paper-muted italic min-h-[1.25rem]">
+          {[voiceRec.accumulated, voiceRec.interim].filter(Boolean).join(" ") || "Listening…"}
+        </p>
+      ) : state === "result" && result ? (
         <div className="flex flex-wrap gap-1.5">
           {result.tokens.map((t, i) => (
             <span
@@ -151,14 +162,12 @@ export default function ShadowingBlock({ text, lang, label = "Listen & repeat" }
         <p className="text-sm font-medium leading-snug text-paper">{text}</p>
       )}
 
-      {spoken && state !== "idle" && (
+      {spoken && state !== "idle" && state !== "recording" && (
         <p className="text-xs text-paper-faint italic">You said: "{spoken}"</p>
       )}
 
-      {/* Error message */}
       {error && <p className="text-xs text-coral">{error}</p>}
 
-      {/* Tip panel */}
       {(state === "tip" || state === "tip-loading") && tip && (
         <div className="bg-ink-700 rounded-lg p-3 space-y-1">
           <p className="text-xs text-paper leading-relaxed">{tip}</p>
@@ -173,7 +182,8 @@ export default function ShadowingBlock({ text, lang, label = "Listen & repeat" }
         {/* Listen */}
         <button
           onClick={state === "speaking" ? handlePauseResume : handleListen}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-ink-600 hover:bg-ink-500 text-paper text-xs font-medium transition"
+          disabled={state === "recording"}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-ink-600 hover:bg-ink-500 text-paper text-xs font-medium transition disabled:opacity-40"
           aria-label={state === "speaking" ? (paused ? "Resume" : "Pause") : "Listen"}
         >
           {state === "speaking" ? (
@@ -183,11 +193,19 @@ export default function ShadowingBlock({ text, lang, label = "Listen & repeat" }
           )}
         </button>
 
-        {/* Record */}
+        {/* Record / Done / Processing */}
         {state === "recording" ? (
-          <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-coral/20 border border-coral/40 text-coral text-xs animate-pulse">
-            <Square size={13} /> Recording…
-          </span>
+          <>
+            <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-coral/20 border border-coral/40 text-coral text-xs animate-pulse">
+              <span className="h-1.5 w-1.5 rounded-full bg-coral" /> Recording…
+            </span>
+            <button
+              onClick={handleDone}
+              className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-mint text-ink-900 text-xs font-semibold hover:bg-mint/90 transition"
+            >
+              <CheckCircle2 size={13} /> Done ✓
+            </button>
+          </>
         ) : state === "processing" ? (
           <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-ink-600 text-paper-muted text-xs">
             <Loader2 size={13} className="animate-spin" /> Processing…
@@ -203,7 +221,6 @@ export default function ShadowingBlock({ text, lang, label = "Listen & repeat" }
           </button>
         )}
 
-        {/* Why? — only when there are errors and not already loading tip */}
         {state === "result" && hasIncorrect && (
           <button
             onClick={handleWhy}
@@ -219,7 +236,6 @@ export default function ShadowingBlock({ text, lang, label = "Listen & repeat" }
           </span>
         )}
 
-        {/* Reset after seeing result */}
         {(state === "result" || state === "tip") && (
           <button
             onClick={handleRetry}

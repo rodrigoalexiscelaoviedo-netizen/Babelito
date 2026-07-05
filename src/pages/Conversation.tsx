@@ -404,15 +404,23 @@ Reply with only the hint text — no explanation, no punctuation around it.`,
             }}
           />
           {speechSupported() && (
-            <button
-              onClick={toggleMic}
-              className={`grid h-10 w-10 place-items-center rounded-xl transition ${
-                listening ? "bg-coral text-ink-900" : "bg-ink-600 text-paper hover:bg-ink-500"
-              }`}
-              aria-label={listening ? "Stop recording" : "Start recording"}
-            >
-              {listening ? <Square size={17} /> : <Mic size={18} />}
-            </button>
+            listening ? (
+              <button
+                onClick={toggleMic}
+                className="flex items-center gap-1.5 px-3 h-10 rounded-xl bg-coral text-ink-900 font-semibold text-sm transition"
+                aria-label="Listo — stop recording"
+              >
+                <Square size={15} /> Listo
+              </button>
+            ) : (
+              <button
+                onClick={toggleMic}
+                className="grid h-10 w-10 place-items-center rounded-xl bg-ink-600 text-paper hover:bg-ink-500 transition"
+                aria-label="Start recording"
+              >
+                <Mic size={18} />
+              </button>
+            )
           )}
           <button
             onClick={() => send(input)}

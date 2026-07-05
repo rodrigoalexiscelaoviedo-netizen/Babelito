@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from "react";
-import { Mic, Square, Volume2, Loader2, CheckCircle2, XCircle, Layers, ArrowRight, BookOpen, Library } from "lucide-react";
+import { Mic, Volume2, CheckCircle2, XCircle, ArrowRight, BookOpen, Library } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { getDueItems, applyReview, type ReviewItem, type ReviewQuality } from "../lib/srs";
-import { speak } from "../lib/speech";
+import { speak, speechSupported } from "../lib/speech";
 import { useVoicePrefs } from "../lib/useVoicePrefs";
-import { recognizeSpeech, comparePhrases } from "../lib/pronunciation";
-import { speechSupported } from "../lib/speech";
+import { comparePhrases } from "../lib/pronunciation";
+import { useVoiceRecorder } from "../lib/useVoiceRecorder";
 import Loader from "../components/Loader";
 import Maica from "../components/Maica";
 import { checkAchievements, markSeen, type AchievementDef } from "../lib/achievements";
@@ -26,6 +26,20 @@ export default function Review() {
   const [quality, setQuality] = useState<ReviewQuality | null>(null);
   const [reviewedCount, setReviewedCount] = useState(0);
   const [newAchievements, setNewAchievements] = useState<AchievementDef[]>([]);
+
+  const voiceRec = useVoiceRecorder(voicePrefs.voiceAccent ?? "en-GB");
+  const doneTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Timeout de seguridad: 30s → Done automático
+  useEffect(() => {
+    if (phase === "recording") {
+      doneTimeoutRef.current = setTimeout(() => handleDone(), 30000);
+    } else {
+      if (doneTimeoutRef.current) clearTimeout(doneTimeoutRef.current);
+    }
+    return () => { if (doneTimeoutRef.current) clearTimeout(doneTimeoutRef.current); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase]);
 
   // ── Hint pasivo ──────────────────────────────────────────────────────────
   const [showHint, setShowHint] = useState(false);
@@ -74,18 +88,22 @@ NEVER reveal the answer. Reply with only the hint text.`,
     }
   }
 
-  async function handleRecord() {
+  function handleRecord() {
     if (!item) return;
+    setShowHint(false);
+    setHintText("");
+    if (hintTimerRef.current) clearTimeout(hintTimerRef.current);
+    voiceRec.start();
     setPhase("recording");
-    const spokenText = await recognizeSpeech(
-      voicePrefs.voiceAccent ?? "en-GB",
-      20000
-    );
+  }
+
+  function handleDone() {
+    const spokenText = voiceRec.stop();
     if (!spokenText) {
       setSpoken("");
       setQuality("again");
     } else {
-      const cmp = comparePhrases(spokenText, item.content);
+      const cmp = comparePhrases(spokenText, item!.content);
       setSpoken(spokenText);
       setQuality(cmp.incorrect.length === 0 ? "good" : "again");
     }
@@ -208,7 +226,7 @@ NEVER reveal the answer. Reply with only the hint text.`,
       {phase === "prompt" && (
         <>
           <button
-            onClick={() => { setShowHint(false); setHintText(""); if (hintTimerRef.current) clearTimeout(hintTimerRef.current); handleRecord(); }}
+            onClick={handleRecord}
             disabled={!speechSupported()}
             className="btn-coral w-full flex items-center justify-center gap-2 py-4 text-base disabled:opacity-40"
           >
@@ -240,11 +258,24 @@ NEVER reveal the answer. Reply with only the hint text.`,
         </>
       )}
 
-      {/* Recording indicator */}
+      {/* Recording indicator + Done button (Modo B) */}
       {phase === "recording" && (
-        <div className="flex items-center justify-center gap-3 py-4 rounded-xl bg-coral/10 border border-coral/30">
-          <Square size={18} className="text-coral animate-pulse" />
-          <span className="text-coral font-medium">Recording… speak now</span>
+        <div className="space-y-3">
+          <div className="flex items-center justify-center gap-3 py-3 rounded-xl bg-coral/10 border border-coral/30">
+            <span className="h-2 w-2 rounded-full bg-coral animate-pulse" />
+            <span className="text-coral font-medium text-sm">Recording… speak now</span>
+          </div>
+          {(voiceRec.accumulated || voiceRec.interim) && (
+            <p className="text-center text-sm text-paper-muted italic">
+              {voiceRec.accumulated || voiceRec.interim}
+            </p>
+          )}
+          <button
+            onClick={handleDone}
+            className="btn-mint w-full flex items-center justify-center gap-2 py-3 text-base"
+          >
+            <CheckCircle2 size={18} /> Done — compare
+          </button>
         </div>
       )}
 

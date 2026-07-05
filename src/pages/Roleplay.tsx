@@ -13,6 +13,7 @@ import {
   Play,
   X,
   Mic,
+  Square,
 } from "lucide-react";
 import { BrandDots } from "../components/Loader";
 import type { LucideIcon } from "lucide-react";
@@ -21,7 +22,7 @@ import { supabase } from "../lib/supabaseClient";
 import { askCoach, RetryableError } from "../lib/claude";
 import { buildRoleplayPrompt, parseErrors } from "../lib/buildSystemPrompt";
 import { SCENARIOS, type Scenario } from "../lib/scenarios";
-import { speak, pauseSpeech, resumeSpeech } from "../lib/speech";
+import { speak, pauseSpeech, resumeSpeech, createRecognizer, speechSupported, type Recognizer } from "../lib/speech";
 import { useVoicePrefs } from "../lib/useVoicePrefs";
 import type { ChatTurn } from "../lib/types";
 import { generateReport, type SessionReport } from "../lib/sessionReport";
@@ -92,6 +93,9 @@ function RoleplayChat({ scenario, onExit }: { scenario: Scenario; onExit: () => 
   const [generatingReport, setGeneratingReport] = useState(false);
   const [report, setReport] = useState<SessionReport | null>(null);
   const [reportError, setReportError] = useState("");
+  const [listening, setListening] = useState(false);
+  const [interim, setInterim] = useState("");
+  const recognizerRef = useRef<Recognizer | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const systemRef = useRef(profile ? buildRoleplayPrompt(profile, scenario) : "");
 
@@ -104,6 +108,35 @@ function RoleplayChat({ scenario, onExit }: { scenario: Scenario; onExit: () => 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [turns, thinking]);
+
+  // Ocultar hint cuando el usuario empieza a hablar
+  useEffect(() => {
+    if (listening) {
+      setShowHint(false);
+      setHintText("");
+      if (hintTimerRef.current) { clearTimeout(hintTimerRef.current); hintTimerRef.current = null; }
+    }
+  }, [listening]);
+
+  function toggleMic() {
+    if (listening) {
+      recognizerRef.current?.stop();
+      setListening(false);
+      setInterim("");
+      return;
+    }
+    const lang = voicePrefs.voiceAccent ?? (profile?.english_variant === "American" ? "en-US" : "en-GB");
+    const rec = createRecognizer({
+      lang,
+      onInterim: setInterim,
+      onResult: (t) => setInput((prev) => (prev ? prev + " " : "") + t),
+      onEnd: () => { setListening(false); setInterim(""); },
+    });
+    if (!rec) return;
+    recognizerRef.current = rec;
+    rec.start();
+    setListening(true);
+  }
 
   // Arrancar timer de hint cuando el coach termina de responder
   const lastRole = turns[turns.length - 1]?.role;
@@ -427,6 +460,9 @@ Reply with only the hint text.`,
       </div>
 
       <div className="pt-3">
+        {listening && interim && (
+          <p className="text-center text-sm text-paper-muted italic mb-2">{interim}</p>
+        )}
         <div className="card flex items-end gap-2 p-2">
           <textarea
             className="flex-1 resize-none bg-transparent px-2 py-2 text-paper placeholder:text-paper-faint focus:outline-none max-h-32"
@@ -448,6 +484,25 @@ Reply with only the hint text.`,
               }
             }}
           />
+          {speechSupported() && (
+            listening ? (
+              <button
+                onClick={toggleMic}
+                className="flex items-center gap-1.5 px-3 h-10 rounded-xl bg-coral text-ink-900 font-semibold text-sm transition"
+                aria-label="Listo — stop recording"
+              >
+                <Square size={15} /> Listo
+              </button>
+            ) : (
+              <button
+                onClick={toggleMic}
+                className="grid h-10 w-10 place-items-center rounded-xl bg-ink-600 text-paper hover:bg-ink-500 transition"
+                aria-label="Start recording"
+              >
+                <Mic size={18} />
+              </button>
+            )
+          )}
           <button
             onClick={() => send(input)}
             disabled={!input.trim() || thinking}
