@@ -33,8 +33,14 @@ export function getVoices(langPrefix?: string): SpeechSynthesisVoice[] {
 }
 
 /**
- * Crea un reconocedor de voz. onResult recibe el texto final;
- * onInterim recibe el texto provisional mientras hablás.
+ * Crea un reconocedor de voz continuo con auto-restart transparente.
+ *
+ * - continuous=true: el navegador no corta en pausas naturales de la frase.
+ * - Auto-restart: si el navegador cierra la sesión inesperadamente (común en
+ *   mobile Chrome/Android), la reiniciamos sin que el usuario lo note.
+ * - onResult: solo se llama con resultados isFinal (texto confirmado).
+ * - onInterim: texto provisional mientras el usuario habla.
+ * - onEnd: solo se dispara cuando el usuario llama stop() manualmente.
  */
 export function createRecognizer(opts: {
   lang?: string;
@@ -48,8 +54,18 @@ export function createRecognizer(opts: {
 
   const rec = new SR();
   rec.lang = opts.lang ?? "en-GB";
-  rec.continuous = false;
+  rec.continuous = true;      // clave: no cortar en pausas
   rec.interimResults = true;
+
+  let manualStop = false;
+  let endFired = false; // evitar doble llamado a opts.onEnd
+
+  const fireEnd = () => {
+    if (!endFired) {
+      endFired = true;
+      opts.onEnd?.();
+    }
+  };
 
   rec.onresult = (e: any) => {
     let interim = "";
@@ -62,17 +78,49 @@ export function createRecognizer(opts: {
     if (interim && opts.onInterim) opts.onInterim(interim);
     if (final) opts.onResult(final);
   };
-  rec.onend = () => opts.onEnd?.();
+
+  rec.onerror = (e: any) => {
+    // "no-speech" y "audio-capture" no son errores terminales:
+    // el navegador dispara onend después y el auto-restart se encarga.
+    if (e.error !== "no-speech" && e.error !== "audio-capture") {
+      // Error real (permisos denegados, etc.) — no reiniciar
+      manualStop = true;
+      fireEnd();
+    }
+  };
+
+  rec.onend = () => {
+    if (!manualStop) {
+      // El navegador cerró la sesión sin que lo pidamos (común en Android).
+      // Reiniciamos de forma transparente para no perder texto.
+      try {
+        rec.start();
+      } catch {
+        /* ya reiniciando, ignorar */
+      }
+    } else {
+      fireEnd();
+    }
+  };
 
   return {
     start: () => {
+      manualStop = false;
+      endFired = false;
       try {
         rec.start();
       } catch {
         /* ya iniciado */
       }
     },
-    stop: () => rec.stop(),
+    stop: () => {
+      manualStop = true;
+      try {
+        rec.stop();
+      } catch {
+        /* no iniciado */
+      }
+    },
   };
 }
 

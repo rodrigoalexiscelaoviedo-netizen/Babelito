@@ -70,7 +70,7 @@ export default function ShadowingBlock({ text, lang, label = "Listen & repeat" }
     setResult(null);
     setTip("");
 
-    const spokenText = await recognizeSpeech(effectiveLang, 8000);
+    const spokenText = await recognizeSpeech(effectiveLang, 20000);
     setState("processing");
 
     if (!spokenText) {

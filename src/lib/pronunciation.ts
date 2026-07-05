@@ -17,8 +17,12 @@ export interface PronunciationFeedback {
   drillPhrase: string;
 }
 
-/** Wraps createRecognizer in a Promise — resolves with spoken text or null on timeout/error. */
-export function recognizeSpeech(lang = "en-GB", timeoutMs = 8000): Promise<string | null> {
+/**
+ * Wraps createRecognizer in a Promise.
+ * Resolves with the first confirmed (isFinal) spoken text, or null on timeout.
+ * Default timeout: 20 s — largo enough for nervous speakers; auto-restart transparente.
+ */
+export function recognizeSpeech(lang = "en-GB", timeoutMs = 20000): Promise<string | null> {
   if (!speechSupported()) return Promise.resolve(null);
 
   return new Promise((resolve) => {

@@ -95,9 +95,28 @@ function RoleplayChat({ scenario, onExit }: { scenario: Scenario; onExit: () => 
   const scrollRef = useRef<HTMLDivElement>(null);
   const systemRef = useRef(profile ? buildRoleplayPrompt(profile, scenario) : "");
 
+  // ── Hint pasivo ──────────────────────────────────────────────────────────
+  const [showHint, setShowHint] = useState(false);
+  const [hintText, setHintText] = useState("");
+  const [hintLoading, setHintLoading] = useState(false);
+  const hintTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [turns, thinking]);
+
+  // Arrancar timer de hint cuando el coach termina de responder
+  const lastRole = turns[turns.length - 1]?.role;
+  useEffect(() => {
+    if (hintTimerRef.current) clearTimeout(hintTimerRef.current);
+    setShowHint(false);
+    setHintText("");
+    if (!thinking && lastRole === "assistant") {
+      hintTimerRef.current = setTimeout(() => setShowHint(true), 11000);
+    }
+    return () => { if (hintTimerRef.current) clearTimeout(hintTimerRef.current); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [thinking, lastRole, turns.length]);
 
   function handleSpeak(text: string, index: number) {
     speak(text, {
@@ -116,6 +135,27 @@ function RoleplayChat({ scenario, onExit }: { scenario: Scenario; onExit: () => 
     } else {
       pauseSpeech();
       setPaused(true);
+    }
+  }
+
+  async function getHint() {
+    if (!profile || turns.length === 0) return;
+    const lastCoachMsg = [...turns].reverse().find((t) => t.role === "assistant")?.content ?? "";
+    setHintLoading(true);
+    try {
+      const hint = await askCoach({
+        system: `You are an English roleplay coach. The student is stuck and needs a small push.
+Give ONE short hint (max 12 words): a phrase they could say, a vocabulary hint, or a sentence starter.
+Do NOT reveal what the "correct" full answer is. Student level: ${profile.current_level ?? "B1"}.
+Reply with only the hint text.`,
+        messages: [{ role: "user", content: `Coach said: "${lastCoachMsg}"\nGive a brief hint.` }],
+        maxTokens: 50,
+      });
+      setHintText(hint.trim().replace(/^["']|["']$/g, ""));
+    } catch {
+      setHintText('Try: "Could you...", "I\'d like to...", or "Actually..."');
+    } finally {
+      setHintLoading(false);
     }
   }
 
@@ -355,6 +395,30 @@ function RoleplayChat({ scenario, onExit }: { scenario: Scenario; onExit: () => 
             </div>
           </div>
         )}
+
+        {/* ── Hint pasivo ── */}
+        {showHint && !thinking && (
+          <div className="flex justify-start animate-fade-up">
+            <div className="card max-w-[80%] px-3 py-2.5 border-gold/30">
+              {hintText ? (
+                <>
+                  <p className="text-[10px] text-gold font-mono uppercase tracking-widest mb-1">💡 Hint</p>
+                  <p className="text-sm text-paper-muted">{hintText}</p>
+                </>
+              ) : (
+                <button
+                  onClick={getHint}
+                  disabled={hintLoading}
+                  className="flex items-center gap-2 text-xs text-paper-faint hover:text-gold transition disabled:opacity-60"
+                >
+                  {hintLoading ? <BrandDots /> : <span>💡</span>}
+                  {hintLoading ? "Getting hint…" : "Need a hint?"}
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
         {thinking && (
           <div className="flex justify-start">
             <div className="card px-4 py-3 text-paper-muted">…</div>
@@ -369,7 +433,14 @@ function RoleplayChat({ scenario, onExit }: { scenario: Scenario; onExit: () => 
             rows={1}
             placeholder="Your line… (type /end for feedback)"
             value={input}
-            onChange={(e) => setInput(e.target.value)}
+            onChange={(e) => {
+              setInput(e.target.value);
+              if (e.target.value.trim()) {
+                setShowHint(false);
+                setHintText("");
+                if (hintTimerRef.current) { clearTimeout(hintTimerRef.current); hintTimerRef.current = null; }
+              }
+            }}
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();

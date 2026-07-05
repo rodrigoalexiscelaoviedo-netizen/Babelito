@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Mic, Square, Volume2, Loader2, CheckCircle2, XCircle, Layers, ArrowRight, BookOpen, Library } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
@@ -11,6 +11,8 @@ import Loader from "../components/Loader";
 import Maica from "../components/Maica";
 import { checkAchievements, markSeen, type AchievementDef } from "../lib/achievements";
 import AchievementCelebration from "../components/AchievementCelebration";
+import { askCoach } from "../lib/claude";
+import { BrandDots } from "../components/Loader";
 
 type SessionState = "loading" | "empty" | "prompt" | "recording" | "result" | "done";
 
@@ -25,6 +27,12 @@ export default function Review() {
   const [reviewedCount, setReviewedCount] = useState(0);
   const [newAchievements, setNewAchievements] = useState<AchievementDef[]>([]);
 
+  // ── Hint pasivo ──────────────────────────────────────────────────────────
+  const [showHint, setShowHint] = useState(false);
+  const [hintText, setHintText] = useState("");
+  const [hintLoading, setHintLoading] = useState(false);
+  const hintTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   useEffect(() => {
     if (!profile) return;
     getDueItems(profile.id).then((due) => {
@@ -36,12 +44,42 @@ export default function Review() {
   const item = items[idx] ?? null;
   const total = items.length;
 
+  // Arrancar timer de hint en "prompt" phase
+  useEffect(() => {
+    if (hintTimerRef.current) clearTimeout(hintTimerRef.current);
+    setShowHint(false);
+    setHintText("");
+    if (phase === "prompt") {
+      hintTimerRef.current = setTimeout(() => setShowHint(true), 11000);
+    }
+    return () => { if (hintTimerRef.current) clearTimeout(hintTimerRef.current); };
+  }, [phase, idx]);
+
+  async function getHint() {
+    if (!item || !profile) return;
+    setHintLoading(true);
+    try {
+      const hint = await askCoach({
+        system: `You are a memory coach. The student needs to recall an English phrase.
+Give ONE very short hint (max 10 words): a rhyme, first letter, or structural clue.
+NEVER reveal the answer. Reply with only the hint text.`,
+        messages: [{ role: "user", content: `The student needs to say in English: "${item.prompt}". Give a hint (don't reveal: "${item.content}").` }],
+        maxTokens: 40,
+      });
+      setHintText(hint.trim().replace(/^["']|["']$/g, ""));
+    } catch {
+      setHintText(`Starts with: "${item.content[0].toUpperCase()}…"`);
+    } finally {
+      setHintLoading(false);
+    }
+  }
+
   async function handleRecord() {
     if (!item) return;
     setPhase("recording");
     const spokenText = await recognizeSpeech(
       voicePrefs.voiceAccent ?? "en-GB",
-      8000
+      20000
     );
     if (!spokenText) {
       setSpoken("");
@@ -168,13 +206,38 @@ export default function Review() {
 
       {/* Record button — only in prompt phase */}
       {phase === "prompt" && (
-        <button
-          onClick={handleRecord}
-          disabled={!speechSupported()}
-          className="btn-coral w-full flex items-center justify-center gap-2 py-4 text-base disabled:opacity-40"
-        >
-          <Mic size={20} /> Say it
-        </button>
+        <>
+          <button
+            onClick={() => { setShowHint(false); setHintText(""); if (hintTimerRef.current) clearTimeout(hintTimerRef.current); handleRecord(); }}
+            disabled={!speechSupported()}
+            className="btn-coral w-full flex items-center justify-center gap-2 py-4 text-base disabled:opacity-40"
+          >
+            <Mic size={20} /> Say it
+          </button>
+
+          {/* ── Hint pasivo ── */}
+          {showHint && (
+            <div className="animate-fade-up">
+              <div className="card px-3 py-2.5 border-gold/30 text-center">
+                {hintText ? (
+                  <>
+                    <p className="text-[10px] text-gold font-mono uppercase tracking-widest mb-1">💡 Hint</p>
+                    <p className="text-sm text-paper-muted">{hintText}</p>
+                  </>
+                ) : (
+                  <button
+                    onClick={getHint}
+                    disabled={hintLoading}
+                    className="flex items-center justify-center gap-2 text-xs text-paper-faint hover:text-gold transition w-full disabled:opacity-60"
+                  >
+                    {hintLoading ? <BrandDots /> : <span>💡</span>}
+                    {hintLoading ? "Getting hint…" : "Need a hint?"}
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+        </>
       )}
 
       {/* Recording indicator */}

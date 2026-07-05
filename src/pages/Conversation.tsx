@@ -50,6 +50,12 @@ export default function Conversation() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const systemRef = useRef<string>("");
 
+  // ── Hint pasivo ──────────────────────────────────────────────────────────
+  const [showHint, setShowHint] = useState(false);
+  const [hintText, setHintText] = useState("");
+  const [hintLoading, setHintLoading] = useState(false);
+  const hintTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   useEffect(() => {
     if (!profile) return;
     (async () => {
@@ -70,6 +76,28 @@ export default function Conversation() {
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [turns, thinking]);
+
+  // Arrancar timer de hint cuando el coach termina de responder
+  const lastRole = turns[turns.length - 1]?.role;
+  useEffect(() => {
+    if (hintTimerRef.current) clearTimeout(hintTimerRef.current);
+    setShowHint(false);
+    setHintText("");
+    if (!thinking && lastRole === "assistant") {
+      hintTimerRef.current = setTimeout(() => setShowHint(true), 11000);
+    }
+    return () => { if (hintTimerRef.current) clearTimeout(hintTimerRef.current); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [thinking, lastRole, turns.length]);
+
+  // Ocultar hint cuando el usuario empieza a escribir o a grabar
+  useEffect(() => {
+    if (input.trim() || listening) {
+      setShowHint(false);
+      setHintText("");
+      if (hintTimerRef.current) { clearTimeout(hintTimerRef.current); hintTimerRef.current = null; }
+    }
+  }, [input, listening]);
 
   async function ensureSession(): Promise<string | null> {
     if (sessionId || !profile) return sessionId;
@@ -150,6 +178,27 @@ export default function Conversation() {
       setReportError(e instanceof Error ? e.message : "Could not generate report.");
     } finally {
       setGeneratingReport(false);
+    }
+  }
+
+  async function getHint() {
+    if (!profile || turns.length === 0) return;
+    const lastCoachMsg = [...turns].reverse().find((t) => t.role === "assistant")?.content ?? "";
+    setHintLoading(true);
+    try {
+      const hint = await askCoach({
+        system: `You are a friendly English coach. The student is struggling to respond.
+Give ONE very short hint (max 12 words): a sentence starter, a key word, or a simple phrase they could use.
+Do NOT give the full answer. Student level: ${profile.current_level ?? "B1"}.
+Reply with only the hint text — no explanation, no punctuation around it.`,
+        messages: [{ role: "user", content: `Coach said: "${lastCoachMsg}"\nGive a hint to help the student respond.` }],
+        maxTokens: 50,
+      });
+      setHintText(hint.trim().replace(/^["']|["']$/g, ""));
+    } catch {
+      setHintText('Try: "I think...", "Actually...", or "In my opinion..."');
+    } finally {
+      setHintLoading(false);
     }
   }
 
@@ -296,6 +345,30 @@ export default function Conversation() {
             </div>
           </div>
         )}
+
+        {/* ── Hint pasivo — aparece a los 11 s sin actividad ── */}
+        {showHint && !thinking && (
+          <div className="flex justify-start animate-fade-up">
+            <div className="card max-w-[80%] px-3 py-2.5 border-gold/30">
+              {hintText ? (
+                <>
+                  <p className="text-[10px] text-gold font-mono uppercase tracking-widest mb-1">💡 Hint</p>
+                  <p className="text-sm text-paper-muted">{hintText}</p>
+                </>
+              ) : (
+                <button
+                  onClick={getHint}
+                  disabled={hintLoading}
+                  className="flex items-center gap-2 text-xs text-paper-faint hover:text-gold transition disabled:opacity-60"
+                >
+                  {hintLoading ? <BrandDots /> : <span>💡</span>}
+                  {hintLoading ? "Getting hint…" : "Need a hint?"}
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
         {thinking && (
           <div className="flex justify-start">
             <div className="card px-4 py-3 text-paper-muted">
