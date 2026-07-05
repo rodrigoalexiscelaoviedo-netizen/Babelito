@@ -81,7 +81,11 @@ export async function getDueItems(userId: string): Promise<ReviewItem[]> {
   return (data ?? []) as ReviewItem[];
 }
 
-/** Adds an item to the user's review deck. Silently ignores duplicates. */
+/**
+ * Adds an item to the user's review deck.
+ * Idempotente: si ya existe (unique constraint) no tira 409 — lo ignora.
+ * Returns "added" | "exists" | "error".
+ */
 export async function addToReview(
   userId: string,
   payload: {
@@ -90,24 +94,32 @@ export async function addToReview(
     prompt: string;
     source_ref: string;
   }
-): Promise<void> {
-  const { error } = await supabase.from("review_items").insert({
-    user_id: userId,
-    item_type: payload.item_type,
-    content: payload.content,
-    prompt: payload.prompt,
-    source_ref: payload.source_ref,
-    interval_days: 1,
-    ease: 2.5,
-    reps: 0,
-    next_review: today(),
-    last_reviewed: null,
-  });
+): Promise<"added" | "exists" | "error"> {
+  const { data, error } = await supabase
+    .from("review_items")
+    .upsert(
+      {
+        user_id: userId,
+        item_type: payload.item_type,
+        content: payload.content,
+        prompt: payload.prompt,
+        source_ref: payload.source_ref,
+        interval_days: 1,
+        ease: 2.5,
+        reps: 0,
+        next_review: today(),
+        last_reviewed: null,
+      },
+      { onConflict: "user_id,item_type,content", ignoreDuplicates: true }
+    )
+    .select("id");
 
-  // 23505 = unique_violation — item already in deck, ignore
-  if (error && error.code !== "23505") {
+  if (error) {
     console.error("addToReview:", error.message);
+    return "error";
   }
+  // ignoreDuplicates: conflicting rows are skipped and NOT returned
+  return data && data.length > 0 ? "added" : "exists";
 }
 
 /** Recalculates SM-2 fields and updates the row in the DB. */

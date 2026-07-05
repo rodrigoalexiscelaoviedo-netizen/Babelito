@@ -22,6 +22,7 @@ export default function Chunks() {
   const { profile } = useAuth();
   const [chunks, setChunks] = useState<Chunk[]>([]);
   const [learned, setLearned] = useState<Set<number>>(new Set());
+  const [inDeck, setInDeck] = useState<Set<number>>(new Set());
   const [cat, setCat] = useState<string>("all");
   const [loading, setLoading] = useState(true);
   const [drill, setDrill] = useState(false);
@@ -29,12 +30,14 @@ export default function Chunks() {
   useEffect(() => {
     if (!profile) return;
     (async () => {
-      const [{ data: ch }, { data: uc }] = await Promise.all([
+      const [{ data: ch }, { data: uc }, { data: ri }] = await Promise.all([
         supabase.from("chunks").select("*").order("id"),
         supabase.from("user_chunks").select("chunk_id").eq("user_id", profile.id),
+        supabase.from("review_items").select("source_ref").eq("user_id", profile.id).eq("item_type", "chunk"),
       ]);
       setChunks((ch as Chunk[]) ?? []);
       setLearned(new Set((uc ?? []).map((r) => r.chunk_id)));
+      setInDeck(new Set((ri ?? []).map((r) => parseInt(r.source_ref, 10)).filter(Boolean)));
       setLoading(false);
     })();
   }, [profile]);
@@ -50,6 +53,19 @@ export default function Chunks() {
       await supabase.from("user_chunks").upsert({ user_id: profile.id, chunk_id: id });
     }
     setLearned(next);
+  }
+
+  async function handleAddReview(chunk: Chunk) {
+    if (!profile) return;
+    const result = await addToReview(profile.id, {
+      item_type: "chunk",
+      content: chunk.english,
+      prompt: chunk.spanish,
+      source_ref: String(chunk.id),
+    });
+    if (result !== "error") {
+      setInDeck((prev) => new Set(prev).add(chunk.id));
+    }
   }
 
   if (loading) return <Loader />;
@@ -104,7 +120,9 @@ export default function Chunks() {
             key={c.id}
             chunk={c}
             learned={learned.has(c.id)}
+            inDeck={inDeck.has(c.id)}
             onToggle={() => toggleLearned(c.id)}
+            onAddReview={() => handleAddReview(c)}
           />
         ))}
       </div>
@@ -112,24 +130,22 @@ export default function Chunks() {
   );
 }
 
-function FlipCard({ chunk, learned, onToggle }: { chunk: Chunk; learned: boolean; onToggle: () => void }) {
-  const { profile } = useAuth();
+function FlipCard({
+  chunk,
+  learned,
+  inDeck,
+  onToggle,
+  onAddReview,
+}: {
+  chunk: Chunk;
+  learned: boolean;
+  inDeck: boolean;
+  onToggle: () => void;
+  onAddReview: () => void;
+}) {
   const voicePrefs = useVoicePrefs();
   const [face, setFace] = useState(0); // 0 eng, 1 spa, 2 example, 3 british
   const [showShadow, setShowShadow] = useState(false);
-  const [addedToReview, setAddedToReview] = useState(false);
-
-  async function handleAddReview(e: React.MouseEvent) {
-    e.stopPropagation();
-    if (!profile) return;
-    await addToReview(profile.id, {
-      item_type: "chunk",
-      content: chunk.english,
-      prompt: chunk.spanish,
-      source_ref: String(chunk.id),
-    });
-    setAddedToReview(true);
-  }
 
   const faces = [
     { tag: "English", body: chunk.english },
@@ -178,13 +194,14 @@ function FlipCard({ chunk, learned, onToggle }: { chunk: Chunk; learned: boolean
           <Mic size={13} /> {showShadow ? "Hide" : "Repeat"}
         </button>
         <button
-          onClick={handleAddReview}
+          onClick={(e) => { e.stopPropagation(); onAddReview(); }}
+          disabled={inDeck}
           className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition ${
-            addedToReview ? "bg-gold/20 text-gold" : "bg-ink-600 hover:bg-ink-500 text-paper"
+            inDeck ? "bg-gold/20 text-gold cursor-default" : "bg-ink-600 hover:bg-ink-500 text-paper"
           }`}
-          title="Add to oral review deck"
+          title={inDeck ? "Already in your deck" : "Add to oral review deck"}
         >
-          <Layers size={13} /> {addedToReview ? "In deck" : "Review"}
+          <Layers size={13} /> {inDeck ? "In deck" : "Review"}
         </button>
         <div className="flex-1" />
         <button
