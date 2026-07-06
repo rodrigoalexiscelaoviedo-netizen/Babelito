@@ -1,5 +1,5 @@
 import { supabase } from "./supabaseClient";
-import { askCoach } from "./claude";
+import { askCoach, RetryableError } from "./claude";
 
 export interface StoryQuestion {
   question: string;
@@ -70,10 +70,11 @@ Generate a reading comprehension story. Respond ONLY with a single valid JSON ob
   ]
 }
 Rules:
-- content: 200-350 words, British English, clear narrative, engaging
-- 3-4 comprehension questions, each with exactly 4 options
+- content: EXACTLY 180-220 words, British English, clear narrative, engaging. DO NOT exceed 220 words.
+- 3 comprehension questions only (not 4), each with exactly 4 options
 - correct_index is 0-based (0=first option)
-- Keep the level appropriate: A2=simple vocabulary, B1=moderate, B2=advanced idioms`;
+- Keep the level appropriate: A2=simple vocabulary, B1=moderate, B2=advanced idioms
+- Be concise. Short story, short questions. The entire JSON response must fit in 2000 tokens.`;
 
 export async function generateStory(
   topic: string,
@@ -86,28 +87,36 @@ export async function generateStory(
 
   const userMsg = `Topic: ${topic}. Level: ${level}.${interests ? ` Context/interests: ${interests}.` : ""}`;
 
-  const raw = await askCoach({
-    system: GENERATE_SYSTEM,
-    messages: [{ role: "user", content: userMsg }],
-    maxTokens: 1500,
-    temperature: 0.8,
-  });
+  let raw: string;
+  try {
+    raw = await askCoach({
+      system: GENERATE_SYSTEM,
+      messages: [{ role: "user", content: userMsg }],
+      maxTokens: 2500,
+      temperature: 0.8,
+    });
+  } catch (e) {
+    if (e instanceof RetryableError) {
+      throw new Error("El coach está ocupado, probá de nuevo en unos segundos.");
+    }
+    throw e;
+  }
 
   // Parse JSON (strip markdown if present)
   const cleaned = raw.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
   const start = cleaned.indexOf("{");
   const end = cleaned.lastIndexOf("}");
   if (start === -1 || end === -1) {
-    console.error("generateStory: unexpected AI response (no JSON found):", raw);
-    throw new Error("El coach está ocupado ahora mismo. Probá de nuevo en un momento.");
+    console.error("generateStory: response truncated or no JSON found:", raw);
+    throw new Error("La historia salió muy larga. Probá con un tema más simple o con menos palabras.");
   }
 
   let parsed: { title: string; content: string; questions: StoryQuestion[] };
   try {
     parsed = JSON.parse(cleaned.slice(start, end + 1));
   } catch {
-    console.error("generateStory: JSON parse failed. Raw:", raw);
-    throw new Error("El coach está ocupado ahora mismo. Probá de nuevo en un momento.");
+    console.error("generateStory: JSON parse failed (likely truncated). Raw:", raw);
+    throw new Error("La historia salió muy larga. Probá con un tema más simple o con menos palabras.");
   }
 
   const { data, error } = await supabase
