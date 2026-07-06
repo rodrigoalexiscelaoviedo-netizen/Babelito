@@ -52,11 +52,24 @@ export function useSingleUtterance(lang: string): SingleUtteranceAPI {
     recRef.current      = rec;
 
     rec.onresult = (e: any) => {
+      // ── DIAGNÓSTICO ────────────────────────────────────────────────────────
+      console.log(
+        `[SpeechRec] onresult — resultIndex=${e.resultIndex} results.length=${e.results.length}`
+      );
+      for (let i = 0; i < e.results.length; i++) {
+        const t = e.results[i][0].transcript as string;
+        const final = e.results[i].isFinal;
+        const marker = i < e.resultIndex ? "SKIP(old)" : final ? "FINAL" : "interim";
+        console.log(`  [${i}] ${marker}: "${t}"`);
+      }
+      // ── fin diagnóstico ───────────────────────────────────────────────────
+
       let interimText = "";
       for (let i = e.resultIndex; i < e.results.length; i++) {
         const t = e.results[i][0].transcript as string;
         if (e.results[i].isFinal) {
           finalsRef.current.push(t);
+          console.log(`[SpeechRec] finals so far:`, [...finalsRef.current]);
           setInterim("");
         } else {
           interimText += t;
@@ -79,10 +92,11 @@ export function useSingleUtterance(lang: string): SingleUtteranceAPI {
 
     // onend siempre se dispara al cerrar (silence, stop(), abort(), error)
     rec.onend = () => {
+      const text = finalsRef.current.join(" ").trim();
+      console.log(`[SpeechRec] onend — finals=`, [...finalsRef.current], `→ result="${text}"`);
       setIsRecording(false);
       setInterim("");
       recRef.current = null;
-      const text = finalsRef.current.join(" ").trim();
       const cb = onDoneRef.current;
       onDoneRef.current = null;
       cb?.(text);

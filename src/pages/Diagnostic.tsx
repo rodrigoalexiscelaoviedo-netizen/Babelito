@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Mic, Square, Volume2 } from "lucide-react";
+import { Mic, Square, Volume2, X } from "lucide-react";
 import { supabase } from "../lib/supabaseClient";
 import { useAuth } from "../context/AuthContext";
 import { DIAGNOSTIC, estimateLevel } from "../lib/diagnosticQuestions";
@@ -50,6 +50,18 @@ export default function Diagnostic() {
   const [oralReadingLevel, setOralReadingLevel] = useState<Level | null>(null);
   const [oralOpenLevel, setOralOpenLevel] = useState<Level | null>(null);
   const [finalLevel, setFinalLevel] = useState<Level | null>(null);
+
+  // ── Exit confirmation ────────────────────────────────────────────────────────
+  const [confirmExit, setConfirmExit] = useState(false);
+
+  function handleExit() {
+    const hasProgress = phase !== "text" || answers.length > 0;
+    if (hasProgress) {
+      setConfirmExit(true);
+    } else {
+      navigate("/");
+    }
+  }
 
   const q = DIAGNOSTIC[idx];
   const isLast = idx === DIAGNOSTIC.length - 1;
@@ -263,6 +275,43 @@ export default function Diagnostic() {
     setPhase("done");
   }
 
+  // ── Exit button + confirmation overlay (shared across all phases) ───────────
+
+  const exitButton = phase !== "done" && phase !== "evaluating" ? (
+    <button
+      onClick={handleExit}
+      className="fixed top-4 right-4 z-50 p-2 rounded-full bg-ink-700/80 hover:bg-ink-600 text-paper-muted hover:text-paper transition"
+      aria-label="Exit diagnostic"
+    >
+      <X size={18} />
+    </button>
+  ) : null;
+
+  const exitOverlay = confirmExit ? (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink-900/80 p-6">
+      <div className="card w-full max-w-sm p-6 text-center animate-fade-up">
+        <p className="font-display font-bold text-lg mb-2">¿Salir del test?</p>
+        <p className="text-sm text-paper-muted mb-6">
+          Perdés el progreso de esta sesión. Podés volver a hacerlo cuando quieras.
+        </p>
+        <div className="flex gap-3">
+          <button
+            onClick={() => setConfirmExit(false)}
+            className="flex-1 py-2.5 rounded-xl bg-ink-600 hover:bg-ink-500 text-paper font-medium transition"
+          >
+            Seguir
+          </button>
+          <button
+            onClick={() => navigate("/")}
+            className="flex-1 py-2.5 rounded-xl bg-coral/20 hover:bg-coral/30 text-coral font-medium transition"
+          >
+            Salir
+          </button>
+        </div>
+      </div>
+    </div>
+  ) : null;
+
   // ── Render: evaluating ──────────────────────────────────────────────────────
 
   if (phase === "evaluating") {
@@ -325,6 +374,8 @@ export default function Diagnostic() {
   if (phase === "oral_open") {
     return (
       <div className="min-h-screen flex items-center justify-center p-6">
+        {exitButton}
+        {exitOverlay}
         <div className="w-full max-w-lg animate-fade-up">
           <div className="mb-6">
             <p className="eyebrow mb-1">Part C · Quick chat</p>
@@ -415,6 +466,8 @@ export default function Diagnostic() {
 
     return (
       <div className="min-h-screen flex items-center justify-center p-6">
+        {exitButton}
+        {exitOverlay}
         <div className="w-full max-w-lg animate-fade-up">
           <div className="flex gap-1 mb-6">
             {READING_SENTENCES.map((_, i) => (
