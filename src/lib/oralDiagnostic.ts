@@ -60,9 +60,9 @@ export async function generateOpenQuestion(interests?: string): Promise<string> 
       ? `The student is interested in: ${interests}.`
       : "The student is a general adult learner.";
     const raw = await askCoach({
-      system: `You are an English tutor. Generate ONE short, natural conversational question for an adult language learner. The question should be easy to answer in 2-4 sentences. Reply with ONLY the question text — no introduction, no quotation marks, no extra text.`,
+      system: `You are an English tutor. Generate ONE short, natural conversational question for an adult language learner. The question should be easy to answer in 2-4 sentences. Respond with exactly ONE complete question sentence. No introduction, no preamble, no quotation marks, no extra text — just the question.`,
       messages: [{ role: "user", content: context }],
-      maxTokens: 60,
+      maxTokens: 150,
       temperature: 0.8,
     });
     return raw.trim().replace(/^["']|["']$/g, "");

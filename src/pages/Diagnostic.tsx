@@ -6,7 +6,7 @@ import { useAuth } from "../context/AuthContext";
 import { DIAGNOSTIC, estimateLevel } from "../lib/diagnosticQuestions";
 import type { Level, DiagnosticAnswer } from "../lib/types";
 import { speechSupported, speak } from "../lib/speech";
-import { useVoiceRecorder } from "../lib/useVoiceRecorder";
+import { useSingleUtterance } from "../lib/useSingleUtterance";
 import { BrandDots } from "../components/Loader";
 import {
   READING_SENTENCES,
@@ -21,7 +21,7 @@ type Phase = "text" | "oral_reading" | "oral_open" | "evaluating" | "done";
 export default function Diagnostic() {
   const { session, profile, refreshProfile } = useAuth();
   const navigate = useNavigate();
-  const voiceRec = useVoiceRecorder("en-GB");
+  const voiceRec = useSingleUtterance("en-GB");
 
   // ── Text phase ──────────────────────────────────────────────────────────────
   const [idx, setIdx] = useState(0);
@@ -141,13 +141,14 @@ export default function Diagnostic() {
   function handleStartReading() {
     setCurrentTranscript("");
     setHasRecorded(false);
-    voiceRec.start();
+    voiceRec.start((text) => {
+      setCurrentTranscript(text);
+      setHasRecorded(true);
+    });
   }
 
   function handleStopReading() {
-    const text = voiceRec.stop();
-    setCurrentTranscript(text || voiceRec.accumulated);
-    setHasRecorded(true);
+    voiceRec.stop(); // onend dispara el callback con el texto final
   }
 
   function handleNextSentence() {
@@ -168,13 +169,14 @@ export default function Diagnostic() {
   function handleStartOpen() {
     setOpenTranscript("");
     setHasAnswered(false);
-    voiceRec.start();
+    voiceRec.start((text) => {
+      setOpenTranscript(text);
+      setHasAnswered(true);
+    });
   }
 
   function handleStopOpen() {
-    const text = voiceRec.stop();
-    setOpenTranscript(text || voiceRec.accumulated);
-    setHasAnswered(true);
+    voiceRec.stop(); // onend dispara el callback con el texto final
   }
 
   function handleFinishOpen() {
@@ -355,7 +357,7 @@ export default function Diagnostic() {
                       <span className="text-xs text-coral font-mono">Recording…</span>
                     </div>
                     <p className="text-sm text-paper-muted italic min-h-[24px]">
-                      {voiceRec.accumulated || voiceRec.interim || "Speak now…"}
+                      {voiceRec.interim || "Speak now…"}
                     </p>
                   </>
                 ) : hasAnswered ? (
@@ -409,7 +411,7 @@ export default function Diagnostic() {
 
   if (phase === "oral_reading") {
     const sentence = READING_SENTENCES[readingIdx];
-    const liveText = voiceRec.accumulated || voiceRec.interim;
+    const liveText = voiceRec.interim;
 
     return (
       <div className="min-h-screen flex items-center justify-center p-6">
