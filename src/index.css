@@ -159,6 +159,10 @@ body {
 .maica-s2            { animation: maica-star          1.5s ease-in-out 0.5s  infinite; }
 .maica-s3            { animation: maica-star          1.5s ease-in-out 1.0s  infinite; }
 
+/* ── Voice waveform indicator ────────────────────────────────────────────── */
+@keyframes voice-bar { 0%,100%{height:4px} 50%{height:20px} }
+.voice-bar { animation: voice-bar 0.7s ease-in-out infinite; }
+
 /* Respeta usuarios que piden menos movimiento */
 @media (prefers-reduced-motion: reduce) {
   *,
