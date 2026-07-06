@@ -50,6 +50,7 @@ export default function Dashboard() {
   // Which of the 3 daily tasks the user has checked off
   const [reviewsDue, setReviewsDue] = useState(0);
   const [checked, setChecked] = useState({ chunk: false, convo: false, word: false });
+  const [activeLast2Days, setActiveLast2Days] = useState(false);
 
   const allChecked = checked.chunk && checked.convo && checked.word;
 
@@ -58,7 +59,7 @@ export default function Dashboard() {
     (async () => {
       const [{ data: sessions }, { data: errs }, { count: learned }, todayLesson, streakInfo, due] =
         await Promise.all([
-          supabase.from("sessions").select("created_at").eq("user_id", profile.id),
+          supabase.from("sessions").select("created_at, completed").eq("user_id", profile.id),
           supabase.from("errors").select("error_type").eq("user_id", profile.id),
           supabase
             .from("user_chunks")
@@ -79,6 +80,18 @@ export default function Dashboard() {
       setStats({ sessions: sessions?.length ?? 0, topError, chunksLearned: learned ?? 0 });
       setStreak(streakInfo.streak);
       setFreezesLeft(streakInfo.freezesLeft);
+
+      const todayStr = new Date().toISOString().slice(0, 10);
+      const yesterdayStr = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+      type SessionRow = { created_at: string; completed: boolean };
+      const activeLast2 = (sessions as SessionRow[] ?? []).some(
+        (s) => s.completed && (s.created_at.slice(0, 10) === todayStr || s.created_at.slice(0, 10) === yesterdayStr)
+      );
+      setActiveLast2Days(activeLast2);
+      const todayConvoDone = (sessions as SessionRow[] ?? []).some(
+        (s) => s.completed && s.created_at.slice(0, 10) === todayStr
+      );
+      if (todayConvoDone) setChecked((prev) => ({ ...prev, convo: true }));
 
       // Check achievements on load (fire-and-forget)
       checkAchievements(profile.id).then((newly) => {
@@ -136,13 +149,13 @@ export default function Dashboard() {
 
   const maicaMood: MaicaMood = lesson?.completed
     ? "celebrating"
-    : streak === 0 && (stats?.sessions ?? 0) > 0
+    : !activeLast2Days && streak === 0 && (stats?.sessions ?? 0) > 0
     ? "sleeping"
     : "happy";
 
   const maicaText = lesson?.completed
     ? "¡Maica está orgullosa! 🐾"
-    : streak === 0 && (stats?.sessions ?? 0) > 0
+    : !activeLast2Days && streak === 0 && (stats?.sessions ?? 0) > 0
     ? "Maica te extrañó 🐾"
     : "¡Maica te está esperando! 🐾";
 

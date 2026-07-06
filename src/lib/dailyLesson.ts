@@ -196,30 +196,50 @@ export interface StreakInfo {
 export async function getStreakInfo(userId: string, consume = true): Promise<StreakInfo> {
   const { freezesLeft: initialFreezes } = await ensureFreezesFresh(userId);
 
-  const { data } = await supabase
-    .from("daily_lessons")
-    .select("lesson_date")
-    .eq("user_id", userId)
-    .eq("completed", true)
-    .order("lesson_date", { ascending: false })
-    .limit(400);
+  const [{ data: dlData }, { data: sessData }, { data: storyData }] = await Promise.all([
+    supabase
+      .from("daily_lessons")
+      .select("lesson_date")
+      .eq("user_id", userId)
+      .eq("completed", true)
+      .order("lesson_date", { ascending: false })
+      .limit(400),
+    supabase
+      .from("sessions")
+      .select("created_at")
+      .eq("user_id", userId)
+      .eq("completed", true)
+      .order("created_at", { ascending: false })
+      .limit(400),
+    supabase
+      .from("story_progress")
+      .select("created_at")
+      .eq("user_id", userId)
+      .eq("completed", true)
+      .order("created_at", { ascending: false })
+      .limit(400),
+  ]);
 
-  if (!data || data.length === 0) return { streak: 0, freezesLeft: initialFreezes };
+  const activeDates = new Set<string>();
+  (dlData ?? []).forEach((r: { lesson_date: string }) => activeDates.add(r.lesson_date));
+  (sessData ?? []).forEach((r: { created_at: string }) => activeDates.add(r.created_at.slice(0, 10)));
+  (storyData ?? []).forEach((r: { created_at: string }) => activeDates.add(r.created_at.slice(0, 10)));
 
-  const completedDates = new Set((data as { lesson_date: string }[]).map((r) => r.lesson_date));
+  if (activeDates.size === 0) return { streak: 0, freezesLeft: initialFreezes };
+
   const cursor = new Date();
   let cursorStr = cursor.toISOString().slice(0, 10);
   let streak = 0;
   let freezesUsed = 0;
 
   // Grace period: if today not done yet, start from yesterday
-  if (!completedDates.has(cursorStr)) {
+  if (!activeDates.has(cursorStr)) {
     cursor.setDate(cursor.getDate() - 1);
     cursorStr = cursor.toISOString().slice(0, 10);
   }
 
   for (let i = 0; i < 400; i++) {
-    if (completedDates.has(cursorStr)) {
+    if (activeDates.has(cursorStr)) {
       streak++;
     } else if (freezesUsed < initialFreezes) {
       // Freeze covers one missing day — streak continues, day not counted

@@ -31,7 +31,7 @@ export default function Profile() {
   // Voice settings
   const [voiceAccent, setVoiceAccent] = useState(profile?.voice_accent ?? "en-GB");
   const [voiceName, setVoiceName] = useState(profile?.voice_name ?? "");
-  const [voiceRate, setVoiceRate] = useState<number>(profile?.voice_rate ?? 0.95);
+  const [voiceRate, setVoiceRate] = useState<number>(parseFloat(String(profile?.voice_rate ?? 0.95)));
   const [availableAccents, setAvailableAccents] = useState<string[]>(["en-GB", "en-US"]);
   const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([]);
 

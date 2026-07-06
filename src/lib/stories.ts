@@ -89,7 +89,7 @@ export async function generateStory(
   const raw = await askCoach({
     system: GENERATE_SYSTEM,
     messages: [{ role: "user", content: userMsg }],
-    maxTokens: 1000,
+    maxTokens: 1500,
     temperature: 0.8,
   });
 
@@ -97,13 +97,18 @@ export async function generateStory(
   const cleaned = raw.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
   const start = cleaned.indexOf("{");
   const end = cleaned.lastIndexOf("}");
-  if (start === -1 || end === -1) throw new Error("Invalid story format from AI");
+  if (start === -1 || end === -1) {
+    console.error("generateStory: unexpected AI response (no JSON found):", raw);
+    throw new Error("El coach está ocupado ahora mismo. Probá de nuevo en un momento.");
+  }
 
-  const parsed = JSON.parse(cleaned.slice(start, end + 1)) as {
-    title: string;
-    content: string;
-    questions: StoryQuestion[];
-  };
+  let parsed: { title: string; content: string; questions: StoryQuestion[] };
+  try {
+    parsed = JSON.parse(cleaned.slice(start, end + 1));
+  } catch {
+    console.error("generateStory: JSON parse failed. Raw:", raw);
+    throw new Error("El coach está ocupado ahora mismo. Probá de nuevo en un momento.");
+  }
 
   const { data, error } = await supabase
     .from("stories")

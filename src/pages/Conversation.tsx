@@ -171,6 +171,14 @@ export default function Conversation() {
     try {
       const r = await generateReport(profile.id, sessionId, "conversation", turns);
       setReport(r);
+      const userTurns = turns.filter((t) => t.role === "user").length;
+      if (sessionId && userTurns >= 3) {
+        void supabase.from("sessions").update({
+          completed: true,
+          turn_count: userTurns,
+          ended_at: new Date().toISOString(),
+        }).eq("id", sessionId);
+      }
       checkAchievements(profile.id).then((newly) => {
         if (newly.length > 0) setNewAchievements(newly);
       });
