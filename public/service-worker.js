@@ -2,18 +2,12 @@
 // Handles notification clicks to open the app.
 // Note: push scheduling is done from the main thread (notifications.ts + setInterval in App.tsx).
 
-const APP_CACHE = "babelito-v1";
-
 self.addEventListener("install", (event) => {
   event.waitUntil(self.skipWaiting());
 });
 
 self.addEventListener("activate", (event) => {
   event.waitUntil(self.clients.claim());
-});
-
-self.addEventListener("fetch", () => {
-  // Pass through — no caching strategy needed for now.
 });
 
 self.addEventListener("notificationclick", (event) => {
