@@ -6,7 +6,7 @@ import { getDueItems, applyReview, type ReviewItem, type ReviewQuality } from ".
 import { speak, speechSupported } from "../lib/speech";
 import { useVoicePrefs } from "../lib/useVoicePrefs";
 import { comparePhrases } from "../lib/pronunciation";
-import { useVoiceRecorder } from "../lib/useVoiceRecorder";
+import { useSingleUtterance } from "../lib/useSingleUtterance";
 import Loader from "../components/Loader";
 import Maica from "../components/Maica";
 import { checkAchievements, markSeen, type AchievementDef } from "../lib/achievements";
@@ -27,13 +27,13 @@ export default function Review() {
   const [reviewedCount, setReviewedCount] = useState(0);
   const [newAchievements, setNewAchievements] = useState<AchievementDef[]>([]);
 
-  const voiceRec = useVoiceRecorder(voicePrefs.voiceAccent ?? "en-GB");
+  const voiceRec = useSingleUtterance(voicePrefs.voiceAccent ?? "en-GB");
   const doneTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Timeout de seguridad: 30s → Done automático
+  // Timeout de seguridad: 30s → stop automático (onend dispara el callback)
   useEffect(() => {
     if (phase === "recording") {
-      doneTimeoutRef.current = setTimeout(() => handleDone(), 30000);
+      doneTimeoutRef.current = setTimeout(() => voiceRec.stop(), 30000);
     } else {
       if (doneTimeoutRef.current) clearTimeout(doneTimeoutRef.current);
     }
@@ -93,21 +93,26 @@ NEVER reveal the answer. Reply with only the hint text.`,
     setShowHint(false);
     setHintText("");
     if (hintTimerRef.current) clearTimeout(hintTimerRef.current);
-    voiceRec.start();
+    // Capturar item.content en el closure — idx no cambia mientras se graba
+    const expected = item.content;
     setPhase("recording");
+    voiceRec.start((text, _errorCode) => {
+      // Único punto de salida: onend del hook (por silencio, timeout, o botón Done)
+      if (!text.trim()) {
+        setSpoken("");
+        setQuality("again");
+      } else {
+        const cmp = comparePhrases(text, expected);
+        setSpoken(text);
+        setQuality(cmp.incorrect.length === 0 ? "good" : "again");
+      }
+      setPhase("result");
+    });
   }
 
   function handleDone() {
-    const spokenText = voiceRec.stop();
-    if (!spokenText) {
-      setSpoken("");
-      setQuality("again");
-    } else {
-      const cmp = comparePhrases(spokenText, item!.content);
-      setSpoken(spokenText);
-      setQuality(cmp.incorrect.length === 0 ? "good" : "again");
-    }
-    setPhase("result");
+    // Detiene la captura — onend del hook dispara el callback con el texto acumulado
+    voiceRec.stop();
   }
 
   function handleListen() {
@@ -265,9 +270,9 @@ NEVER reveal the answer. Reply with only the hint text.`,
             <span className="h-2 w-2 rounded-full bg-coral animate-pulse" />
             <span className="text-coral font-medium text-sm">Recording… speak now</span>
           </div>
-          {(voiceRec.accumulated || voiceRec.interim) && (
+          {voiceRec.interim && (
             <p className="text-center text-sm text-paper-muted italic">
-              {voiceRec.accumulated || voiceRec.interim}
+              {voiceRec.interim}
             </p>
           )}
           <button
