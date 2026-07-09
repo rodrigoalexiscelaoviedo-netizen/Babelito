@@ -71,10 +71,10 @@ Generate a reading comprehension story. Respond ONLY with a single valid JSON ob
 }
 Rules:
 - content: EXACTLY 180-220 words, British English, clear narrative, engaging. DO NOT exceed 220 words.
-- 3 comprehension questions only (not 4), each with exactly 4 options
+- Generate exactly 4 comprehension questions, each with exactly 4 options
 - correct_index is 0-based (0=first option)
 - Keep the level appropriate: A2=simple vocabulary, B1=moderate, B2=advanced idioms
-- Be concise. Short story, short questions. The entire JSON response must fit in 2000 tokens.`;
+- Be concise. Short story, short questions. The entire JSON response must fit in 3000 tokens.`;
 
 export async function generateStory(
   topic: string,
@@ -92,7 +92,7 @@ export async function generateStory(
     raw = await askCoach({
       system: GENERATE_SYSTEM,
       messages: [{ role: "user", content: userMsg }],
-      maxTokens: 2500,
+      maxTokens: 3000,
       temperature: 0.8,
     });
   } catch (e) {
