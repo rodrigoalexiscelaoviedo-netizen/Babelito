@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Volume2, Mic, CheckCircle2, Loader2, Pause, Play } from "lucide-react";
 import { speak, pauseSpeech, resumeSpeech, speechSupported } from "../lib/speech";
 import { comparePhrases, generatePronunciationFeedback, savePronunciationError } from "../lib/pronunciation";
-import { useVoiceRecorder } from "../lib/useVoiceRecorder";
+import { useSingleUtterance } from "../lib/useSingleUtterance";
 import { useVoicePrefs } from "../lib/useVoicePrefs";
 import { useAuth } from "../context/AuthContext";
 
@@ -20,7 +20,7 @@ export default function ShadowingBlock({ text, lang, label = "Listen & repeat" }
   const { profile } = useAuth();
   const voicePrefs = useVoicePrefs();
   const effectiveLang = lang ?? voicePrefs.voiceAccent ?? "en-GB";
-  const voiceRec = useVoiceRecorder(effectiveLang);
+  const voiceRec = useSingleUtterance(effectiveLang);
 
   const [state, setState] = useState<State>("idle");
   const [paused, setPaused] = useState(false);
@@ -33,12 +33,10 @@ export default function ShadowingBlock({ text, lang, label = "Listen & repeat" }
 
   const doneTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Timeout de seguridad: 30s sin tocar Done → disparamos automáticamente
+  // Timeout de seguridad: 30s → stop() dispara onend que llama el callback
   useEffect(() => {
     if (state === "recording") {
-      doneTimeoutRef.current = setTimeout(() => {
-        handleDone();
-      }, 30000);
+      doneTimeoutRef.current = setTimeout(() => voiceRec.stop(), 30000);
     } else {
       if (doneTimeoutRef.current) clearTimeout(doneTimeoutRef.current);
     }
@@ -70,39 +68,38 @@ export default function ShadowingBlock({ text, lang, label = "Listen & repeat" }
       setError("Speech recognition not available in this browser. Try Chrome.");
       return;
     }
-    setState("recording");
     setError("");
     setSaved(false);
     setResult(null);
     setTip("");
-    voiceRec.start();
+    setState("recording");
+    voiceRec.start(async (spokenText, _errorCode) => {
+      // onend is the sole exit point — fires on silence, timeout, or Done button
+      setState("processing");
+      if (!spokenText.trim()) {
+        setError("Nothing detected — make sure your microphone is on and try again.");
+        setState("idle");
+        return;
+      }
+      const cmp = comparePhrases(spokenText, text);
+      setSpoken(spokenText);
+      setResult(cmp);
+      setState("result");
+      if (profile && cmp.incorrect.length > 0) {
+        const toSave = cmp.incorrect.filter(
+          (w) => w.length > 3 && !SHORT_WORDS.has(w.toLowerCase())
+        );
+        if (toSave.length > 0) {
+          await Promise.all(toSave.map((w) => savePronunciationError(profile.id, w)));
+          setSaved(true);
+        }
+      }
+    });
   }
 
-  async function handleDone() {
-    if (doneTimeoutRef.current) clearTimeout(doneTimeoutRef.current);
-    const spokenText = voiceRec.stop();
-    setState("processing");
-
-    if (!spokenText) {
-      setError("Nothing detected — make sure your microphone is on and try again.");
-      setState("idle");
-      return;
-    }
-
-    const cmp = comparePhrases(spokenText, text);
-    setSpoken(spokenText);
-    setResult(cmp);
-    setState("result");
-
-    if (profile && cmp.incorrect.length > 0) {
-      const toSave = cmp.incorrect.filter(
-        (w) => w.length > 3 && !SHORT_WORDS.has(w.toLowerCase())
-      );
-      if (toSave.length > 0) {
-        await Promise.all(toSave.map((w) => savePronunciationError(profile.id, w)));
-        setSaved(true);
-      }
-    }
+  function handleDone() {
+    // stop() triggers onend which calls the callback set in handleRecord
+    voiceRec.stop();
   }
 
   async function handleWhy() {
@@ -145,7 +142,7 @@ export default function ShadowingBlock({ text, lang, label = "Listen & repeat" }
       {/* Phrase / interim / result */}
       {state === "recording" ? (
         <p className="text-sm font-medium leading-snug text-paper-muted italic min-h-[1.25rem]">
-          {[voiceRec.accumulated, voiceRec.interim].filter(Boolean).join(" ") || "Listening…"}
+          {voiceRec.interim || "Listening…"}
         </p>
       ) : state === "result" && result ? (
         <div className="flex flex-wrap gap-1.5">
