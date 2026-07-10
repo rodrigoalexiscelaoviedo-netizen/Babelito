@@ -70,7 +70,14 @@ export function createRecognizer(opts: {
     }
   };
 
+  rec.onstart       = () => console.log("[createRecognizer] onstart");
+  rec.onaudiostart  = () => console.log("[createRecognizer] onaudiostart — mic open");
+  rec.onspeechstart = () => console.log("[createRecognizer] onspeechstart — voice detected");
+  rec.onspeechend   = () => console.log("[createRecognizer] onspeechend");
+  rec.onaudioend    = () => console.log("[createRecognizer] onaudioend");
+
   rec.onresult = (e: any) => {
+    console.log(`[createRecognizer] onresult — resultIndex=${e.resultIndex} results.length=${e.results.length}`);
     let interim = "";
     let final = "";
     for (let i = e.resultIndex; i < e.results.length; i++) {
@@ -89,6 +96,7 @@ export function createRecognizer(opts: {
   };
 
   rec.onerror = (e: any) => {
+    console.log(`[createRecognizer] onerror — error="${e.error}"`);
     // "no-speech" y "audio-capture" no son errores terminales:
     // el navegador dispara onend después y el auto-restart se encarga.
     if (e.error !== "no-speech" && e.error !== "audio-capture") {
@@ -99,6 +107,7 @@ export function createRecognizer(opts: {
   };
 
   rec.onend = () => {
+    console.log(`[createRecognizer] onend — manualStop=${manualStop}`);
     if (!manualStop) {
       // El navegador cerró la sesión sin que lo pidamos (común en Android).
       // Reiniciamos de forma transparente para no perder texto.
