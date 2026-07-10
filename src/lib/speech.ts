@@ -86,11 +86,13 @@ export function createRecognizer(opts: {
       let final   = "";
       for (let i = e.resultIndex; i < e.results.length; i++) {
         const transcript = e.results[i][0].transcript;
-        if (e.results[i].isFinal) final   += transcript;
-        else                       interim += transcript;
+        const isFin = e.results[i].isFinal;
+        console.log(`  [${i}] ${isFin ? "FINAL" : "interim"}: "${transcript}"`);
+        if (isFin) final   += transcript;
+        else       interim += transcript;
       }
       if (interim) { lastInterim = interim; opts.onInterim?.(interim); }
-      if (final)   { lastInterim = ""; opts.onResult(final); }
+      if (final)   { lastInterim = ""; console.log(`[createRecognizer] → calling onResult("${final}")`); opts.onResult(final); }
     };
 
     rec.onerror = (e: any) => {
@@ -107,8 +109,9 @@ export function createRecognizer(opts: {
         // Restart with a FRESH instance so e.results is always empty on the
         // next onresult — prevents Chrome mobile from re-processing old isFinal
         // entries that survive a same-instance rec.start() call.
+        console.log("[createRecognizer] → creating fresh instance for restart");
         currentRec = makeInstance();
-        try { currentRec.start(); } catch { /* ignore */ }
+        try { currentRec.start(); console.log("[createRecognizer] → fresh instance started"); } catch (e) { console.error("[createRecognizer] → fresh instance start() threw:", e); }
       } else {
         fireEnd();
       }

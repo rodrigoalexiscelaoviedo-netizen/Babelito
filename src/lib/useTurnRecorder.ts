@@ -44,6 +44,7 @@ export function useTurnRecorder(lang: string): TurnRecorderAPI {
       recRef.current = null;
     }
 
+    console.log("[useTurnRecorder] start() — resetting accRef");
     accRef.current  = "";
     onDoneRef.current = onDone;
     setInterim("");
@@ -53,12 +54,14 @@ export function useTurnRecorder(lang: string): TurnRecorderAPI {
       lang,
       onInterim: setInterim,
       onResult: (t) => {
-        // Accumulate finals in this hook's ref — NOT in Chrome's e.results.
+        const before = accRef.current;
         accRef.current = accRef.current ? `${accRef.current} ${t}` : t;
+        console.log(`[useTurnRecorder] onResult — segment="${t}" | accBefore="${before}" | accAfter="${accRef.current}"`);
         setInterim("");
       },
       onEnd: () => {
         // Fires only on manualStop (Done button or 30s safety timeout).
+        console.log(`[useTurnRecorder] onEnd (manualStop) — final acc="${accRef.current}"`);
         setIsRecording(false);
         setInterim("");
         recRef.current = null;
