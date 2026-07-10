@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Volume2, Mic, CheckCircle2, Loader2, Pause, Play } from "lucide-react";
 import { speak, pauseSpeech, resumeSpeech, speechSupported } from "../lib/speech";
 import { comparePhrases, generatePronunciationFeedback, savePronunciationError } from "../lib/pronunciation";
-import { useSingleUtterance } from "../lib/useSingleUtterance";
+import { useTurnRecorder } from "../lib/useTurnRecorder";
 import { useVoicePrefs } from "../lib/useVoicePrefs";
 import { useAuth } from "../context/AuthContext";
 
@@ -20,7 +20,7 @@ export default function ShadowingBlock({ text, lang, label = "Listen & repeat" }
   const { profile } = useAuth();
   const voicePrefs = useVoicePrefs();
   const effectiveLang = lang ?? voicePrefs.voiceAccent ?? "en-GB";
-  const voiceRec = useSingleUtterance(effectiveLang);
+  const voiceRec = useTurnRecorder(effectiveLang);
 
   const [state, setState] = useState<State>("idle");
   const [paused, setPaused] = useState(false);

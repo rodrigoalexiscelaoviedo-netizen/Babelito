@@ -35,12 +35,14 @@ export function getVoices(langPrefix?: string): SpeechSynthesisVoice[] {
 }
 
 /**
- * Crea un reconocedor de voz continuo con auto-restart transparente.
+ * Crea un reconocedor de voz continuo con auto-restart usando instancias frescas.
  *
- * - continuous=true: el navegador no corta en pausas naturales de la frase.
- * - Auto-restart: si el navegador cierra la sesión inesperadamente (común en
- *   mobile Chrome/Android), la reiniciamos sin que el usuario lo note.
- * - onResult: solo se llama con resultados isFinal (texto confirmado).
+ * - continuous=true: el navegador no corta durante pausas naturales.
+ * - Auto-restart con instancia NUEVA: cuando Chrome cierra la sesión por silencio,
+ *   creamos un NEW SpeechRecognition en lugar de llamar rec.start() en el mismo objeto.
+ *   Esto garantiza que e.results siempre nace vacío → no se re-procesan resultados
+ *   anteriores → sin duplicación.
+ * - onResult: llamado por cada segmento isFinal. El caller acumula en su propio ref.
  * - onInterim: texto provisional mientras el usuario habla.
  * - onEnd: solo se dispara cuando el usuario llama stop() manualmente.
  */
@@ -54,14 +56,10 @@ export function createRecognizer(opts: {
     (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
   if (!SR) return null;
 
-  const rec = new SR();
-  rec.lang = opts.lang ?? "en-GB";
-  rec.continuous = true;      // clave: no cortar en pausas
-  rec.interimResults = true;
-
   let manualStop = false;
-  let endFired = false; // evitar doble llamado a opts.onEnd
+  let endFired   = false;
   let lastInterim = "";
+  let currentRec: any = null;
 
   const fireEnd = () => {
     if (!endFired) {
@@ -70,75 +68,67 @@ export function createRecognizer(opts: {
     }
   };
 
-  rec.onstart       = () => console.log("[createRecognizer] onstart");
-  rec.onaudiostart  = () => console.log("[createRecognizer] onaudiostart — mic open");
-  rec.onspeechstart = () => console.log("[createRecognizer] onspeechstart — voice detected");
-  rec.onspeechend   = () => console.log("[createRecognizer] onspeechend");
-  rec.onaudioend    = () => console.log("[createRecognizer] onaudioend");
+  function makeInstance(): any {
+    const rec: any = new SR();
+    rec.lang           = opts.lang ?? "en-GB";
+    rec.continuous     = true;
+    rec.interimResults = true;
 
-  rec.onresult = (e: any) => {
-    console.log(`[createRecognizer] onresult — resultIndex=${e.resultIndex} results.length=${e.results.length}`);
-    let interim = "";
-    let final = "";
-    for (let i = e.resultIndex; i < e.results.length; i++) {
-      const transcript = e.results[i][0].transcript;
-      if (e.results[i].isFinal) final += transcript;
-      else interim += transcript;
-    }
-    if (interim) {
-      lastInterim = interim;
-      opts.onInterim?.(interim);
-    }
-    if (final) {
-      lastInterim = ""; // a final arrived — interim is no longer pending
-      opts.onResult(final);
-    }
-  };
+    rec.onstart       = () => console.log("[createRecognizer] onstart");
+    rec.onaudiostart  = () => console.log("[createRecognizer] onaudiostart — mic open");
+    rec.onspeechstart = () => console.log("[createRecognizer] onspeechstart — voice detected");
+    rec.onspeechend   = () => console.log("[createRecognizer] onspeechend");
+    rec.onaudioend    = () => console.log("[createRecognizer] onaudioend");
 
-  rec.onerror = (e: any) => {
-    console.log(`[createRecognizer] onerror — error="${e.error}"`);
-    // "no-speech" y "audio-capture" no son errores terminales:
-    // el navegador dispara onend después y el auto-restart se encarga.
-    if (e.error !== "no-speech" && e.error !== "audio-capture") {
-      // Error real (permisos denegados, etc.) — no reiniciar
-      manualStop = true;
-      fireEnd();
-    }
-  };
-
-  rec.onend = () => {
-    console.log(`[createRecognizer] onend — manualStop=${manualStop}`);
-    if (!manualStop) {
-      // El navegador cerró la sesión sin que lo pidamos (común en Android).
-      // Reiniciamos de forma transparente para no perder texto.
-      try {
-        rec.start();
-      } catch {
-        /* ya reiniciando, ignorar */
+    rec.onresult = (e: any) => {
+      console.log(`[createRecognizer] onresult — resultIndex=${e.resultIndex} results.length=${e.results.length}`);
+      let interim = "";
+      let final   = "";
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const transcript = e.results[i][0].transcript;
+        if (e.results[i].isFinal) final   += transcript;
+        else                       interim += transcript;
       }
-    } else {
-      fireEnd();
-    }
-  };
+      if (interim) { lastInterim = interim; opts.onInterim?.(interim); }
+      if (final)   { lastInterim = ""; opts.onResult(final); }
+    };
+
+    rec.onerror = (e: any) => {
+      console.log(`[createRecognizer] onerror — error="${e.error}"`);
+      if (e.error !== "no-speech" && e.error !== "audio-capture") {
+        manualStop = true;
+        fireEnd();
+      }
+    };
+
+    rec.onend = () => {
+      console.log(`[createRecognizer] onend — manualStop=${manualStop}`);
+      if (!manualStop) {
+        // Restart with a FRESH instance so e.results is always empty on the
+        // next onresult — prevents Chrome mobile from re-processing old isFinal
+        // entries that survive a same-instance rec.start() call.
+        currentRec = makeInstance();
+        try { currentRec.start(); } catch { /* ignore */ }
+      } else {
+        fireEnd();
+      }
+    };
+
+    return rec;
+  }
+
+  currentRec = makeInstance();
 
   return {
     start: () => {
-      manualStop = false;
-      endFired = false;
+      manualStop  = false;
+      endFired    = false;
       lastInterim = "";
-      try {
-        rec.start();
-      } catch {
-        /* ya iniciado */
-      }
+      try { currentRec.start(); } catch { /* already running */ }
     },
     stop: () => {
       manualStop = true;
-      try {
-        rec.stop();
-      } catch {
-        /* no iniciado */
-      }
+      try { currentRec.stop(); } catch { /* not running */ }
     },
     getInterim: () => lastInterim,
   };
