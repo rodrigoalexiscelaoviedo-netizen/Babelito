@@ -24,8 +24,19 @@
 // Alternative if this is down: wss://ws.postman-echo.com/raw
 const ECHO_URL = "wss://echo.websocket.org";
 
+const CORS_HEADERS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization",
+};
+
 Deno.serve(async (req: Request) => {
   console.log("[echo-test] invoked", req.method, new URL(req.url).pathname);
+
+  // Preflight
+  if (req.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
+  }
 
   const isWsUpgrade = (req.headers.get("upgrade") ?? "").toLowerCase() === "websocket";
 
@@ -37,11 +48,11 @@ Deno.serve(async (req: Request) => {
       console.log("[echo-test] HTTP mode result:", result);
       return new Response(result, {
         status: result.startsWith("OK") ? 200 : 500,
-        headers: { "Content-Type": "text/plain" },
+        headers: { "Content-Type": "text/plain", ...CORS_HEADERS },
       });
     } catch (err) {
       console.error("[echo-test] HTTP mode threw:", err);
-      return new Response(`FAIL (exception): ${err}`, { status: 500 });
+      return new Response(`FAIL (exception): ${err}`, { status: 500, headers: CORS_HEADERS });
     }
   }
 

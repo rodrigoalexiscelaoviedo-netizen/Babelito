@@ -215,10 +215,12 @@ Reply with only the hint text — no explanation, no punctuation around it.`,
       // Read interim BEFORE stop() so Chrome's async flush doesn't race with us.
       // With continuous:true Chrome may never emit isFinal — this is the fallback.
       const pendingInterim = recognizerRef.current?.getInterim() ?? "";
+      console.log("[toggleMic] Listo clicked — getInterim()=", JSON.stringify(pendingInterim), "input before=", JSON.stringify(input));
       recognizerRef.current?.stop();
       if (pendingInterim.trim()) {
         setInput((prev) => (prev ? prev + " " : "") + pendingInterim.trim());
       }
+      console.log("[toggleMic] after stop+fallback — input will be=", JSON.stringify(input || pendingInterim.trim()));
       setListening(false);
       return;
     }
