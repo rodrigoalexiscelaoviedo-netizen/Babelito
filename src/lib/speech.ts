@@ -13,6 +13,8 @@ export function speechSupported(): boolean {
 export interface Recognizer {
   start: () => void;
   stop: () => void;
+  /** Returns the last interim (unfinished) transcript at any point in time. */
+  getInterim: () => string;
 }
 
 export interface SpeakOptions {
@@ -59,6 +61,7 @@ export function createRecognizer(opts: {
 
   let manualStop = false;
   let endFired = false; // evitar doble llamado a opts.onEnd
+  let lastInterim = "";
 
   const fireEnd = () => {
     if (!endFired) {
@@ -75,8 +78,14 @@ export function createRecognizer(opts: {
       if (e.results[i].isFinal) final += transcript;
       else interim += transcript;
     }
-    if (interim && opts.onInterim) opts.onInterim(interim);
-    if (final) opts.onResult(final);
+    if (interim) {
+      lastInterim = interim;
+      opts.onInterim?.(interim);
+    }
+    if (final) {
+      lastInterim = ""; // a final arrived — interim is no longer pending
+      opts.onResult(final);
+    }
   };
 
   rec.onerror = (e: any) => {
@@ -107,6 +116,7 @@ export function createRecognizer(opts: {
     start: () => {
       manualStop = false;
       endFired = false;
+      lastInterim = "";
       try {
         rec.start();
       } catch {
@@ -121,6 +131,7 @@ export function createRecognizer(opts: {
         /* no iniciado */
       }
     },
+    getInterim: () => lastInterim,
   };
 }
 

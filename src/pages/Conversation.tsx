@@ -212,7 +212,13 @@ Reply with only the hint text — no explanation, no punctuation around it.`,
 
   function toggleMic() {
     if (listening) {
+      // Read interim BEFORE stop() so Chrome's async flush doesn't race with us.
+      // With continuous:true Chrome may never emit isFinal — this is the fallback.
+      const pendingInterim = recognizerRef.current?.getInterim() ?? "";
       recognizerRef.current?.stop();
+      if (pendingInterim.trim()) {
+        setInput((prev) => (prev ? prev + " " : "") + pendingInterim.trim());
+      }
       setListening(false);
       return;
     }
