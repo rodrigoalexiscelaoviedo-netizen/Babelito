@@ -42,6 +42,7 @@ const SETUP_MESSAGE = {
 
 // ── Types ─────────────────────────────────────────────────────────────────
 type Phase = "idle" | "connecting" | "live" | "error";
+type EchoPhase = "idle" | "running";
 
 // ── Audio helpers ─────────────────────────────────────────────────────────
 function float32ToPcm16(f32: Float32Array): Int16Array {
@@ -80,7 +81,9 @@ export default function LiveTest() {
   const [statusMsg, setStatusMsg] = useState<string>("");
   const [logLines, setLogLines]   = useState<string[]>([]);
 
+  const [echoPhase, setEchoPhase] = useState<EchoPhase>("idle");
   const wsRef        = useRef<WebSocket | null>(null);
+  const echoWsRef    = useRef<WebSocket | null>(null);
   const audioCtxRef  = useRef<AudioContext | null>(null);
   const streamRef    = useRef<MediaStream | null>(null);
   const processorRef = useRef<ScriptProcessorNode | null>(null);
@@ -200,6 +203,65 @@ export default function LiveTest() {
     };
 
     log(`Audio capture started (native rate ${ctx.sampleRate} Hz → 16 kHz for Gemini).`);
+  }
+
+  // ── Echo test (server-side HTTP only — no client WS) ─────────────────
+  async function runHttpEchoTest() {
+    log("── HTTP echo test ──");
+    log("GET /functions/v1/live-proxy-echo-test …");
+    try {
+      const base = import.meta.env.VITE_SUPABASE_URL as string;
+      const res  = await fetch(`${base}/functions/v1/live-proxy-echo-test`);
+      const text = await res.text();
+      log(`HTTP echo test → ${res.status}: ${text}`);
+    } catch (err) {
+      log(`HTTP echo test FAILED: ${err}`);
+    }
+  }
+
+  // ── Echo test (WS relay mode) ─────────────────────────────────────────
+  function startEchoTest() {
+    if (echoPhase !== "idle") return;
+    setEchoPhase("running");
+    log("── WS echo test ──");
+    log("Connecting to live-proxy-echo-test …");
+
+    const base   = (import.meta.env.VITE_SUPABASE_URL as string).replace("https://", "wss://");
+    const wsUrl  = `${base}/functions/v1/live-proxy-echo-test`;
+    const ws     = new WebSocket(wsUrl);
+    echoWsRef.current = ws;
+
+    ws.onopen = () => {
+      log("WS echo test open ✓ — waiting for echo_open / echo_message …");
+    };
+
+    ws.onmessage = (ev) => {
+      try {
+        const msg = JSON.parse(String(ev.data)) as Record<string, unknown>;
+        const st  = String(msg.status ?? "?");
+        const t   = String(msg.t ?? "");
+        if (st === "echo_open")    log(`✓ echo_open  (echo server connected at ${t})`);
+        else if (st === "echo_message") log(`✓ echo_message: "${msg.data}"  t=${t}`);
+        else if (st === "echo_error")   log(`✗ echo_error: ${msg.detail}  t=${t}`);
+        else if (st === "echo_closed")  log(`echo_closed code=${msg.code} wasClean=${msg.wasClean}  t=${t}`);
+        else if (st === "auto_close")   log(`auto_close at ${t}`);
+        else log(`unknown status: ${JSON.stringify(msg)}`);
+      } catch {
+        log(`Non-JSON frame: ${String(ev.data).slice(0, 120)}`);
+      }
+    };
+
+    ws.onerror = () => log("WS echo test error (see DevTools Network tab).");
+
+    ws.onclose = (ev) => {
+      log(`WS echo test closed code=${ev.code}${ev.reason ? ` "${ev.reason}"` : ""}`);
+      setEchoPhase("idle");
+      echoWsRef.current = null;
+    };
+  }
+
+  function stopEchoTest() {
+    echoWsRef.current?.close(1000, "user stop");
   }
 
   // ── Start call ────────────────────────────────────────────────────────
@@ -456,6 +518,61 @@ supabase secrets set GEMINI_API_KEY=AIza...
 # Target:    models/gemini-2.5-flash-preview-native-audio-dialog`}
         </pre>
       </details>
+
+      {/* Echo test isolation section */}
+      <div
+        style={{
+          marginTop: 28,
+          padding: "16px 18px",
+          background: "#0e1320",
+          border: "1px solid #2a3a55",
+          borderRadius: 10,
+        }}
+      >
+        <p style={{ fontSize: 12, fontWeight: 700, color: "#6b7280", marginBottom: 4 }}>
+          ISOLATION TEST — outbound WebSocket (no Gemini)
+        </p>
+        <p style={{ fontSize: 11, color: "#374151", marginBottom: 14 }}>
+          Tests whether Supabase Edge Functions can open outbound WS connections at all.<br />
+          Uses <code style={{ color: "#6b7280" }}>live-proxy-echo-test</code> → echo.websocket.org.
+          Deploy with <code style={{ color: "#6b7280" }}>supabase functions deploy live-proxy-echo-test --no-verify-jwt</code>
+        </p>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          {/* HTTP-only test — no WS upgrade, pure server-side */}
+          <button
+            onClick={runHttpEchoTest}
+            style={{
+              padding: "8px 16px",
+              background: "#1e3a5f",
+              color: "#93c5fd",
+              border: "1px solid #2563eb44",
+              borderRadius: 7,
+              cursor: "pointer",
+              fontFamily: "inherit",
+              fontSize: 12,
+            }}
+          >
+            HTTP test (server-side only)
+          </button>
+
+          {/* WS relay test */}
+          <button
+            onClick={echoPhase === "idle" ? startEchoTest : stopEchoTest}
+            style={{
+              padding: "8px 16px",
+              background: echoPhase === "idle" ? "#1e3a2f" : "#3a1e1e",
+              color: echoPhase === "idle" ? "#6ee7b7" : "#fca5a5",
+              border: `1px solid ${echoPhase === "idle" ? "#16a34a44" : "#dc262644"}`,
+              borderRadius: 7,
+              cursor: "pointer",
+              fontFamily: "inherit",
+              fontSize: 12,
+            }}
+          >
+            {echoPhase === "idle" ? "WS relay test (start)" : "⏺ Running — click to stop"}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
