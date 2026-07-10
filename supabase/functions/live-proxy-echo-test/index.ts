@@ -21,8 +21,9 @@
  */
 
 // Public echo server: sends back exactly what it receives.
-// Alternative if this is down: wss://ws.postman-echo.com/raw
-const ECHO_URL = "wss://echo.websocket.org";
+// Query param added to test whether Supabase preserves query strings on outbound WS
+// (Gemini uses ?key=... — if this param gets stripped, Gemini would reject with 403→1006).
+const ECHO_URL = "wss://echo.websocket.org/?test-key=babelito-probe-123";
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
