@@ -56,82 +56,82 @@ export function createRecognizer(opts: {
     (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
   if (!SR) return null;
 
-  let manualStop = false;
-  let endFired   = false;
-  let lastInterim = "";
-  let currentRec: any = null;
+  let manualStop    = false;
+  let endFired      = false;
+  let lastInterim   = "";
+  let lastFinalIndex = -1; // highest e.results index already emitted as final
+
+  const rec: any = new SR();
+  rec.lang           = opts.lang ?? "en-GB";
+  rec.continuous     = true;
+  rec.interimResults = true;
 
   const fireEnd = () => {
-    if (!endFired) {
-      endFired = true;
-      opts.onEnd?.();
+    if (!endFired) { endFired = true; opts.onEnd?.(); }
+  };
+
+  rec.onstart       = () => console.log("[createRecognizer] onstart");
+  rec.onaudiostart  = () => console.log("[createRecognizer] onaudiostart — mic open");
+  rec.onspeechstart = () => console.log("[createRecognizer] onspeechstart — voice detected");
+  rec.onspeechend   = () => console.log("[createRecognizer] onspeechend");
+  rec.onaudioend    = () => console.log("[createRecognizer] onaudioend");
+
+  rec.onresult = (e: any) => {
+    console.log(`[createRecognizer] onresult — resultIndex=${e.resultIndex} results.length=${e.results.length} lastFinalIndex=${lastFinalIndex}`);
+    let interim = "";
+    let final   = "";
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      const transcript = e.results[i][0].transcript;
+      const isFin = e.results[i].isFinal;
+      console.log(`  [${i}] ${isFin ? "FINAL" : "interim"}: "${transcript}" (skip=${isFin && i <= lastFinalIndex})`);
+      if (isFin) {
+        // Guard: skip any final we already emitted (happens when Chrome re-fires
+        // old e.results entries after a same-instance rec.start() on mobile).
+        if (i > lastFinalIndex) {
+          lastFinalIndex = i;
+          final += transcript;
+        }
+      } else {
+        interim += transcript;
+      }
+    }
+    if (interim) { lastInterim = interim; opts.onInterim?.(interim); }
+    if (final)   { lastInterim = ""; console.log(`[createRecognizer] → calling onResult("${final}")`); opts.onResult(final); }
+  };
+
+  rec.onerror = (e: any) => {
+    console.log(`[createRecognizer] onerror — error="${e.error}"`);
+    if (e.error !== "no-speech" && e.error !== "audio-capture") {
+      manualStop = true;
+      fireEnd();
     }
   };
 
-  function makeInstance(): any {
-    const rec: any = new SR();
-    rec.lang           = opts.lang ?? "en-GB";
-    rec.continuous     = true;
-    rec.interimResults = true;
-
-    rec.onstart       = () => console.log("[createRecognizer] onstart");
-    rec.onaudiostart  = () => console.log("[createRecognizer] onaudiostart — mic open");
-    rec.onspeechstart = () => console.log("[createRecognizer] onspeechstart — voice detected");
-    rec.onspeechend   = () => console.log("[createRecognizer] onspeechend");
-    rec.onaudioend    = () => console.log("[createRecognizer] onaudioend");
-
-    rec.onresult = (e: any) => {
-      console.log(`[createRecognizer] onresult — resultIndex=${e.resultIndex} results.length=${e.results.length}`);
-      let interim = "";
-      let final   = "";
-      for (let i = e.resultIndex; i < e.results.length; i++) {
-        const transcript = e.results[i][0].transcript;
-        const isFin = e.results[i].isFinal;
-        console.log(`  [${i}] ${isFin ? "FINAL" : "interim"}: "${transcript}"`);
-        if (isFin) final   += transcript;
-        else       interim += transcript;
-      }
-      if (interim) { lastInterim = interim; opts.onInterim?.(interim); }
-      if (final)   { lastInterim = ""; console.log(`[createRecognizer] → calling onResult("${final}")`); opts.onResult(final); }
-    };
-
-    rec.onerror = (e: any) => {
-      console.log(`[createRecognizer] onerror — error="${e.error}"`);
-      if (e.error !== "no-speech" && e.error !== "audio-capture") {
-        manualStop = true;
-        fireEnd();
-      }
-    };
-
-    rec.onend = () => {
-      console.log(`[createRecognizer] onend — manualStop=${manualStop}`);
-      if (!manualStop) {
-        // Restart with a FRESH instance so e.results is always empty on the
-        // next onresult — prevents Chrome mobile from re-processing old isFinal
-        // entries that survive a same-instance rec.start() call.
-        console.log("[createRecognizer] → creating fresh instance for restart");
-        currentRec = makeInstance();
-        try { currentRec.start(); console.log("[createRecognizer] → fresh instance started"); } catch (e) { console.error("[createRecognizer] → fresh instance start() threw:", e); }
-      } else {
-        fireEnd();
-      }
-    };
-
-    return rec;
-  }
-
-  currentRec = makeInstance();
+  rec.onend = () => {
+    console.log(`[createRecognizer] onend — manualStop=${manualStop} lastFinalIndex=${lastFinalIndex}`);
+    if (!manualStop) {
+      // Same-instance restart: preserves mic permission granted by the original
+      // user gesture. lastFinalIndex ensures we never re-emit already-processed
+      // finals even though Chrome keeps them in e.results across restarts.
+      console.log("[createRecognizer] → restarting same instance");
+      try { rec.start(); console.log("[createRecognizer] → restart started"); }
+      catch (e) { console.error("[createRecognizer] → restart start() threw:", e); }
+    } else {
+      fireEnd();
+    }
+  };
 
   return {
     start: () => {
-      manualStop  = false;
-      endFired    = false;
-      lastInterim = "";
-      try { currentRec.start(); } catch { /* already running */ }
+      manualStop     = false;
+      endFired       = false;
+      lastInterim    = "";
+      lastFinalIndex = -1; // fresh manual start: process all results from zero
+      try { rec.start(); } catch { /* already running */ }
     },
     stop: () => {
       manualStop = true;
-      try { currentRec.stop(); } catch { /* not running */ }
+      try { rec.stop(); } catch { /* not running */ }
     },
     getInterim: () => lastInterim,
   };

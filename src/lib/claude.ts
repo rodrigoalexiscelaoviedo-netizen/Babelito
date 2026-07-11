@@ -28,14 +28,27 @@ export async function askCoach({ system, messages, maxTokens = 1024, temperature
   const token = sessionData.session?.access_token;
   if (!token) throw new Error("No hay sesión activa.");
 
-  const res = await fetch(FUNCTIONS_URL, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ system, messages, max_tokens: maxTokens, temperature }),
-  });
+  let res: Response;
+  try {
+    res = await fetch(FUNCTIONS_URL, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ system, messages, max_tokens: maxTokens, temperature }),
+      signal: AbortSignal.timeout(32000),
+    });
+  } catch (fetchErr: unknown) {
+    const isTimeout =
+      fetchErr instanceof Error &&
+      (fetchErr.name === "TimeoutError" || fetchErr.name === "AbortError");
+    throw new RetryableError(
+      isTimeout
+        ? "El coach tardó demasiado. Intentá de nuevo."
+        : "No se pudo conectar con el coach."
+    );
+  }
 
   const data = await res.json();
 

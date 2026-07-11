@@ -58,18 +58,34 @@ Deno.serve(async (req) => {
       body.systemInstruction = { parts: [{ text: system }] };
     }
 
-    const geminiRes = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${GEMINI_API_KEY}`,
-      {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify(body),
-      }
-    );
+    let geminiRes: Response;
+    try {
+      geminiRes = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${GEMINI_API_KEY}`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(body),
+          signal: AbortSignal.timeout(28000),
+        }
+      );
+    } catch (fetchErr: unknown) {
+      const isTimeout =
+        fetchErr instanceof Error &&
+        (fetchErr.name === "TimeoutError" || fetchErr.name === "AbortError");
+      return json(
+        { error: "El coach tardó demasiado. Intentá de nuevo.", retryable: true },
+        isTimeout ? 504 : 502
+      );
+    }
 
     const data = await geminiRes.json();
     if (!geminiRes.ok) {
-      return json({ error: data?.error?.message ?? "Gemini error" }, geminiRes.status);
+      const retryable = geminiRes.status === 429 || geminiRes.status === 503;
+      return json(
+        { error: data?.error?.message ?? "Gemini error", retryable },
+        geminiRes.status
+      );
     }
 
     // Extraer el texto de la respuesta de Gemini.
