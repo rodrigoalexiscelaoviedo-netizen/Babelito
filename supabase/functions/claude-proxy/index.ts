@@ -4,7 +4,13 @@ const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY")!;
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 
-const MODEL = "gemini-2.0-flash";
+// Primary: highest free-tier quota (15 RPM / 1000 RPD).
+// Fallback: larger model, same free tier, used only after primary exhausts retries.
+const MODEL_PRIMARY  = "gemini-2.5-flash-lite";
+const MODEL_FALLBACK = "gemini-2.5-flash";
+
+// Delays between retries on the primary model (ms).
+const RETRY_DELAYS = [600, 1200, 1800];
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -17,6 +23,47 @@ function json(body: unknown, status = 200) {
     status,
     headers: { ...CORS, "Content-Type": "application/json" },
   });
+}
+
+function sleep(ms: number) {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
+/** Call one Gemini model. Returns { ok, status, data } — never throws. */
+async function callGemini(
+  model: string,
+  body: unknown
+): Promise<{ ok: boolean; status: number; data: any }> {
+  let res: Response;
+  try {
+    res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(body),
+        signal: AbortSignal.timeout(28000),
+      }
+    );
+  } catch (err: unknown) {
+    const isTimeout =
+      err instanceof Error &&
+      (err.name === "TimeoutError" || err.name === "AbortError");
+    return {
+      ok: false,
+      status: isTimeout ? 504 : 502,
+      data: { error: { message: isTimeout ? "timeout" : String(err) } },
+    };
+  }
+
+  let data: any;
+  try {
+    data = await res.json();
+  } catch {
+    data = {};
+  }
+
+  return { ok: res.ok, status: res.status, data };
 }
 
 Deno.serve(async (req) => {
@@ -39,63 +86,59 @@ Deno.serve(async (req) => {
 
     if (!Array.isArray(messages)) return json({ error: "messages must be an array" }, 400);
 
-    // Gemini usa "contents" con role "user"/"model" (no "assistant").
+    // Gemini uses "contents" with role "user"/"model" (not "assistant").
     const contents = messages.map((m: any) => ({
       role: m.role === "assistant" ? "model" : "user",
       parts: [{ text: m.content }],
     }));
 
-    const body: any = {
+    const geminiBody: any = {
       contents,
-      generationConfig: {
-        temperature,
-        maxOutputTokens: max_tokens,
-      },
+      generationConfig: { temperature, maxOutputTokens: max_tokens },
     };
-
-    // El system prompt va en un campo aparte en Gemini.
     if (system) {
-      body.systemInstruction = { parts: [{ text: system }] };
+      geminiBody.systemInstruction = { parts: [{ text: system }] };
     }
 
-    let geminiRes: Response;
-    try {
-      geminiRes = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${GEMINI_API_KEY}`,
+    // ── Primary model with up to 3 retries on 429/503/504/502 ────────────────
+    let lastResult = await callGemini(MODEL_PRIMARY, geminiBody);
+
+    for (let attempt = 0; !lastResult.ok && attempt < RETRY_DELAYS.length; attempt++) {
+      const { status } = lastResult;
+      // Only retry on transient/overload codes — not on auth or bad-request errors.
+      if (status !== 429 && status !== 503 && status !== 504 && status !== 502) break;
+      await sleep(RETRY_DELAYS[attempt]);
+      lastResult = await callGemini(MODEL_PRIMARY, geminiBody);
+    }
+
+    // ── Fallback model (one attempt, no extra retries) ────────────────────────
+    if (!lastResult.ok) {
+      const { status } = lastResult;
+      if (status === 429 || status === 503 || status === 504 || status === 502) {
+        lastResult = await callGemini(MODEL_FALLBACK, geminiBody);
+      }
+    }
+
+    // ── Return result ─────────────────────────────────────────────────────────
+    if (!lastResult.ok) {
+      const { status, data } = lastResult;
+      const retryable = status === 429 || status === 503 || status === 504 || status === 502;
+      return json(
         {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify(body),
-          signal: AbortSignal.timeout(28000),
-        }
-      );
-    } catch (fetchErr: unknown) {
-      const isTimeout =
-        fetchErr instanceof Error &&
-        (fetchErr.name === "TimeoutError" || fetchErr.name === "AbortError");
-      return json(
-        { error: "El coach tardó demasiado. Intentá de nuevo.", retryable: true },
-        isTimeout ? 504 : 502
+          error: data?.error?.message ?? "El coach no está disponible. Intentá de nuevo.",
+          retryable,
+        },
+        retryable ? 503 : status
       );
     }
 
-    const data = await geminiRes.json();
-    if (!geminiRes.ok) {
-      const retryable = geminiRes.status === 429 || geminiRes.status === 503;
-      return json(
-        { error: data?.error?.message ?? "Gemini error", retryable },
-        geminiRes.status
-      );
-    }
-
-    // Extraer el texto de la respuesta de Gemini.
     const text =
-      data?.candidates?.[0]?.content?.parts
+      lastResult.data?.candidates?.[0]?.content?.parts
         ?.map((p: any) => p.text ?? "")
         .join("") ?? "";
 
-    return json({ text, usage: data?.usageMetadata ?? null });
+    return json({ text, usage: lastResult.data?.usageMetadata ?? null });
   } catch (err) {
-    return json({ error: String(err) }, 500);
+    return json({ error: String(err), retryable: false }, 500);
   }
 });
