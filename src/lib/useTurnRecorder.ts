@@ -50,7 +50,7 @@ export function useTurnRecorder(lang: string): TurnRecorderAPI {
     setInterim("");
     setIsRecording(false);
 
-    const rec = createRecognizer({
+    const rec: Recognizer | null = createRecognizer({
       lang,
       onInterim: setInterim,
       onResult: (t) => {
@@ -60,6 +60,15 @@ export function useTurnRecorder(lang: string): TurnRecorderAPI {
         setInterim("");
       },
       onEnd: () => {
+        // Guard: a superseded recognizer (from a previous start() call) can
+        // fire its onEnd asynchronously AFTER recRef.current was already
+        // reassigned to a newer instance. If that happened, this onEnd is
+        // stale — touching recRef/onDoneRef here would null out the live
+        // recognizer and fire the callback prematurely. No-op instead.
+        if (recRef.current !== rec) {
+          console.log("[useTurnRecorder] onEnd from stale recognizer — ignoring");
+          return;
+        }
         // Fires only on manualStop (Done button or 30s safety timeout).
         console.log(`[useTurnRecorder] onEnd (manualStop) — final acc="${accRef.current}"`);
         setIsRecording(false);

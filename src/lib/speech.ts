@@ -35,17 +35,46 @@ export function getVoices(langPrefix?: string): SpeechSynthesisVoice[] {
 }
 
 /**
- * Crea un reconocedor de voz continuo con auto-restart usando instancias frescas.
+ * Crea un reconocedor de voz continuo con auto-restart.
  *
  * - continuous=true: el navegador no corta durante pausas naturales.
- * - Auto-restart con instancia NUEVA: cuando Chrome cierra la sesión por silencio,
- *   creamos un NEW SpeechRecognition en lugar de llamar rec.start() en el mismo objeto.
- *   Esto garantiza que e.results siempre nace vacío → no se re-procesan resultados
- *   anteriores → sin duplicación.
+ * - Auto-restart en la MISMA instancia: cuando Chrome cierra la sesión por
+ *   silencio, se llama rec.start() de nuevo sobre el mismo objeto (no uno
+ *   nuevo) para preservar el permiso de mic ya otorgado. Chrome puede
+ *   re-emitir en e.results entries que ya procesamos — lastFinalIndex evita
+ *   reprocesarlas, y stripLeadingOverlap recorta la palabra final que a
+ *   veces el motor repite al arrancar el siguiente segmento.
  * - onResult: llamado por cada segmento isFinal. El caller acumula en su propio ref.
  * - onInterim: texto provisional mientras el usuario habla.
  * - onEnd: solo se dispara cuando el usuario llama stop() manualmente.
  */
+function normWord(w: string): string {
+  return w.toLowerCase().replace(/[^a-z0-9']/g, "");
+}
+
+/**
+ * Chrome mobile a veces re-pronuncia la(s) última(s) palabra(s) de un
+ * segmento final al principio del siguiente final (distinto índice, mismo
+ * contenido) — no es re-procesamiento de un resultado ya visto (eso lo
+ * cubre lastFinalIndex), es el motor de reconocimiento duplicando texto
+ * en el límite entre dos finals. Se detecta comparando la cola del texto
+ * ya emitido contra la cabeza del nuevo segmento y se recorta el solape.
+ */
+function stripLeadingOverlap(prevTail: string, next: string): string {
+  const prevWords = prevTail.trim().split(/\s+/).filter(Boolean);
+  const nextWords = next.trim().split(/\s+/).filter(Boolean);
+  if (!prevWords.length || !nextWords.length) return next;
+  const maxK = Math.min(5, prevWords.length, nextWords.length);
+  for (let k = maxK; k >= 1; k--) {
+    const prevEnd = prevWords.slice(-k).map(normWord);
+    const nextStart = nextWords.slice(0, k).map(normWord);
+    if (prevEnd.every((w, idx) => w.length > 0 && w === nextStart[idx])) {
+      return nextWords.slice(k).join(" ");
+    }
+  }
+  return next;
+}
+
 export function createRecognizer(opts: {
   lang?: string;
   onResult: (text: string) => void;
@@ -60,6 +89,7 @@ export function createRecognizer(opts: {
   let endFired      = false;
   let lastInterim   = "";
   let lastFinalIndex = -1; // highest e.results index already emitted as final
+  let lastFinalTail  = ""; // most recent raw final segment, for overlap detection
 
   const rec: any = new SR();
   rec.lang           = opts.lang ?? "en-GB";
@@ -89,7 +119,12 @@ export function createRecognizer(opts: {
         // old e.results entries after a same-instance rec.start() on mobile).
         if (i > lastFinalIndex) {
           lastFinalIndex = i;
-          final += transcript;
+          const trimmed = stripLeadingOverlap(lastFinalTail, transcript);
+          if (trimmed !== transcript) {
+            console.log(`[createRecognizer] → trimmed boundary overlap: "${transcript}" → "${trimmed}"`);
+          }
+          lastFinalTail = transcript;
+          final += (final && trimmed ? " " : "") + trimmed;
         }
       } else {
         interim += transcript;
@@ -127,6 +162,7 @@ export function createRecognizer(opts: {
       endFired       = false;
       lastInterim    = "";
       lastFinalIndex = -1; // fresh manual start: process all results from zero
+      lastFinalTail  = "";
       try { rec.start(); } catch { /* already running */ }
     },
     stop: () => {
