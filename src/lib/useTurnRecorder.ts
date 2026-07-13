@@ -37,11 +37,14 @@ export function useTurnRecorder(lang: string): TurnRecorderAPI {
   function start(onDone: (text: string, errorCode?: string) => void) {
     if (!speechSupported()) { onDone("", "not-supported"); return; }
 
-    // Abort any in-flight recognizer from a previous call
+    // Abort any in-flight recognizer from a previous call. Null the ref FIRST so
+    // the old instance's terminal onEnd (fired synchronously by stop()) sees
+    // recRef.current !== itself and no-ops instead of resolving this new turn.
     if (recRef.current) {
-      onDoneRef.current = null;
-      try { recRef.current.stop(); } catch { /* ignore */ }
+      const old = recRef.current;
       recRef.current = null;
+      onDoneRef.current = null;
+      try { old.stop(); } catch { /* ignore */ }
     }
 
     console.log("[useTurnRecorder] start() — resetting accRef");

@@ -35,18 +35,30 @@ export function getVoices(langPrefix?: string): SpeechSynthesisVoice[] {
 }
 
 /**
- * Crea un reconocedor de voz continuo con auto-restart.
+ * Reconocedor de voz por turno, robusto en mobile Chrome. Motor ÚNICO para
+ * todos los consumidores tipo-turno (Talk, Roleplay, Shadowing vía useTurnRecorder,
+ * pronunciation). Tolera pausas dentro de un turno y termina de forma determinística.
  *
- * - continuous=true: el navegador no corta durante pausas naturales.
- * - Auto-restart en la MISMA instancia: cuando Chrome cierra la sesión por
- *   silencio, se llama rec.start() de nuevo sobre el mismo objeto (no uno
- *   nuevo) para preservar el permiso de mic ya otorgado. Chrome puede
- *   re-emitir en e.results entries que ya procesamos — lastFinalIndex evita
- *   reprocesarlas, y stripLeadingOverlap recorta la palabra final que a
- *   veces el motor repite al arrancar el siguiente segmento.
- * - onResult: llamado por cada segmento isFinal. El caller acumula en su propio ref.
+ * Garantías de robustez (aprendidas de los bugs de mobile):
+ *  - Salida terminal desacoplada de onend: stop() vuelca el resultado
+ *    sincrónicamente desde el acumulador (flushAndEnd), promoviendo el interim
+ *    pendiente a final. NO depende de que el browser dispare onend tras stop()
+ *    — en mobile a veces no lo hace, lo que colgaba a Shadowing en "Listening…".
+ *  - Teardown con abort() + handlers desconectados: libera el engine para que
+ *    el SIGUIENTE turno pueda capturar (con stop() solo, mobile no lo suelta y
+ *    el 2º uso del mic quedaba mudo).
+ *  - Restart resiliente: si Chrome cierra por silencio, reinicia para tolerar
+ *    pausas; si el start() del restart tira, recrea una instancia fresca; si
+ *    todo falla, cierra el turno con lo acumulado en vez de morir en silencio.
+ *  - Reset total de estado en cada start(): cero arrastre entre turnos.
+ *
+ * Dedup de duplicación: lastFinalIndex (por-instancia) descarta re-fires de
+ * Chrome dentro de una sesión; lastFinalTail + stripLeadingOverlap recortan la
+ * palabra que el motor repite en el límite entre dos finals (entre instancias).
+ *
+ * - onResult: por cada segmento final (el caller acumula en su propio ref).
  * - onInterim: texto provisional mientras el usuario habla.
- * - onEnd: solo se dispara cuando el usuario llama stop() manualmente.
+ * - onEnd: se dispara UNA vez, al terminar el turno (stop() o restart fallido).
  */
 function normWord(w: string): string {
   return w.toLowerCase().replace(/[^a-z0-9']/g, "");
@@ -85,89 +97,139 @@ export function createRecognizer(opts: {
     (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
   if (!SR) return null;
 
-  let manualStop    = false;
-  let endFired      = false;
-  let lastInterim   = "";
-  let lastFinalIndex = -1; // highest e.results index already emitted as final
-  let lastFinalTail  = ""; // most recent raw final segment, for overlap detection
+  // ── Estado del turno (vive a través de todos los restarts) ────────────────
+  let rec: any        = null;  // instancia SR actual (se recrea en cada restart)
+  let manualStop      = false; // true una vez que el usuario tocó Done/Listo
+  let endFired        = false; // onEnd ya se disparó (idempotencia)
+  let lastInterim     = "";    // interim más reciente aún no finalizado
+  let lastFinalTail   = "";    // último segmento final crudo, para recortar solape
 
-  const rec: any = new SR();
-  rec.lang           = opts.lang ?? "en-GB";
-  rec.continuous     = true;
-  rec.interimResults = true;
-
-  const fireEnd = () => {
-    if (!endFired) { endFired = true; opts.onEnd?.(); }
+  // Vuelca el resultado terminal SIN depender de que el browser dispare onend.
+  // Mobile Chrome a veces no dispara onend tras stop() (o el loop de restart
+  // muere), así que este es el único punto de salida y se llama sincrónicamente
+  // desde stop(). Antes de terminar, promueve cualquier interim pendiente a
+  // final para no perder la última frase si Chrome nunca emitió isFinal.
+  const flushAndEnd = () => {
+    if (endFired) return;
+    if (lastInterim.trim()) {
+      const t = stripLeadingOverlap(lastFinalTail, lastInterim).trim();
+      lastFinalTail = lastInterim;
+      lastInterim = "";
+      if (t) { console.log(`[createRecognizer] flush interim → onResult("${t}")`); opts.onResult(t); }
+    }
+    endFired = true;
+    console.log("[createRecognizer] → onEnd fired");
+    opts.onEnd?.();
   };
 
-  rec.onstart       = () => console.log("[createRecognizer] onstart");
-  rec.onaudiostart  = () => console.log("[createRecognizer] onaudiostart — mic open");
-  rec.onspeechstart = () => console.log("[createRecognizer] onspeechstart — voice detected");
-  rec.onspeechend   = () => console.log("[createRecognizer] onspeechend");
-  rec.onaudioend    = () => console.log("[createRecognizer] onaudioend");
+  // Construye una instancia SR fresca con todos sus handlers.
+  // lastFinalIndex es POR-instancia: dedup de re-fires de Chrome dentro de la
+  // misma sesión. El dedup entre instancias lo cubre lastFinalTail (solape).
+  function buildInstance() {
+    const r: any = new SR();
+    r.lang           = opts.lang ?? "en-GB";
+    r.continuous     = true;
+    r.interimResults = true;
+    let lastFinalIndex = -1;
 
-  rec.onresult = (e: any) => {
-    console.log(`[createRecognizer] onresult — resultIndex=${e.resultIndex} results.length=${e.results.length} lastFinalIndex=${lastFinalIndex}`);
-    let interim = "";
-    let final   = "";
-    for (let i = e.resultIndex; i < e.results.length; i++) {
-      const transcript = e.results[i][0].transcript;
-      const isFin = e.results[i].isFinal;
-      console.log(`  [${i}] ${isFin ? "FINAL" : "interim"}: "${transcript}" (skip=${isFin && i <= lastFinalIndex})`);
-      if (isFin) {
-        // Guard: skip any final we already emitted (happens when Chrome re-fires
-        // old e.results entries after a same-instance rec.start() on mobile).
-        if (i > lastFinalIndex) {
-          lastFinalIndex = i;
-          const trimmed = stripLeadingOverlap(lastFinalTail, transcript);
-          if (trimmed !== transcript) {
-            console.log(`[createRecognizer] → trimmed boundary overlap: "${transcript}" → "${trimmed}"`);
+    r.onstart       = () => console.log("[createRecognizer] onstart");
+    r.onaudiostart  = () => console.log("[createRecognizer] onaudiostart — mic open");
+    r.onspeechstart = () => console.log("[createRecognizer] onspeechstart — voice detected");
+    r.onspeechend   = () => console.log("[createRecognizer] onspeechend");
+    r.onaudioend    = () => console.log("[createRecognizer] onaudioend");
+
+    r.onresult = (e: any) => {
+      console.log(`[createRecognizer] onresult — resultIndex=${e.resultIndex} results.length=${e.results.length} lastFinalIndex=${lastFinalIndex}`);
+      let interim = "";
+      let final   = "";
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const transcript = e.results[i][0].transcript;
+        const isFin = e.results[i].isFinal;
+        console.log(`  [${i}] ${isFin ? "FINAL" : "interim"}: "${transcript}" (skip=${isFin && i <= lastFinalIndex})`);
+        if (isFin) {
+          // Skip cualquier final ya emitido (Chrome re-emite entries viejas
+          // tras un restart de misma instancia en mobile).
+          if (i > lastFinalIndex) {
+            lastFinalIndex = i;
+            const trimmed = stripLeadingOverlap(lastFinalTail, transcript);
+            if (trimmed !== transcript) {
+              console.log(`[createRecognizer] → trimmed boundary overlap: "${transcript}" → "${trimmed}"`);
+            }
+            lastFinalTail = transcript;
+            final += (final && trimmed ? " " : "") + trimmed;
           }
-          lastFinalTail = transcript;
-          final += (final && trimmed ? " " : "") + trimmed;
+        } else {
+          interim += transcript;
         }
-      } else {
-        interim += transcript;
+      }
+      if (interim) { lastInterim = interim; opts.onInterim?.(interim); }
+      if (final)   { lastInterim = ""; console.log(`[createRecognizer] → calling onResult("${final}")`); opts.onResult(final); }
+    };
+
+    r.onerror = (e: any) => {
+      console.log(`[createRecognizer] onerror — error="${e.error}"`);
+      // no-speech / audio-capture / aborted son transitorios → dejar que onend
+      // decida (restart). Cualquier otro error es fatal → terminar el turno.
+      if (e.error !== "no-speech" && e.error !== "audio-capture" && e.error !== "aborted") {
+        manualStop = true;
+      }
+    };
+
+    r.onend = () => {
+      console.log(`[createRecognizer] onend — manualStop=${manualStop}`);
+      if (manualStop) { flushAndEnd(); return; }
+      // Fin natural dentro del turno (silencio en mobile): reiniciar para
+      // tolerar pausas. Si el restart falla, terminar limpio en vez de colgar.
+      restart();
+    };
+
+    return r;
+  }
+
+  // Restart resiliente: intenta misma instancia; si tira, recrea una fresca;
+  // si eso también falla, cierra el turno con lo acumulado (nunca cuelga).
+  function restart() {
+    if (manualStop) return;
+    try {
+      rec.start();
+      console.log("[createRecognizer] → restart (same instance)");
+    } catch {
+      try {
+        rec = buildInstance();
+        rec.start();
+        console.log("[createRecognizer] → restart (fresh instance)");
+      } catch (e) {
+        console.error("[createRecognizer] → restart failed, ending turn", e);
+        flushAndEnd();
       }
     }
-    if (interim) { lastInterim = interim; opts.onInterim?.(interim); }
-    if (final)   { lastInterim = ""; console.log(`[createRecognizer] → calling onResult("${final}")`); opts.onResult(final); }
-  };
-
-  rec.onerror = (e: any) => {
-    console.log(`[createRecognizer] onerror — error="${e.error}"`);
-    if (e.error !== "no-speech" && e.error !== "audio-capture") {
-      manualStop = true;
-      fireEnd();
-    }
-  };
-
-  rec.onend = () => {
-    console.log(`[createRecognizer] onend — manualStop=${manualStop} lastFinalIndex=${lastFinalIndex}`);
-    if (!manualStop) {
-      // Same-instance restart: preserves mic permission granted by the original
-      // user gesture. lastFinalIndex ensures we never re-emit already-processed
-      // finals even though Chrome keeps them in e.results across restarts.
-      console.log("[createRecognizer] → restarting same instance");
-      try { rec.start(); console.log("[createRecognizer] → restart started"); }
-      catch (e) { console.error("[createRecognizer] → restart start() threw:", e); }
-    } else {
-      fireEnd();
-    }
-  };
+  }
 
   return {
     start: () => {
-      manualStop     = false;
-      endFired       = false;
-      lastInterim    = "";
-      lastFinalIndex = -1; // fresh manual start: process all results from zero
-      lastFinalTail  = "";
-      try { rec.start(); } catch { /* already running */ }
+      // Reset TOTAL de estado: cero arrastre entre turnos consecutivos.
+      manualStop    = false;
+      endFired      = false;
+      lastInterim   = "";
+      lastFinalTail = "";
+      rec = buildInstance();
+      try { rec.start(); } catch (e) { console.error("[createRecognizer] start() threw:", e); }
     },
     stop: () => {
+      // Teardown determinístico: desconectar handlers y abort() para LIBERAR
+      // el engine (mobile no lo suelta con stop() solo → el 2º turno no captura),
+      // luego disparar el resultado terminal sincrónicamente (sin esperar onend).
       manualStop = true;
-      try { rec.stop(); } catch { /* not running */ }
+      const dying = rec;
+      rec = null;
+      if (dying) {
+        dying.onresult = null;
+        dying.onerror  = null;
+        dying.onend    = null;
+        try { dying.stop();  } catch { /* not running */ }
+        try { dying.abort(); } catch { /* not running */ }
+      }
+      flushAndEnd();
     },
     getInterim: () => lastInterim,
   };

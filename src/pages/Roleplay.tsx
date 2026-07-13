@@ -120,11 +120,16 @@ function RoleplayChat({ scenario, onExit }: { scenario: Scenario; onExit: () => 
 
   function toggleMic() {
     if (listening) {
+      // stop() flushes pending interim through onResult and fires onEnd sync.
       recognizerRef.current?.stop();
+      recognizerRef.current = null;
       setListening(false);
       setInterim("");
       return;
     }
+    // Tear down any prior instance before a fresh start so the engine is
+    // released (mobile won't capture on a 2nd turn otherwise).
+    recognizerRef.current?.stop();
     const lang = voicePrefs.voiceAccent ?? (profile?.english_variant === "American" ? "en-US" : "en-GB");
     const rec = createRecognizer({
       lang,

@@ -212,18 +212,18 @@ Reply with only the hint text — no explanation, no punctuation around it.`,
 
   function toggleMic() {
     if (listening) {
-      // Read interim BEFORE stop() so Chrome's async flush doesn't race with us.
-      // With continuous:true Chrome may never emit isFinal — this is the fallback.
-      const pendingInterim = recognizerRef.current?.getInterim() ?? "";
-      console.log("[toggleMic] Listo clicked — getInterim()=", JSON.stringify(pendingInterim), "input before=", JSON.stringify(input));
+      // stop() flushes any pending interim through onResult (→ setInput) and
+      // fires onEnd synchronously — no manual getInterim() fallback needed.
+      console.log("[toggleMic] Listo clicked");
       recognizerRef.current?.stop();
-      if (pendingInterim.trim()) {
-        setInput((prev) => (prev ? prev + " " : "") + pendingInterim.trim());
-      }
-      console.log("[toggleMic] after stop+fallback — input will be=", JSON.stringify(input || pendingInterim.trim()));
+      recognizerRef.current = null;
       setListening(false);
+      setInterim("");
       return;
     }
+    // Tear down any prior instance before starting a fresh one so the engine is
+    // released (mobile won't capture on a 2nd turn otherwise).
+    recognizerRef.current?.stop();
     const rec = createRecognizer({
       lang: profile?.english_variant === "American" ? "en-US" : "en-GB",
       onInterim: setInterim,
