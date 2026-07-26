@@ -6,7 +6,7 @@ import { getDueItems, applyReview, type ReviewItem, type ReviewQuality } from ".
 import { speak, speechSupported } from "../lib/speech";
 import { useVoicePrefs } from "../lib/useVoicePrefs";
 import { comparePhrases } from "../lib/pronunciation";
-import { useSingleUtterance } from "../lib/useSingleUtterance";
+import { useSpeechCapture } from "../lib/useSpeechCapture";
 import Loader from "../components/Loader";
 import Maica from "../components/Maica";
 import { checkAchievements, markSeen, type AchievementDef } from "../lib/achievements";
@@ -27,7 +27,7 @@ export default function Review() {
   const [reviewedCount, setReviewedCount] = useState(0);
   const [newAchievements, setNewAchievements] = useState<AchievementDef[]>([]);
 
-  const voiceRec = useSingleUtterance(voicePrefs.voiceAccent ?? "en-GB");
+  const voiceRec = useSpeechCapture({ lang: voicePrefs.voiceAccent ?? "en-GB", mode: "turn" });
   const doneTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Timeout de seguridad: 30s → stop automático (onend dispara el callback)

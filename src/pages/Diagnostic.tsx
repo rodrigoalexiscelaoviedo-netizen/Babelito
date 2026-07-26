@@ -6,7 +6,7 @@ import { useAuth } from "../context/AuthContext";
 import { DIAGNOSTIC, estimateLevel } from "../lib/diagnosticQuestions";
 import type { Level, DiagnosticAnswer } from "../lib/types";
 import { speechSupported, speak } from "../lib/speech";
-import { useSingleUtterance } from "../lib/useSingleUtterance";
+import { useSpeechCapture } from "../lib/useSpeechCapture";
 import { BrandDots } from "../components/Loader";
 import {
   READING_SENTENCES,
@@ -47,7 +47,7 @@ function voiceErrorMsg(code: string | null): string {
 export default function Diagnostic() {
   const { session, profile, refreshProfile } = useAuth();
   const navigate = useNavigate();
-  const voiceRec = useSingleUtterance("en-GB");
+  const voiceRec = useSpeechCapture({ lang: "en-GB", mode: "turn" });
 
   // ── Text phase ──────────────────────────────────────────────────────────────
   const [idx, setIdx]         = useState(0);

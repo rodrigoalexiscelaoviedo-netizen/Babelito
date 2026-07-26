@@ -22,7 +22,8 @@ import { supabase } from "../lib/supabaseClient";
 import { askCoach, RetryableError } from "../lib/claude";
 import { buildRoleplayPrompt, parseErrors } from "../lib/buildSystemPrompt";
 import { SCENARIOS, type Scenario } from "../lib/scenarios";
-import { speak, pauseSpeech, resumeSpeech, createRecognizer, speechSupported, type Recognizer } from "../lib/speech";
+import { speak, pauseSpeech, resumeSpeech, speechSupported } from "../lib/speech";
+import { useSpeechCapture } from "../lib/useSpeechCapture";
 import { useVoicePrefs } from "../lib/useVoicePrefs";
 import type { ChatTurn } from "../lib/types";
 import { generateReport, type SessionReport } from "../lib/sessionReport";
@@ -93,11 +94,19 @@ function RoleplayChat({ scenario, onExit }: { scenario: Scenario; onExit: () => 
   const [generatingReport, setGeneratingReport] = useState(false);
   const [report, setReport] = useState<SessionReport | null>(null);
   const [reportError, setReportError] = useState("");
-  const [listening, setListening] = useState(false);
-  const [interim, setInterim] = useState("");
-  const recognizerRef = useRef<Recognizer | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const systemRef = useRef(profile ? buildRoleplayPrompt(profile, scenario) : "");
+
+  const voice = useSpeechCapture({
+    lang: voicePrefs.voiceAccent ?? (profile?.english_variant === "American" ? "en-US" : "en-GB"),
+    mode: "turn",
+  });
+  const listening = voice.isRecording;
+
+  // El hook es la única fuente de verdad mientras se graba (ver Conversation.tsx).
+  const displayValue = listening
+    ? [input, voice.finalText, voice.interim].filter((s) => s.trim()).join(" ")
+    : input;
 
   // ── Hint pasivo ──────────────────────────────────────────────────────────
   const [showHint, setShowHint] = useState(false);
@@ -120,27 +129,13 @@ function RoleplayChat({ scenario, onExit }: { scenario: Scenario; onExit: () => 
 
   function toggleMic() {
     if (listening) {
-      // stop() flushes pending interim through onResult and fires onEnd sync.
-      recognizerRef.current?.stop();
-      recognizerRef.current = null;
-      setListening(false);
-      setInterim("");
+      voice.stop();   // el callback de start() hace el commit
       return;
     }
-    // Tear down any prior instance before a fresh start so the engine is
-    // released (mobile won't capture on a 2nd turn otherwise).
-    recognizerRef.current?.stop();
-    const lang = voicePrefs.voiceAccent ?? (profile?.english_variant === "American" ? "en-US" : "en-GB");
-    const rec = createRecognizer({
-      lang,
-      onInterim: setInterim,
-      onResult: (t) => setInput((prev) => (prev ? prev + " " : "") + t),
-      onEnd: () => { setListening(false); setInterim(""); },
+    voice.start((finalText) => {
+      if (!finalText.trim()) return;
+      setInput((prev) => (prev.trim() ? `${prev.trim()} ` : "") + finalText.trim());
     });
-    if (!rec) return;
-    recognizerRef.current = rec;
-    rec.start();
-    setListening(true);
   }
 
   // Arrancar timer de hint cuando el coach termina de responder
@@ -473,15 +468,17 @@ Reply with only the hint text.`,
       </div>
 
       <div className="pt-3">
-        {listening && interim && (
-          <p className="text-center text-sm text-paper-muted italic mb-2">{interim}</p>
+        {listening && voice.interim && (
+          <p className="text-center text-sm text-paper-muted italic mb-2">{voice.interim}</p>
         )}
+        {voice.error && <p className="text-coral text-xs text-center mb-2">{voice.error}</p>}
         <div className="card flex items-end gap-2 p-2">
           <textarea
             className="flex-1 resize-none bg-transparent px-2 py-2 text-paper placeholder:text-paper-faint focus:outline-none max-h-32"
             rows={1}
             placeholder="Your line… (type /end for feedback)"
-            value={input}
+            value={displayValue}
+            readOnly={listening}
             onChange={(e) => {
               setInput(e.target.value);
               if (e.target.value.trim()) {

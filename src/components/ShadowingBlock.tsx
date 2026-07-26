@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Volume2, Mic, CheckCircle2, Loader2, Pause, Play } from "lucide-react";
 import { speak, pauseSpeech, resumeSpeech, speechSupported } from "../lib/speech";
 import { comparePhrases, generatePronunciationFeedback, savePronunciationError } from "../lib/pronunciation";
-import { useTurnRecorder } from "../lib/useTurnRecorder";
+import { useSpeechCapture } from "../lib/useSpeechCapture";
 import { useVoicePrefs } from "../lib/useVoicePrefs";
 import { useAuth } from "../context/AuthContext";
 
@@ -20,7 +20,7 @@ export default function ShadowingBlock({ text, lang, label = "Listen & repeat" }
   const { profile } = useAuth();
   const voicePrefs = useVoicePrefs();
   const effectiveLang = lang ?? voicePrefs.voiceAccent ?? "en-GB";
-  const voiceRec = useTurnRecorder(effectiveLang);
+  const voiceRec = useSpeechCapture({ lang: effectiveLang, mode: "turn" });
 
   const [state, setState] = useState<State>("idle");
   const [paused, setPaused] = useState(false);
@@ -73,11 +73,17 @@ export default function ShadowingBlock({ text, lang, label = "Listen & repeat" }
     setResult(null);
     setTip("");
     setState("recording");
-    voiceRec.start(async (spokenText, _errorCode) => {
-      // onend is the sole exit point — fires on silence, timeout, or Done button
+    voiceRec.start(async (spokenText, errorCode) => {
+      // Punto de salida único del hook: Done, corte fatal o timeout de 30 s.
       setState("processing");
       if (!spokenText.trim()) {
-        setError("Nothing detected — make sure your microphone is on and try again.");
+        setError(
+          errorCode === "not-allowed" || errorCode === "service-not-allowed"
+            ? "Microphone blocked — enable the permission in your browser."
+            : errorCode === "audio-capture"
+            ? "No microphone detected."
+            : "Nothing detected — make sure your microphone is on and try again."
+        );
         setState("idle");
         return;
       }

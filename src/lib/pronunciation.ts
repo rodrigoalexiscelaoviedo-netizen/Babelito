@@ -1,6 +1,7 @@
 import { supabase } from "./supabaseClient";
 import { askCoach } from "./claude";
-import { createRecognizer, speechSupported } from "./speech";
+import { speechSupported } from "./speech";
+import { createSpeechSession } from "./useSpeechCapture";
 import { getPhrasesByLevel, type PronunciationPhrase } from "./pronunciationPhrases";
 
 export { getPhrasesByLevel };
@@ -18,49 +19,36 @@ export interface PronunciationFeedback {
 }
 
 /**
- * Wraps createRecognizer in a Promise.
- * Resolves with the first confirmed (isFinal) spoken text, or null on timeout.
- * Default timeout: 20 s — largo enough for nervous speakers; auto-restart transparente.
+ * Adaptador Promise sobre el motor canónico (createSpeechSession) para
+ * Pronunciation.tsx, que captura dentro de un flujo async y no puede usar el
+ * hook. NO es una implementación alternativa: comparte el mismo motor y las
+ * mismas reglas anti-duplicación que useSpeechCapture.
+ *
+ * Resuelve con el texto acumulado del turno, o null si no se capturó nada.
+ * Al vencer timeoutMs cierra la captura y resuelve con lo que haya.
  */
 export function recognizeSpeech(lang = "en-GB", timeoutMs = 20000): Promise<string | null> {
   if (!speechSupported()) return Promise.resolve(null);
 
   return new Promise((resolve) => {
     let settled = false;
+    let timer: ReturnType<typeof setTimeout> | null = null;
 
-    const timer = setTimeout(() => {
-      if (!settled) {
-        settled = true;
-        rec?.stop();
-        resolve(null);
-      }
-    }, timeoutMs);
-
-    const rec = createRecognizer({
+    const session = createSpeechSession({
       lang,
-      onResult: (text) => {
-        if (!settled) {
-          settled = true;
-          clearTimeout(timer);
-          resolve(text.trim() || null);
-        }
-      },
-      onEnd: () => {
-        if (!settled) {
-          settled = true;
-          clearTimeout(timer);
-          resolve(null);
-        }
+      mode: "turn",
+      onDone: (text) => {
+        if (settled) return;
+        settled = true;
+        if (timer) clearTimeout(timer);
+        resolve(text.trim() || null);
       },
     });
 
-    if (!rec) {
-      clearTimeout(timer);
-      resolve(null);
-      return;
-    }
+    if (!session) { resolve(null); return; }
 
-    rec.start();
+    // El timeout solo pide el cierre; onDone es siempre quien resuelve.
+    timer = setTimeout(() => session.stop(), timeoutMs);
   });
 }
 

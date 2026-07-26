@@ -6,13 +6,12 @@ import { supabase } from "../lib/supabaseClient";
 import { askCoach, RetryableError } from "../lib/claude";
 import { buildConversationPrompt, parseErrors } from "../lib/buildSystemPrompt";
 import {
-  createRecognizer,
   speechSupported,
   speak,
   pauseSpeech,
   resumeSpeech,
-  type Recognizer,
 } from "../lib/speech";
+import { useSpeechCapture } from "../lib/useSpeechCapture";
 import { useVoicePrefs, type VoicePrefs } from "../lib/useVoicePrefs";
 import type { ChatTurn, DetectedError } from "../lib/types";
 import VoiceOrb from "../components/VoiceOrb";
@@ -34,8 +33,6 @@ export default function Conversation() {
   const [turns, setTurns] = useState<ChatTurn[]>([]);
   const [input, setInput] = useState("");
   const [thinking, setThinking] = useState(false);
-  const [listening, setListening] = useState(false);
-  const [interim, setInterim] = useState("");
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [startedAt] = useState(() => Date.now());
 
@@ -46,9 +43,21 @@ export default function Conversation() {
   const [retryText, setRetryText] = useState<string | null>(null);
   const [newAchievements, setNewAchievements] = useState<AchievementDef[]>([]);
 
-  const recognizerRef = useRef<Recognizer | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const systemRef = useRef<string>("");
+
+  const voice = useSpeechCapture({
+    lang: profile?.english_variant === "American" ? "en-US" : "en-GB",
+    mode: "turn",
+  });
+  const listening = voice.isRecording;
+
+  // El hook es la única fuente de verdad mientras se graba: lo que se ve es
+  // el texto ya escrito + lo confirmado + el borrador en vivo. Al terminar el
+  // turno se hace UN solo commit a `input`, que vuelve a ser editable.
+  const displayValue = listening
+    ? [input, voice.finalText, voice.interim].filter((s) => s.trim()).join(" ")
+    : input;
 
   // ── Hint pasivo ──────────────────────────────────────────────────────────
   const [showHint, setShowHint] = useState(false);
@@ -117,7 +126,6 @@ export default function Conversation() {
     const nextTurns = [...turns, userTurn];
     setTurns(nextTurns);
     setInput("");
-    setInterim("");
     setThinking(true);
 
     try {
@@ -212,28 +220,13 @@ Reply with only the hint text — no explanation, no punctuation around it.`,
 
   function toggleMic() {
     if (listening) {
-      // stop() flushes any pending interim through onResult (→ setInput) and
-      // fires onEnd synchronously — no manual getInterim() fallback needed.
-      console.log("[toggleMic] Listo clicked");
-      recognizerRef.current?.stop();
-      recognizerRef.current = null;
-      setListening(false);
-      setInterim("");
+      voice.stop();   // el callback de start() hace el commit
       return;
     }
-    // Tear down any prior instance before starting a fresh one so the engine is
-    // released (mobile won't capture on a 2nd turn otherwise).
-    recognizerRef.current?.stop();
-    const rec = createRecognizer({
-      lang: profile?.english_variant === "American" ? "en-US" : "en-GB",
-      onInterim: setInterim,
-      onResult: (t) => setInput((prev) => (prev ? prev + " " : "") + t),
-      onEnd: () => setListening(false),
+    voice.start((finalText) => {
+      if (!finalText.trim()) return;
+      setInput((prev) => (prev.trim() ? `${prev.trim()} ` : "") + finalText.trim());
     });
-    if (!rec) return;
-    recognizerRef.current = rec;
-    rec.start();
-    setListening(true);
   }
 
   if (report) {
@@ -402,15 +395,19 @@ Reply with only the hint text — no explanation, no punctuation around it.`,
         {listening && (
           <div className="mb-2">
             <VoiceOrb listening={listening} />
-            {interim && <p className="text-center text-sm text-paper-muted italic">{interim}</p>}
+            {voice.interim && (
+              <p className="text-center text-sm text-paper-muted italic">{voice.interim}</p>
+            )}
           </div>
         )}
+        {voice.error && <p className="text-coral text-xs text-center mb-2">{voice.error}</p>}
         <div className="card flex items-end gap-2 p-2">
           <textarea
             className="flex-1 resize-none bg-transparent px-2 py-2 text-paper placeholder:text-paper-faint focus:outline-none max-h-32"
             rows={1}
             placeholder="Type in English… or tap the mic"
-            value={input}
+            value={displayValue}
+            readOnly={listening}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) {
