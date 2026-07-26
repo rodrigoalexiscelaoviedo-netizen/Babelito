@@ -16,6 +16,7 @@ import { useVoicePrefs, type VoicePrefs } from "../lib/useVoicePrefs";
 import type { ChatTurn, DetectedError } from "../lib/types";
 import VoiceOrb from "../components/VoiceOrb";
 import { generateReport, type SessionReport } from "../lib/sessionReport";
+import { MIN_USER_TURNS, countUserTurns, turnsRemaining } from "../lib/practice";
 import { checkAchievements, markSeen, type AchievementDef } from "../lib/achievements";
 import AchievementCelebration from "../components/AchievementCelebration";
 import { BrandDots } from "../components/Loader";
@@ -39,12 +40,15 @@ export default function Conversation() {
   // Report state
   const [generatingReport, setGeneratingReport] = useState(false);
   const [report, setReport] = useState<SessionReport | null>(null);
+  const [reportCounted, setReportCounted] = useState(true);
   const [reportError, setReportError] = useState("");
   const [retryText, setRetryText] = useState<string | null>(null);
   const [newAchievements, setNewAchievements] = useState<AchievementDef[]>([]);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const systemRef = useRef<string>("");
+  const sessionIdRef = useRef<string | null>(null);
+  const creatingSessionRef = useRef<Promise<string | null> | null>(null);
 
   const voice = useSpeechCapture({
     lang: profile?.english_variant === "American" ? "en-US" : "en-GB",
@@ -108,16 +112,30 @@ export default function Conversation() {
     }
   }, [input, listening]);
 
+  // El guard vive en un ref, no en el estado: setSessionId es asíncrono y dos
+  // envíos rápidos alcanzaban a insertar dos filas de sesión.
   async function ensureSession(): Promise<string | null> {
-    if (sessionId || !profile) return sessionId;
-    const { data } = await supabase
-      .from("sessions")
-      .insert({ user_id: profile.id, session_type: "conversation", topic })
-      .select("id")
-      .single();
-    const id = data?.id ?? null;
-    setSessionId(id);
-    return id;
+    if (sessionIdRef.current) return sessionIdRef.current;
+    if (creatingSessionRef.current) return creatingSessionRef.current;
+    if (!profile) return null;
+
+    creatingSessionRef.current = (async () => {
+      const { data, error } = await supabase
+        .from("sessions")
+        .insert({ user_id: profile.id, session_type: "conversation", topic })
+        .select("id")
+        .single();
+      if (error) {
+        creatingSessionRef.current = null;
+        return null;
+      }
+      const id = (data?.id as string | undefined) ?? null;
+      sessionIdRef.current = id;
+      setSessionId(id);
+      return id;
+    })();
+
+    return creatingSessionRef.current;
   }
 
   async function send(text: string) {
@@ -173,20 +191,33 @@ export default function Conversation() {
   }
 
   async function handleEndSession() {
-    if (!profile || turns.length < 2) return;
+    if (!profile || turns.length === 0) return;
     setGeneratingReport(true);
     setReportError("");
     try {
-      const r = await generateReport(profile.id, sessionId, "conversation", turns);
-      setReport(r);
-      const userTurns = turns.filter((t) => t.role === "user").length;
-      if (sessionId && userTurns >= 3) {
-        void supabase.from("sessions").update({
-          completed: true,
-          turn_count: userTurns,
-          ended_at: new Date().toISOString(),
-        }).eq("id", sessionId);
+      const sid = sessionIdRef.current ?? sessionId;
+      const r = await generateReport(profile.id, sid, "conversation", turns);
+      const userTurns = countUserTurns(turns);
+      const counts = userTurns >= MIN_USER_TURNS;
+
+      // La sesión solo se registra si alcanzó el mínimo. El resultado se
+      // informa en pantalla — nunca en silencio.
+      if (sid && counts) {
+        const { error } = await supabase
+          .from("sessions")
+          .update({
+            completed: true,
+            turn_count: userTurns,
+            ended_at: new Date().toISOString(),
+          })
+          .eq("id", sid);
+        if (error) {
+          setReportError(`No se pudo registrar la sesión: ${error.message}`);
+        }
       }
+
+      setReportCounted(counts);
+      setReport(r);
       checkAchievements(profile.id).then((newly) => {
         if (newly.length > 0) setNewAchievements(newly);
       });
@@ -230,7 +261,14 @@ Reply with only the hint text — no explanation, no punctuation around it.`,
   }
 
   if (report) {
-    return <ReportPanel report={report} onClose={() => setReport(null)} />;
+    return (
+      <ReportPanel
+        report={report}
+        counted={reportCounted}
+        error={reportError}
+        onClose={() => setReport(null)}
+      />
+    );
   }
 
   // Achievement overlay (shown over chat UI, not report)
@@ -305,7 +343,7 @@ Reply with only the hint text — no explanation, no punctuation around it.`,
         </p>
         <button
           onClick={handleEndSession}
-          disabled={generatingReport || turns.length < 2}
+          disabled={generatingReport || turns.length === 0}
           className="flex items-center gap-1.5 text-xs text-paper-muted hover:text-coral transition disabled:opacity-40"
         >
           {generatingReport ? (
@@ -314,6 +352,18 @@ Reply with only the hint text — no explanation, no punctuation around it.`,
             "Finish & see report →"
           )}
         </button>
+      </div>
+
+      {/* Estado real de registro — el usuario siempre sabe si esto va a contar */}
+      <div className="mb-2 text-right">
+        {turnsRemaining(turns) > 0 ? (
+          <p className="text-[11px] text-paper-faint">
+            Te {turnsRemaining(turns) === 1 ? "falta" : "faltan"} {turnsRemaining(turns)}{" "}
+            {turnsRemaining(turns) === 1 ? "intercambio" : "intercambios"} para que esta sesión cuente
+          </p>
+        ) : (
+          <p className="text-[11px] text-mint">✓ Esta sesión va a contar para tu racha</p>
+        )}
       </div>
       {reportError && <p className="text-coral text-xs mb-2">{reportError}</p>}
 
@@ -527,7 +577,17 @@ function CoachMessage({
   );
 }
 
-function ReportPanel({ report, onClose }: { report: SessionReport; onClose: () => void }) {
+function ReportPanel({
+  report,
+  onClose,
+  counted = true,
+  error = "",
+}: {
+  report: SessionReport;
+  onClose: () => void;
+  counted?: boolean;
+  error?: string;
+}) {
   return (
     <div className="animate-fade-up max-w-xl mx-auto">
       <div className="flex items-center justify-between mb-6">
@@ -539,6 +599,21 @@ function ReportPanel({ report, onClose }: { report: SessionReport; onClose: () =
           <X size={20} />
         </button>
       </div>
+
+      {!counted && (
+        <div className="card p-4 mb-4 border-gold/40">
+          <p className="text-sm text-gold font-medium mb-1">Esta sesión no se registró</p>
+          <p className="text-xs text-paper-muted">
+            Fue muy corta: hacen falta al menos {MIN_USER_TURNS} intercambios tuyos para que
+            cuente en tu racha. El reporte de abajo sigue siendo válido.
+          </p>
+        </div>
+      )}
+      {error && (
+        <div className="card p-4 mb-4 border-coral/40">
+          <p className="text-sm text-coral">{error}</p>
+        </div>
+      )}
 
       <div className="card p-5 mb-4">
         <p className="text-paper leading-relaxed">{report.summary}</p>

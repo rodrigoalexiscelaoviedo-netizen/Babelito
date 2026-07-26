@@ -14,7 +14,8 @@ interface ClickableTextProps {
   source: string;
   /** In Stories mode: adds gold underline to 'learning' words as "words in practice" */
   highlightLearning?: boolean;
-  onVocabUpdate: (word: string, status: WordStatus, def: WordDefinition) => void;
+  // def puede ser null: la palabra se puede guardar aunque el diccionario falle.
+  onVocabUpdate: (word: string, status: WordStatus, def: WordDefinition | null) => void;
 }
 
 type Mode = "word" | "sentence";
@@ -34,6 +35,7 @@ export default function ClickableText({
   const [selectedWord, setSelectedWord] = useState<string | null>(null);
   const [wordDef, setWordDef] = useState<WordDefinition | null>(null);
   const [loadingDef, setLoadingDef] = useState(false);
+  const [saveError, setSaveError] = useState("");
   const defCache = useRef<Map<string, WordDefinition>>(new Map());
 
   // Sentence mode state
@@ -71,6 +73,7 @@ export default function ClickableText({
     if (!word) return;
     setSelectedWord(word);
     setWordDef(null);
+    setSaveError("");
 
     if (defCache.current.has(word)) {
       setWordDef(defCache.current.get(word)!);
@@ -84,23 +87,33 @@ export default function ClickableText({
   }
 
   async function markStatus(status: WordStatus) {
-    if (!selectedWord || !wordDef) return;
-    await upsertWord(userId, selectedWord, {
-      status,
-      definition: wordDef.definition_es,
-      example: wordDef.example,
-      phonetic: wordDef.phonetic,
-      source,
-    });
-    if (status === "learning") {
-      await addToReview(userId, {
-        item_type: "word",
-        content: selectedWord,
-        prompt: wordDef.definition_es || selectedWord,
-        source_ref: selectedWord,
+    // Antes exigía wordDef: si el diccionario fallaba, tocar "learning" no
+    // hacía absolutamente nada y no avisaba. Ahora la palabra se guarda igual
+    // (sin definición) y cualquier error se muestra.
+    if (!selectedWord) return;
+    setSaveError("");
+    try {
+      await upsertWord(userId, selectedWord, {
+        status,
+        definition: wordDef?.definition_es,
+        example: wordDef?.example,
+        phonetic: wordDef?.phonetic,
+        source,
       });
+      if (status === "learning") {
+        await addToReview(userId, {
+          item_type: "word",
+          content: selectedWord,
+          prompt: wordDef?.definition_es || selectedWord,
+          source_ref: selectedWord,
+        });
+      }
+      onVocabUpdate(selectedWord, status, wordDef);
+    } catch (e) {
+      setSaveError(
+        e instanceof Error ? `No se pudo guardar: ${e.message}` : "No se pudo guardar la palabra."
+      );
     }
-    onVocabUpdate(selectedWord, status, wordDef);
   }
 
   // ── Sentence mode ──────────────────────────────────────────────────────────
@@ -287,6 +300,12 @@ export default function ClickableText({
           </div>
 
           {loadingDef && <p className="text-paper-muted text-sm">Looking up…</p>}
+          {!loadingDef && !wordDef && (
+            <p className="text-paper-faint text-xs mb-3">
+              No encontramos la definición, pero podés guardar la palabra igual.
+            </p>
+          )}
+          {saveError && <p className="text-coral text-xs mb-2">{saveError}</p>}
           {wordDef && !loadingDef && (
             <div className="space-y-1 mb-4">
               <p className="text-sm">
@@ -309,21 +328,21 @@ export default function ClickableText({
               active={vocabMap[selectedWord]?.status === "new"}
               color="bg-coral/20 text-coral hover:bg-coral/30"
               onClick={() => markStatus("new")}
-              disabled={loadingDef || !wordDef}
+              disabled={loadingDef}
             />
             <StatusBtn
               label="Learning"
               active={vocabMap[selectedWord]?.status === "learning"}
               color="bg-gold/20 text-gold hover:bg-gold/30"
               onClick={() => markStatus("learning")}
-              disabled={loadingDef || !wordDef}
+              disabled={loadingDef}
             />
             <StatusBtn
               label="I know it"
               active={vocabMap[selectedWord]?.status === "known"}
               color="bg-mint/20 text-mint hover:bg-mint/30"
               onClick={() => markStatus("known")}
-              disabled={loadingDef || !wordDef}
+              disabled={loadingDef}
             />
           </div>
         </div>

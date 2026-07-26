@@ -27,6 +27,7 @@ import { useSpeechCapture } from "../lib/useSpeechCapture";
 import { useVoicePrefs } from "../lib/useVoicePrefs";
 import type { ChatTurn } from "../lib/types";
 import { generateReport, type SessionReport } from "../lib/sessionReport";
+import { MIN_USER_TURNS, countUserTurns, turnsRemaining } from "../lib/practice";
 import ShadowingBlock from "../components/ShadowingBlock";
 
 const SCENARIO_ICONS: Record<string, LucideIcon> = {
@@ -93,9 +94,38 @@ function RoleplayChat({ scenario, onExit }: { scenario: Scenario; onExit: () => 
   const [shadowIdx, setShadowIdx] = useState<number | null>(null);
   const [generatingReport, setGeneratingReport] = useState(false);
   const [report, setReport] = useState<SessionReport | null>(null);
+  const [reportCounted, setReportCounted] = useState(true);
   const [reportError, setReportError] = useState("");
+  const [startedAt] = useState(() => Date.now());
   const scrollRef = useRef<HTMLDivElement>(null);
   const systemRef = useRef(profile ? buildRoleplayPrompt(profile, scenario) : "");
+  const sessionIdRef = useRef<string | null>(null);
+  const creatingSessionRef = useRef<Promise<string | null> | null>(null);
+
+  // Guard en ref, no en estado: dos envíos rápidos insertaban dos sesiones.
+  async function ensureSession(): Promise<string | null> {
+    if (sessionIdRef.current) return sessionIdRef.current;
+    if (creatingSessionRef.current) return creatingSessionRef.current;
+    if (!profile) return null;
+
+    creatingSessionRef.current = (async () => {
+      const { data, error } = await supabase
+        .from("sessions")
+        .insert({ user_id: profile.id, session_type: "roleplay", topic: scenario.title })
+        .select("id")
+        .single();
+      if (error) {
+        creatingSessionRef.current = null;
+        return null;
+      }
+      const id = (data?.id as string | undefined) ?? null;
+      sessionIdRef.current = id;
+      setSessionId(id);
+      return id;
+    })();
+
+    return creatingSessionRef.current;
+  }
 
   const voice = useSpeechCapture({
     lang: voicePrefs.voiceAccent ?? (profile?.english_variant === "American" ? "en-US" : "en-GB"),
@@ -193,20 +223,32 @@ Reply with only the hint text.`,
   }
 
   async function handleEndSession() {
-    if (!profile || turns.length < 2) return;
+    if (!profile || turns.length === 0) return;
     setGeneratingReport(true);
     setReportError("");
     try {
-      const r = await generateReport(profile.id, sessionId, "roleplay", turns);
-      setReport(r);
-      const userTurns = turns.filter((t) => t.role === "user").length;
-      if (sessionId && userTurns >= 3) {
-        void supabase.from("sessions").update({
-          completed: true,
-          turn_count: userTurns,
-          ended_at: new Date().toISOString(),
-        }).eq("id", sessionId);
+      const sid = sessionIdRef.current ?? sessionId;
+      const r = await generateReport(profile.id, sid, "roleplay", turns);
+      const userTurns = countUserTurns(turns);
+      const counts = userTurns >= MIN_USER_TURNS;
+
+      if (sid && counts) {
+        const { error } = await supabase
+          .from("sessions")
+          .update({
+            completed: true,
+            turn_count: userTurns,
+            ended_at: new Date().toISOString(),
+            duration_seconds: Math.round((Date.now() - startedAt) / 1000),
+          })
+          .eq("id", sid);
+        if (error) {
+          setReportError(`No se pudo registrar la sesión: ${error.message}`);
+        }
       }
+
+      setReportCounted(counts);
+      setReport(r);
     } catch (e) {
       setReportError(e instanceof Error ? e.message : "Could not generate report.");
     } finally {
@@ -234,20 +276,15 @@ Reply with only the hint text.`,
       const updated = [...next, { role: "assistant", content: clean } as ChatTurn];
       setTurns(updated);
 
-      let sid = sessionId;
-      if (!sid) {
-        const { data } = await supabase
-          .from("sessions")
-          .insert({ user_id: profile.id, session_type: "roleplay", topic: scenario.title })
-          .select("id")
-          .single();
-        sid = data?.id ?? null;
-        setSessionId(sid);
-      }
+      const sid = await ensureSession();
       if (sid) {
         await supabase
           .from("sessions")
-          .update({ messages: updated, ended_at: new Date().toISOString() })
+          .update({
+            messages: updated,
+            ended_at: new Date().toISOString(),
+            duration_seconds: Math.round((Date.now() - startedAt) / 1000),
+          })
           .eq("id", sid);
         if (errorTypes.length)
           await supabase.from("errors").insert(
@@ -286,6 +323,21 @@ Reply with only the hint text.`,
             <X size={20} />
           </button>
         </div>
+
+        {!reportCounted && (
+          <div className="card p-4 mb-4 border-gold/40">
+            <p className="text-sm text-gold font-medium mb-1">Esta sesión no se registró</p>
+            <p className="text-xs text-paper-muted">
+              Fue muy corta: hacen falta al menos {MIN_USER_TURNS} intercambios tuyos para que
+              cuente en tu racha. El reporte de abajo sigue siendo válido.
+            </p>
+          </div>
+        )}
+        {reportError && (
+          <div className="card p-4 mb-4 border-coral/40">
+            <p className="text-sm text-coral">{reportError}</p>
+          </div>
+        )}
 
         <div className="card p-5 mb-4">
           <p className="text-paper leading-relaxed">{report.summary}</p>
@@ -353,7 +405,7 @@ Reply with only the hint text.`,
           {reportError && <p className="text-coral text-xs">{reportError}</p>}
           <button
             onClick={handleEndSession}
-            disabled={generatingReport || turns.length < 2}
+            disabled={generatingReport || turns.length === 0}
             className="flex items-center gap-1.5 text-xs text-paper-muted hover:text-coral transition disabled:opacity-40"
           >
             {generatingReport ? (
@@ -366,6 +418,18 @@ Reply with only the hint text.`,
             Leave
           </button>
         </div>
+      </div>
+
+      {/* Estado real de registro */}
+      <div className="mb-2 text-right">
+        {turnsRemaining(turns) > 0 ? (
+          <p className="text-[11px] text-paper-faint">
+            Te {turnsRemaining(turns) === 1 ? "falta" : "faltan"} {turnsRemaining(turns)}{" "}
+            {turnsRemaining(turns) === 1 ? "intercambio" : "intercambios"} para que esta sesión cuente
+          </p>
+        ) : (
+          <p className="text-[11px] text-mint">✓ Esta sesión va a contar para tu racha</p>
+        )}
       </div>
 
       <div ref={scrollRef} className="flex-1 overflow-y-auto pr-1 space-y-4">

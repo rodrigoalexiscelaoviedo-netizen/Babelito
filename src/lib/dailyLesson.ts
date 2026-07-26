@@ -16,8 +16,27 @@ export interface DailyLesson {
   topic: string;
   completed: boolean;
   completed_at: string | null;
+  chunk_done: boolean;
+  convo_done: boolean;
+  word_done: boolean;
   // Joined at read time — not a DB column
   chunk?: ChunkData | null;
+}
+
+export type LessonItem = "chunk_done" | "convo_done" | "word_done";
+
+/**
+ * Ítems que realmente cuentan hoy. La palabra del día solo entra si existe:
+ * sin vocabulario en 'learning' la práctica se cierra con 2 ítems, no con 3.
+ */
+export function activeItems(lesson: DailyLesson): LessonItem[] {
+  return lesson.word
+    ? ["chunk_done", "convo_done", "word_done"]
+    : ["chunk_done", "convo_done"];
+}
+
+export function isTriadComplete(lesson: DailyLesson): boolean {
+  return activeItems(lesson).every((k) => lesson[k]);
 }
 
 const CONVERSATION_TOPICS = [
@@ -33,6 +52,19 @@ const CONVERSATION_TOPICS = [
 
 function todayISO(): string {
   return new Date().toISOString().slice(0, 10);
+}
+
+/** Devuelve una palabra al azar del vocabulario en 'learning', o null. */
+async function pickLearningWord(userId: string): Promise<string | null> {
+  const { data } = await supabase
+    .from("user_vocabulary")
+    .select("word")
+    .eq("user_id", userId)
+    .eq("status", "learning")
+    .limit(20);
+  if (!data || data.length === 0) return null;
+  const pick = data[Math.floor(Math.random() * data.length)] as { word: string };
+  return pick.word;
 }
 
 /** Fetches the chunk row for a given bigint id. Returns null if not found. */
@@ -58,6 +90,21 @@ export async function getTodayLesson(userId: string): Promise<DailyLesson> {
 
   if (existing) {
     const lesson = existing as DailyLesson;
+    // La palabra se elegía solo al crear la fila: si ese día todavía no había
+    // vocabulario en 'learning', quedaba null para siempre aunque el usuario
+    // agregara palabras después. Se completa retroactivamente.
+    if (!lesson.word) {
+      const word = await pickLearningWord(userId);
+      if (word) {
+        const { data: updated } = await supabase
+          .from("daily_lessons")
+          .update({ word })
+          .eq("id", lesson.id)
+          .select("*")
+          .maybeSingle();
+        if (updated) Object.assign(lesson, updated as DailyLesson);
+      }
+    }
     if (lesson.chunk_id) {
       lesson.chunk = await fetchChunk(lesson.chunk_id);
     }
@@ -107,19 +154,7 @@ export async function getTodayLesson(userId: string): Promise<DailyLesson> {
     }
   }
 
-  // Pick vocab word with status='learning'
-  let word: string | null = null;
-  const { data: learningWords } = await supabase
-    .from("user_vocabulary")
-    .select("word")
-    .eq("user_id", userId)
-    .eq("status", "learning")
-    .limit(20);
-
-  if (learningWords && learningWords.length > 0) {
-    const pick = learningWords[Math.floor(Math.random() * learningWords.length)] as { word: string };
-    word = pick.word;
-  }
+  const word = await pickLearningWord(userId);
 
   // Pick topic
   const topic = CONVERSATION_TOPICS[Math.floor(Math.random() * CONVERSATION_TOPICS.length)];
@@ -146,13 +181,53 @@ export async function getTodayLesson(userId: string): Promise<DailyLesson> {
   return lesson;
 }
 
-export async function completeLesson(userId: string): Promise<void> {
-  const today = todayISO();
-  await supabase
+/**
+ * Persiste el tilde de un ítem de la tríada en la fila de hoy y devuelve la
+ * fila fresca. Antes los tildes vivían solo en estado de React y se perdían al
+ * recargar o al navegar a otro módulo.
+ */
+export async function setLessonItem(
+  userId: string,
+  item: LessonItem,
+  value: boolean
+): Promise<DailyLesson> {
+  const { data, error } = await supabase
+    .from("daily_lessons")
+    .update({ [item]: value })
+    .eq("user_id", userId)
+    .eq("lesson_date", todayISO())
+    .select("*")
+    .single();
+  if (error) throw new Error(error.message);
+  return data as DailyLesson;
+}
+
+/**
+ * Cierra la práctica del día. Solo marca completed si todos los ítems ACTIVOS
+ * están tildados (ver activeItems: sin palabra del día alcanza con 2).
+ */
+export async function completeLesson(userId: string): Promise<DailyLesson> {
+  const { data: current, error: readErr } = await supabase
+    .from("daily_lessons")
+    .select("*")
+    .eq("user_id", userId)
+    .eq("lesson_date", todayISO())
+    .single();
+  if (readErr) throw new Error(readErr.message);
+
+  const lesson = current as DailyLesson;
+  if (!isTriadComplete(lesson)) {
+    throw new Error("Todavía faltan tareas de la práctica de hoy.");
+  }
+
+  const { data, error } = await supabase
     .from("daily_lessons")
     .update({ completed: true, completed_at: new Date().toISOString() })
-    .eq("user_id", userId)
-    .eq("lesson_date", today);
+    .eq("id", lesson.id)
+    .select("*")
+    .single();
+  if (error) throw new Error(error.message);
+  return data as DailyLesson;
 }
 
 /**
@@ -173,10 +248,11 @@ async function ensureFreezesFresh(userId: string): Promise<{ freezesLeft: number
 
   if (lastYM !== currentYM) {
     // New month — restore freezes
-    supabase
+    const { error } = await supabase
       .from("profiles")
       .update({ streak_freezes: 2, last_freeze_reset: todayISO() })
       .eq("id", userId);
+    if (error) console.error("No se pudo renovar los freezes:", error.message);
     return { freezesLeft: 2 };
   }
 
@@ -254,10 +330,11 @@ export async function getStreakInfo(userId: string, consume = true): Promise<Str
   const freezesLeft = Math.max(0, initialFreezes - freezesUsed);
 
   if (consume && freezesUsed > 0) {
-    supabase
+    const { error } = await supabase
       .from("profiles")
       .update({ streak_freezes: freezesLeft })
       .eq("id", userId);
+    if (error) console.error("No se pudo consumir los freezes:", error.message);
   }
 
   return { streak, freezesLeft };

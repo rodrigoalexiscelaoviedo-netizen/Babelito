@@ -12,11 +12,22 @@ import {
   Circle,
   Volume2,
   Layers,
+  BookOpen,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabaseClient";
 import { errorLabel } from "../lib/errorTypes";
-import { getTodayLesson, completeLesson, getStreakInfo, type DailyLesson } from "../lib/dailyLesson";
+import { MIN_USER_TURNS } from "../lib/practice";
+import {
+  getTodayLesson,
+  completeLesson,
+  setLessonItem,
+  getStreakInfo,
+  activeItems,
+  isTriadComplete,
+  type DailyLesson,
+  type LessonItem,
+} from "../lib/dailyLesson";
 import { lookupWord, type WordDefinition } from "../lib/dictionary";
 import { speak } from "../lib/speech";
 import { useVoicePrefs } from "../lib/useVoicePrefs";
@@ -47,68 +58,92 @@ export default function Dashboard() {
   const [loadingLesson, setLoadingLesson] = useState(true);
   const [completing, setCompleting] = useState(false);
 
-  // Which of the 3 daily tasks the user has checked off
   const [reviewsDue, setReviewsDue] = useState(0);
-  const [checked, setChecked] = useState({ chunk: false, convo: false, word: false });
   const [activeLast2Days, setActiveLast2Days] = useState(false);
+  const [loadError, setLoadError] = useState("");
+  const [itemError, setItemError] = useState("");
+  const [savingItem, setSavingItem] = useState<LessonItem | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
 
-  const allChecked = checked.chunk && checked.convo && checked.word;
+  // Los tildes se DERIVAN de la fila de hoy — sin estado local paralelo.
+  const items: LessonItem[] = lesson ? activeItems(lesson) : [];
+  const doneCount = lesson ? items.filter((k) => lesson[k]).length : 0;
+  const allChecked = lesson ? isTriadComplete(lesson) : false;
 
   useEffect(() => {
     if (!profile) return;
     (async () => {
-      const [{ data: sessions }, { data: errs }, { count: learned }, todayLesson, streakInfo, due] =
-        await Promise.all([
-          supabase.from("sessions").select("created_at, completed").eq("user_id", profile.id),
-          supabase.from("errors").select("error_type").eq("user_id", profile.id),
-          supabase
-            .from("user_chunks")
-            .select("id", { count: "exact", head: true })
-            .eq("user_id", profile.id),
-          getTodayLesson(profile.id),
-          getStreakInfo(profile.id),
-          countDue(profile.id),
-        ]);
+      setLoadError("");
+      try {
+        const [{ data: sessions }, { data: errs }, { count: learned }, todayLesson, streakInfo, due] =
+          await Promise.all([
+            supabase.from("sessions").select("created_at, completed").eq("user_id", profile.id),
+            supabase.from("errors").select("error_type").eq("user_id", profile.id),
+            supabase
+              .from("user_chunks")
+              .select("id", { count: "exact", head: true })
+              .eq("user_id", profile.id),
+            getTodayLesson(profile.id),
+            // Vista de lectura: NUNCA consumir freezes al abrir el Home.
+            getStreakInfo(profile.id, false),
+            countDue(profile.id),
+          ]);
 
-      let topError: string | null = null;
-      if (errs && errs.length) {
-        const tally: Record<string, number> = {};
-        errs.forEach((e) => (tally[e.error_type] = (tally[e.error_type] ?? 0) + 1));
-        topError = Object.entries(tally).sort((a, b) => b[1] - a[1])[0][0];
-      }
+        let topError: string | null = null;
+        if (errs && errs.length) {
+          const tally: Record<string, number> = {};
+          errs.forEach((e) => (tally[e.error_type] = (tally[e.error_type] ?? 0) + 1));
+          topError = Object.entries(tally).sort((a, b) => b[1] - a[1])[0][0];
+        }
 
-      setStats({ sessions: sessions?.length ?? 0, topError, chunksLearned: learned ?? 0 });
-      setStreak(streakInfo.streak);
-      setFreezesLeft(streakInfo.freezesLeft);
+        setStats({ sessions: sessions?.length ?? 0, topError, chunksLearned: learned ?? 0 });
+        setStreak(streakInfo.streak);
+        setFreezesLeft(streakInfo.freezesLeft);
 
-      const todayStr = new Date().toISOString().slice(0, 10);
-      const yesterdayStr = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
-      type SessionRow = { created_at: string; completed: boolean };
-      const activeLast2 = (sessions as SessionRow[] ?? []).some(
-        (s) => s.completed && (s.created_at.slice(0, 10) === todayStr || s.created_at.slice(0, 10) === yesterdayStr)
-      );
-      setActiveLast2Days(activeLast2);
-      const todayConvoDone = (sessions as SessionRow[] ?? []).some(
-        (s) => s.completed && s.created_at.slice(0, 10) === todayStr
-      );
-      if (todayConvoDone) setChecked((prev) => ({ ...prev, convo: true }));
+        const todayStr = new Date().toISOString().slice(0, 10);
+        const yesterdayStr = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+        type SessionRow = { created_at: string; completed: boolean };
+        const rows = (sessions as SessionRow[]) ?? [];
+        setActiveLast2Days(
+          rows.some(
+            (s) =>
+              s.completed &&
+              (s.created_at.slice(0, 10) === todayStr || s.created_at.slice(0, 10) === yesterdayStr)
+          )
+        );
 
-      // Check achievements on load (fire-and-forget)
-      checkAchievements(profile.id).then((newly) => {
-        if (newly.length > 0) setNewAchievements(newly);
-      });
-      setLesson(todayLesson);
-      setReviewsDue(due);
-      setLoadingLesson(false);
+        // La mini-conversación se deriva de que exista una sesión de hoy ya
+        // registrada; si es así se persiste el tilde (sin toggle optimista).
+        let lessonToShow = todayLesson;
+        const todayConvoDone = rows.some(
+          (s) => s.completed && s.created_at.slice(0, 10) === todayStr
+        );
+        if (todayConvoDone && !todayLesson.convo_done) {
+          try {
+            const updated = await setLessonItem(profile.id, "convo_done", true);
+            lessonToShow = { ...updated, chunk: todayLesson.chunk };
+          } catch {
+            /* no bloquear el Home por esto */
+          }
+        }
 
-      // If word exists, look it up
-      if (todayLesson.word) {
-        lookupWord(todayLesson.word)
-          .then(setWordDef)
-          .catch(() => null);
+        checkAchievements(profile.id).then((newly) => {
+          if (newly.length > 0) setNewAchievements(newly);
+        });
+        setLesson(lessonToShow);
+        setReviewsDue(due);
+
+        if (lessonToShow.word) {
+          lookupWord(lessonToShow.word).then(setWordDef).catch(() => null);
+        }
+      } catch (e) {
+        setLoadError(e instanceof Error ? e.message : "No se pudo cargar tu práctica de hoy.");
+      } finally {
+        // Pase lo que pase, el Home sale del estado "cargando".
+        setLoadingLesson(false);
       }
     })();
-  }, [profile]);
+  }, [profile, reloadKey]);
 
   const CONGRATS = [
     "¡Práctica completa! Your English keeps growing. 💪",
@@ -121,26 +156,44 @@ export default function Dashboard() {
   async function handleComplete() {
     if (!profile || !lesson) return;
     setCompleting(true);
+    setItemError("");
     try {
-      await completeLesson(profile.id);
-      setLesson({ ...lesson, completed: true });
-      const newStreak = streak + 1;
-      setStreak(newStreak);
+      const updated = await completeLesson(profile.id);
+      setLesson({ ...updated, chunk: lesson.chunk });
+
+      // Único punto donde se consumen los freezes, y se relee la racha real
+      // en vez de sumar 1 a ciegas (el día podía contar ya por una sesión).
+      const info = await getStreakInfo(profile.id, true);
+      setStreak(info.streak);
+      setFreezesLeft(info.freezesLeft);
+
       setCelebMsg(CONGRATS[Math.floor(Math.random() * CONGRATS.length)]);
       setShowCelebration(true);
       setTimeout(() => setShowCelebration(false), 4500);
 
-      // Check for newly unlocked achievements
       checkAchievements(profile.id).then((newly) => {
         if (newly.length > 0) setNewAchievements(newly);
       });
+    } catch (e) {
+      setItemError(e instanceof Error ? e.message : "No se pudo guardar tu práctica.");
     } finally {
       setCompleting(false);
     }
   }
 
-  function toggle(key: keyof typeof checked) {
-    setChecked((prev) => ({ ...prev, [key]: !prev[key] }));
+  /** Persiste el tilde en daily_lessons; la UI se deriva de la fila fresca. */
+  async function toggleItem(key: LessonItem) {
+    if (!profile || !lesson || savingItem) return;
+    setSavingItem(key);
+    setItemError("");
+    try {
+      const updated = await setLessonItem(profile.id, key, !lesson[key]);
+      setLesson({ ...updated, chunk: lesson.chunk });
+    } catch (e) {
+      setItemError(e instanceof Error ? e.message : "No se pudo guardar el cambio.");
+    } finally {
+      setSavingItem(null);
+    }
   }
 
   const firstName = profile?.name?.split(" ")[0] ?? "there";
@@ -272,6 +325,20 @@ export default function Dashboard() {
           <div className="flex justify-center py-6">
             <BrandDots size="md" />
           </div>
+        ) : loadError || !lesson ? (
+          <div className="text-center py-6">
+            <p className="text-sm text-coral mb-1">No pudimos cargar tu práctica de hoy.</p>
+            {loadError && <p className="text-xs text-paper-faint mb-3">{loadError}</p>}
+            <button
+              className="btn-coral px-4 py-2 text-sm"
+              onClick={() => {
+                setLoadingLesson(true);
+                setReloadKey((k) => k + 1);
+              }}
+            >
+              Reintentar
+            </button>
+          </div>
         ) : lesson?.completed ? (
           <div className="text-center py-6">
             <CheckCircle2 size={36} className="text-mint mx-auto mb-2 animate-check-pop" />
@@ -283,9 +350,9 @@ export default function Dashboard() {
             {/* Chunk of the day */}
             <div
               className="flex items-start gap-3 p-3 rounded-xl cursor-pointer hover:bg-ink-700 transition"
-              onClick={() => toggle("chunk")}
+              onClick={() => toggleItem("chunk_done")}
             >
-              {checked.chunk ? (
+              {lesson.chunk_done ? (
                 <CheckCircle2 size={20} className="text-mint shrink-0 mt-0.5" />
               ) : (
                 <Circle size={20} className="text-paper-faint shrink-0 mt-0.5" />
@@ -313,12 +380,9 @@ export default function Dashboard() {
             {/* Mini-conversation */}
             <div
               className="flex items-start gap-3 p-3 rounded-xl cursor-pointer hover:bg-ink-700 transition"
-              onClick={() => {
-                toggle("convo");
-                navigate("/conversation", { state: { topic: lesson?.topic } });
-              }}
+              onClick={() => navigate("/conversation", { state: { topic: lesson?.topic } })}
             >
-              {checked.convo ? (
+              {lesson.convo_done ? (
                 <CheckCircle2 size={20} className="text-mint shrink-0 mt-0.5" />
               ) : (
                 <Circle size={20} className="text-paper-faint shrink-0 mt-0.5" />
@@ -328,60 +392,74 @@ export default function Dashboard() {
                   Mini-conversation
                 </p>
                 <p className="font-medium leading-snug">{lesson?.topic ?? "Free chat"}</p>
-                <p className="text-xs text-paper-faint mt-1">Tap to open your coach →</p>
+                <p className="text-xs text-paper-faint mt-1">
+                  {lesson.convo_done
+                    ? "Hecho — se tildó al registrarse tu sesión ✓"
+                    : `Tap to open your coach → (se tilda al completar ${MIN_USER_TURNS} intercambios)`}
+                </p>
               </div>
             </div>
 
-            {/* Word of the day */}
-            <div
-              className="flex items-start gap-3 p-3 rounded-xl cursor-pointer hover:bg-ink-700 transition"
-              onClick={() => toggle("word")}
-            >
-              {checked.word ? (
-                <CheckCircle2 size={20} className="text-mint shrink-0 mt-0.5" />
-              ) : (
-                <Circle size={20} className="text-paper-faint shrink-0 mt-0.5" />
-              )}
-              <div className="flex-1 min-w-0">
-                <p className="text-xs text-paper-muted uppercase tracking-widest font-mono mb-0.5">
-                  Word of the day
-                </p>
-                {lesson?.word ? (
-                  <>
-                    <div className="flex items-center gap-2">
-                      <p className="font-display font-bold">{lesson.word}</p>
-                      {wordDef?.phonetic && (
-                        <span className="text-xs text-paper-muted font-mono">/{wordDef.phonetic}/</span>
-                      )}
-                      <button
-                        className="text-paper-faint hover:text-coral transition"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          speak(lesson.word!, {
-                            voiceName: voicePrefs.voiceName ?? undefined,
-                            rate: voicePrefs.voiceRate,
-                            lang: voicePrefs.voiceAccent,
-                          });
-                        }}
-                        aria-label="Pronounce"
-                      >
-                        <Volume2 size={15} />
-                      </button>
-                    </div>
-                    {wordDef?.definition_es && (
-                      <p className="text-sm text-paper-muted mt-0.5">{wordDef.definition_es}</p>
-                    )}
-                    {wordDef?.example && (
-                      <p className="text-xs text-paper-faint italic mt-0.5">"{wordDef.example}"</p>
-                    )}
-                  </>
+            {/* Word of the day — solo cuenta si hay palabra; si no, es un atajo */}
+            {lesson.word ? (
+              <div
+                className="flex items-start gap-3 p-3 rounded-xl cursor-pointer hover:bg-ink-700 transition"
+                onClick={() => toggleItem("word_done")}
+              >
+                {lesson.word_done ? (
+                  <CheckCircle2 size={20} className="text-mint shrink-0 mt-0.5" />
                 ) : (
-                  <p className="text-paper-muted text-sm">
-                    No learning word yet. Explore Reading or Stories to track words.
-                  </p>
+                  <Circle size={20} className="text-paper-faint shrink-0 mt-0.5" />
                 )}
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs text-paper-muted uppercase tracking-widest font-mono mb-0.5">
+                    Word of the day
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <p className="font-display font-bold">{lesson.word}</p>
+                    {wordDef?.phonetic && (
+                      <span className="text-xs text-paper-muted font-mono">/{wordDef.phonetic}/</span>
+                    )}
+                    <button
+                      className="text-paper-faint hover:text-coral transition"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        speak(lesson.word!, {
+                          voiceName: voicePrefs.voiceName ?? undefined,
+                          rate: voicePrefs.voiceRate,
+                          lang: voicePrefs.voiceAccent,
+                        });
+                      }}
+                      aria-label="Pronounce"
+                    >
+                      <Volume2 size={15} />
+                    </button>
+                  </div>
+                  {wordDef?.definition_es && (
+                    <p className="text-sm text-paper-muted mt-0.5">{wordDef.definition_es}</p>
+                  )}
+                  {wordDef?.example && (
+                    <p className="text-xs text-paper-faint italic mt-0.5">"{wordDef.example}"</p>
+                  )}
+                </div>
               </div>
-            </div>
+            ) : (
+              <Link
+                to="/reading"
+                className="flex items-center justify-between p-3 rounded-xl bg-mint/10 border border-mint/30 hover:border-mint/60 transition"
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  <BookOpen size={16} className="text-mint shrink-0" />
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-mint">Aprendé una palabra nueva</p>
+                    <p className="text-xs text-paper-faint">
+                      Tocá cualquier palabra al leer para seguirla — mañana aparece acá
+                    </p>
+                  </div>
+                </div>
+                <span className="text-xs text-mint/70 shrink-0 ml-2">Reading →</span>
+              </Link>
+            )}
 
             {reviewsDue > 0 && (
               <Link
@@ -398,6 +476,8 @@ export default function Dashboard() {
               </Link>
             )}
 
+            {itemError && <p className="text-xs text-coral text-center">{itemError}</p>}
+
             <button
               className="btn-coral w-full mt-2 flex items-center justify-center gap-2"
               disabled={!allChecked || completing}
@@ -411,7 +491,8 @@ export default function Dashboard() {
             </button>
             {!allChecked && (
               <p className="text-xs text-paper-faint text-center">
-                Check all three tasks above to complete your practice.
+                {doneCount}/{items.length} — completá {items.length === 1 ? "la tarea" : "las tareas"} de arriba
+                {!lesson.word && " (la palabra del día no cuenta hoy)"}
               </p>
             )}
           </div>

@@ -159,10 +159,10 @@ function Reader({ text, onBack }: { text: ReadingText; onBack: () => void }) {
     }
   }
 
-  function handleVocabUpdate(word: string, status: WordStatus, def: WordDefinition) {
+  function handleVocabUpdate(word: string, status: WordStatus, def: WordDefinition | null) {
     setVocabMap((prev) => ({
       ...prev,
-      [word]: { status, definition: def.definition_es, example: def.example, phonetic: def.phonetic },
+      [word]: { status, definition: def?.definition_es, example: def?.example, phonetic: def?.phonetic },
     }));
   }
 

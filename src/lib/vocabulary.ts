@@ -68,14 +68,5 @@ export async function upsertWord(
   }
 }
 
-export async function updateWordStatus(
-  userId: string,
-  word: string,
-  status: WordStatus
-): Promise<void> {
-  await supabase
-    .from("user_vocabulary")
-    .update({ status, updated_at: new Date().toISOString() })
-    .eq("user_id", userId)
-    .eq("word", word.toLowerCase().trim());
-}
+// updateWordStatus se eliminó: nunca se llamó desde ningún módulo y upsertWord
+// ya cubre el cambio de estado (ver ClickableText.markStatus).
