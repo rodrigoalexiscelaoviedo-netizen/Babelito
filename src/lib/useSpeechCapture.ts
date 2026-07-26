@@ -146,18 +146,13 @@ export function createSpeechSession(opts: SessionOpts): SpeechSession | null {
       try { dying.abort(); } catch { /* ya detenida */ }
     }
 
-    const out = finalText.trim();
-    console.log(`[speech] finish → "${out}"${errorCode ? ` err=${errorCode}` : ""}`);
-    opts.onDone(out, errorCode);
+    opts.onDone(finalText.trim(), errorCode);
   };
 
   // Cierra el turno si onend no llega (mobile a veces no lo dispara tras stop()).
   const armWatchdog = () => {
     clearWatchdog();
-    watchdog = setTimeout(() => {
-      console.warn("[speech] onend no disparó → cierre forzado");
-      finish();
-    }, 1500);
+    watchdog = setTimeout(finish, 1500);
   };
 
   function attach(r: any) {
@@ -165,10 +160,6 @@ export function createSpeechSession(opts: SessionOpts): SpeechSession | null {
     r.continuous      = true;
     r.interimResults  = true;
     r.maxAlternatives = 1;
-
-    r.onstart       = () => console.log("[speech] onstart");
-    r.onaudiostart  = () => console.log("[speech] onaudiostart — mic abierto");
-    r.onspeechstart = () => console.log("[speech] onspeechstart — voz detectada");
 
     r.onresult = (e: any) => {
       if (rec !== r || finished) return;           // instancia superada → no-op
@@ -184,11 +175,8 @@ export function createSpeechSession(opts: SessionOpts): SpeechSession | null {
             lastFinalIndex = i;
             const merged = mergeFinal(finalText, txt);
             if (merged !== finalText) {
-              console.log(`[speech] FINAL[${i}] "${txt}" → acc="${merged}"`);
               finalText = merged;
               gotFinal = true;
-            } else {
-              console.log(`[speech] FINAL[${i}] "${txt}" → descartado (duplicado)`);
             }
           }
         } else {
@@ -209,7 +197,6 @@ export function createSpeechSession(opts: SessionOpts): SpeechSession | null {
     r.onerror = (e: any) => {
       if (rec !== r || finished) return;
       const code = e.error as string;
-      console.log(`[speech] onerror — ${code}`);
       // Transitorios: normales dentro de un turno, no molestar al usuario.
       if (code === "no-speech" || code === "aborted") return;
       errorCode = code;
@@ -224,20 +211,13 @@ export function createSpeechSession(opts: SessionOpts): SpeechSession | null {
 
     r.onend = () => {
       if (rec !== r || finished) return;
-      console.log(`[speech] onend — manualStop=${manualStop}`);
       if (manualStop) { finish(); return; }
 
       // Corte por silencio a mitad del turno → reiniciar la MISMA instancia.
       // Cada sesión nueva numera sus resultados desde cero, así que el guard de
       // índice se resetea; la de-duplicación entre sesiones la cubre mergeFinal.
       lastFinalIndex = -1;
-      try {
-        r.start();
-        console.log("[speech] restart (misma instancia)");
-      } catch (err) {
-        console.error("[speech] restart falló → cierro turno", err);
-        finish();
-      }
+      try { r.start(); } catch { finish(); }
     };
   }
 
@@ -245,9 +225,7 @@ export function createSpeechSession(opts: SessionOpts): SpeechSession | null {
   attach(rec);
   try {
     rec.start();
-    console.log(`[speech] start — lang=${lang} mode=${mode}`);
-  } catch (err) {
-    console.error("[speech] start() falló", err);
+  } catch {
     errorCode = "start-failed";
     setTimeout(finish, 0);          // async: el caller aún no tiene la sesión
   }
@@ -255,7 +233,6 @@ export function createSpeechSession(opts: SessionOpts): SpeechSession | null {
   return {
     stop: () => {
       if (finished) return;
-      console.log("[speech] stop() — gesto de usuario");
       manualStop = true;
       const r = rec;
       if (!r) { finish(); return; }
