@@ -83,6 +83,7 @@ export default function Conversation() {
         profile,
         recentErrors: (data as DetectedError[]) ?? [],
         topic: topic ?? undefined,
+        learningLanguage: profile?.learning_language || "en",
       });
     })();
   }, [profile, topic]);
@@ -234,11 +235,18 @@ export default function Conversation() {
     const lastCoachMsg = [...turns].reverse().find((t) => t.role === "assistant")?.content ?? "";
     setHintLoading(true);
     try {
-      const hint = await askCoach({
-        system: `You are a friendly English coach. The student is struggling to respond.
+      const hintSystem = profile?.learning_language === "ca"
+        ? `Eres un coach de català amable. L'estudiant té dificultats per respondre.
+Dóna UNA pista molt breu (màx 12 paraules): un inici de frase, una paraula clau, o una frase simple que podria usar.
+NO donarc la resposta completa. Nivel de l'estudiant: ${profile.current_level ?? "B1"}.
+Respon SÓ amb el text de la pista — sense explicació, sense puntuació.`
+        : `You are a friendly English coach. The student is struggling to respond.
 Give ONE very short hint (max 12 words): a sentence starter, a key word, or a simple phrase they could use.
 Do NOT give the full answer. Student level: ${profile.current_level ?? "B1"}.
-Reply with only the hint text — no explanation, no punctuation around it.`,
+Reply with only the hint text — no explanation, no punctuation around it.`;
+
+      const hint = await askCoach({
+        system: hintSystem,
         messages: [{ role: "user", content: `Coach said: "${lastCoachMsg}"\nGive a hint to help the student respond.` }],
         maxTokens: 50,
       });

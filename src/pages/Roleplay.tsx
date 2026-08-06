@@ -98,7 +98,9 @@ function RoleplayChat({ scenario, onExit }: { scenario: Scenario; onExit: () => 
   const [reportError, setReportError] = useState("");
   const [startedAt] = useState(() => Date.now());
   const scrollRef = useRef<HTMLDivElement>(null);
-  const systemRef = useRef(profile ? buildRoleplayPrompt(profile, scenario) : "");
+  const systemRef = useRef(
+    profile ? buildRoleplayPrompt(profile, scenario, profile?.learning_language || "en") : ""
+  );
   const sessionIdRef = useRef<string | null>(null);
   const creatingSessionRef = useRef<Promise<string | null> | null>(null);
 

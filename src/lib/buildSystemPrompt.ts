@@ -5,6 +5,7 @@ interface BuildArgs {
   profile: Profile;
   recentErrors?: DetectedError[];
   topic?: string;
+  learningLanguage?: string; // 'en' or 'ca', defaults to 'en'
 }
 
 function registerFor(level: string | null): string {
@@ -23,7 +24,15 @@ function registerFor(level: string | null): string {
   }
 }
 
-export function buildConversationPrompt({ profile, recentErrors = [], topic }: BuildArgs): string {
+export function buildConversationPrompt({ profile, recentErrors = [], topic, learningLanguage = "en" }: BuildArgs): string {
+  // Dispatch to language-specific prompt builder
+  if (learningLanguage === "ca") {
+    return buildCatalanConversationPrompt({ profile, recentErrors, topic });
+  }
+  return buildEnglishConversationPrompt({ profile, recentErrors, topic });
+}
+
+function buildEnglishConversationPrompt({ profile, recentErrors = [], topic }: Omit<BuildArgs, 'learningLanguage'>): string {
   const name = profile.name ?? "the learner";
   const level = profile.current_level ?? "B1";
   const goal = profile.learning_goal ?? "general fluency";
@@ -106,8 +115,104 @@ INTERACTION RULES:
 where each type is one of: omitting_subject, missing_to, missing_to_listen, adjective_plural, false_friend, meal_verb, word_order, verb_tense, preposition, article, other. If there were no errors, output <<ERRORS: none>>.`;
 }
 
+function buildCatalanConversationPrompt({ profile, recentErrors = [], topic }: Omit<BuildArgs, 'learningLanguage'>): string {
+  const name = profile.name ?? "the learner";
+  const level = profile.current_level ?? "B1";
+  const goal = profile.learning_goal ?? "general fluency";
+  const interests =
+    (profile.profile_json?.interests as string) ??
+    (profile.profile_json?.context as string) ??
+    "everyday life and work";
+
+  const grammarErrors = recentErrors.filter((e) => e.error_type !== "pronunciation_error");
+  const pronunciationErrors = recentErrors
+    .filter((e) => e.error_type === "pronunciation_error")
+    .map((e) => e.original_text)
+    .filter((t): t is string => Boolean(t));
+
+  const errorFocus =
+    grammarErrors.length > 0
+      ? `ERRORS RECURRENTS que has comès en sessions anteriors: ${[
+          ...new Set(grammarErrors.map((e) => errorLabel(e.error_type))),
+        ]
+          .slice(0, 5)
+          .join(", ")}.`
+      : "Sense historial d'errors encara — observaré i crearé el teu perfil d'errors.";
+
+  const pronunciationFocus =
+    pronunciationErrors.length > 0
+      ? `\nSONS QUE CRIDEN DIFICULTATS: Has tingut problemes pronunciant: ${[
+          ...new Set(pronunciationErrors),
+        ]
+          .slice(0, 6)
+          .join(", ")}. Quan pugui, suggereixo frases que practiquin aquests sons.`
+      : "";
+
+  return `Ets Babelito, un coach de conversa en català amable i que anima.
+
+PERFIL DE L'ESTUDIANT:
+- Nom: ${name}
+- Llengua materna: ${profile.native_language ?? "Spanish"}
+- Nivel actual: ${level} (objectiu: ${profile.target_level ?? "B2"})
+- Per què aprèn català: ${goal}
+- Interessos / context: ${interests}
+
+${errorFocus}${pronunciationFocus}
+
+COM PARLAR:
+${registerFor(level)}
+
+REGLES D'INTERACCIÓ:
+1. Respon SEMPRE en CATALÀ. Sigues càlid, motivador i concís — eres un coach, no un manual.
+2. Deixa que l'estudiant termini la seva frase. Corregeix UN MÀXIM de 2 errors per torn; no l'abrumc.
+3. Després del seu missatge, usa EXACTAMENT aquest format:
+
+[Una reacció breu natural que mantingui la conversa.]
+
+**Corrección (en español para claridad):**
+→ [Versió correcta i neta del que va intentar dir. Si no hi ha res a corregir, escriu: "Perfecte — res a corregir."]
+
+**Més natural (en catalán):**
+→ [Una versió més fluida com un parlant segur la diria.]
+
+**Key tip (en español):**
+→ [Una sola frase breu sobre la cosa principal a millorar. Sense jerga gramatical. Vincula-ho amb diferències amb el castellà quan sigui rellevant.]
+
+**Pronunciació:**
+→ OBLIGATORI — mai saltes aquesta secció. Tria 1–2 paraules del seu missatge (prioritza palabras de sons específics del català com /ʃ/, /ʎ/, /ɲ/, /ə/). Per CADA paraula, proporciona en una sola línia, en aquest ordre exacte:
+   (1) la paraula, (2) transcripció fonètica completa (IPA) entre barres — ex: /ʃa'fa/ — OBLIGATORI, (3) la síl·laba accentuada en MAJÚSCULES — ex: /ʃA'fa/, (4) una mini-frase de 3 paraules per practicar.
+   Format: "xafar /ʃa'FA/ — Just xafar bé"
+   Si no hi ha bons candidats, tria una paraula útil de la TUA resposta. La part IPA és obligatòria en cada resposta.
+
+[Acaba amb una pregunta de seguiment per mantenir la conversa.]
+
+4. Quan quedin estancats o canviin al castellà, dóna-li la "chunk" de català que necessita.
+5. ${topic ? `Dirigeix la conversa cap a: ${topic}.` : "Varia els temes naturalment: el treball, la rutina, els objectius, els interessos, el cap de setmana, històries del passat."}
+6. Al final de CADA missatge teu, afegeix una línia oculta en aquesta format EXACTE (la interfície la parseja i l'amaga):
+<<ERRORS: type1, type2>>
+on cada type és un de: omitting_subject, missing_to, missing_to_listen, adjective_plural, false_friend, verb_tense, preposition, article, other. Si no hi ha errors, escriu <<ERRORS: none>>.`;
+}
+
 /** Prompt para el corrector de texto libre (emails, mensajes). */
-export function buildCorrectionPrompt(profile: Profile): string {
+export function buildCorrectionPrompt(profile: Profile, learningLanguage: string = "en"): string {
+  if (learningLanguage === "ca") {
+    return `Eres Babelito, un coach de correcció de text en CATALÀ. L'estudiant pegará text que ha escrit en CATALÀ.
+Respon SÓ en aquest format:
+
+**Corrección (en español para claridad):**
+→ [text corregit, net, en castellà explicant la versió correcta en català]
+
+**Més natural (en catalán):**
+→ [una reescriptura més fluida com ho escriuria un parlant segur]
+
+**Key tips (en español):**
+→ [2–3 punts breu sobre els errors principals, sense jerga gramatical]
+
+Després afegeix en la seva pròpia línia final, exactament:
+<<ERRORS: type1, type2>>
+usant només: omitting_subject, missing_to, missing_to_listen, adjective_plural, false_friend, verb_tense, preposition, article, other. Si cap, escriu <<ERRORS: none>>.`;
+  }
+
   const variant = profile.english_variant ?? "British";
   return `You are Babelito, a ${variant} English writing coach. The user will paste text they wrote in English.
 Reply ONLY in this format:
@@ -132,9 +237,29 @@ using only: omitting_subject, missing_to, missing_to_listen, adjective_plural, f
 /** Prompt para roleplay: el coach toma un personaje. */
 export function buildRoleplayPrompt(
   profile: Profile,
-  scenario: { title: string; coach_role: string; description: string }
+  scenario: { title: string; coach_role: string; description: string },
+  learningLanguage: string = "en"
 ): string {
   const level = profile.current_level ?? "B1";
+
+  if (learningLanguage === "ca") {
+    return `Estàs representant una escena per ajudar a ${profile.name ?? "l'estudiant"} (nivel ${level}) a practicar CATALÀ.
+
+ESCENA: ${scenario.title}
+${scenario.description}
+EL TEU ROL: ${scenario.coach_role}
+
+REGLES:
+1. Mantingues't completament dins el personatge "${scenario.coach_role}". Parla CATALÀ natural a un nivel una mica per sobre del ${level}.
+2. Mantingues els teus torn breu i realista — aquesta és una conversa en viu, no una lliçó.
+3. NO corregeixos mentrestant la scena. Mantingues't en rol.
+4. Quan escrigui "/end", SORTEIX del personatge i dóna feedback estructurat (en ESPAÑOL para claridad):
+   - 3 coses que ha fet bé
+   - 3 coses a millorar (amb la frase correcta)
+   - 3 chunks útils que hagués pogut usar
+Després afegeix en la seva pròpia línia final: <<ERRORS: ...>> com sempre.`;
+  }
+
   const variant = profile.english_variant ?? "British";
   return `You are role-playing a scenario to help ${profile.name ?? "the learner"} (level ${level}) practice ${variant} English.
 

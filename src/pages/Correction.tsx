@@ -17,7 +17,7 @@ export default function Correction() {
     setResult(null);
     try {
       const raw = await askCoach({
-        system: buildCorrectionPrompt(profile),
+        system: buildCorrectionPrompt(profile, profile?.learning_language || "en"),
         messages: [{ role: "user", content: text.trim() }],
         maxTokens: 1024,
       });
