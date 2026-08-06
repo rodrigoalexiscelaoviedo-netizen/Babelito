@@ -13,6 +13,7 @@ export default function Profile() {
   const [interests, setInterests] = useState((profile?.profile_json?.interests as string) ?? "");
   const [target, setTarget] = useState<string>(profile?.target_level ?? "B2");
   const [variant, setVariant] = useState(profile?.english_variant ?? "British");
+  const [learningLanguage, setLearningLanguage] = useState<string>(profile?.learning_language ?? "en");
   const [saved, setSaved] = useState(false);
   const [busy, setBusy] = useState(false);
 
@@ -72,6 +73,7 @@ export default function Profile() {
         name,
         target_level: target,
         english_variant: variant,
+        learning_language: learningLanguage,
         profile_json: { ...(profile?.profile_json ?? {}), interests },
         voice_name: voiceName || null,
         voice_rate: voiceRate,
@@ -134,12 +136,25 @@ export default function Profile() {
           </Field>
         </div>
 
-        <Field label="Accent">
-          <select className="input" value={variant} onChange={(e) => setVariant(e.target.value)}>
-            <option value="British">British 🇬🇧</option>
-            <option value="American">American 🇺🇸</option>
+        <Field label="Learning">
+          <select
+            className="input"
+            value={learningLanguage}
+            onChange={(e) => setLearningLanguage(e.target.value)}
+          >
+            <option value="en">English 🇬🇧</option>
+            <option value="ca">Català</option>
           </select>
         </Field>
+
+        {learningLanguage === "en" && (
+          <Field label="Accent">
+            <select className="input" value={variant} onChange={(e) => setVariant(e.target.value)}>
+              <option value="British">British 🇬🇧</option>
+              <option value="American">American 🇺🇸</option>
+            </select>
+          </Field>
+        )}
 
         <Field label="What you like talking about">
           <textarea
