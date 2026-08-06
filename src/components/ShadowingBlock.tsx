@@ -19,8 +19,15 @@ const SHORT_WORDS = new Set(["a", "an", "the", "to", "of", "in", "on", "at", "or
 export default function ShadowingBlock({ text, lang, label = "Listen & repeat" }: Props) {
   const { profile } = useAuth();
   const voicePrefs = useVoicePrefs();
-  const effectiveLang = lang ?? voicePrefs.voiceAccent ?? "en-GB";
-  const voiceRec = useSpeechCapture({ lang: effectiveLang, mode: "turn" });
+
+  // Si se pasa lang como prop (override), usarlo; si no, usa learning_language del usuario
+  const learningLanguage = lang ? "en" : (profile?.learning_language || "en");
+
+  const voiceRec = useSpeechCapture(
+    learningLanguage,
+    profile?.english_variant ?? undefined,
+    { mode: "turn" }
+  );
 
   const [state, setState] = useState<State>("idle");
   const [paused, setPaused] = useState(false);
@@ -48,7 +55,7 @@ export default function ShadowingBlock({ text, lang, label = "Listen & repeat" }
     speak(text, {
       voiceName: voicePrefs.voiceName ?? undefined,
       rate: voicePrefs.voiceRate ?? 0.9,
-      lang: effectiveLang,
+      lang: voicePrefs.voiceAccent ?? "en-GB",
     });
     setState("speaking");
     setPaused(false);

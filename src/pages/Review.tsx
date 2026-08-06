@@ -27,7 +27,11 @@ export default function Review() {
   const [reviewedCount, setReviewedCount] = useState(0);
   const [newAchievements, setNewAchievements] = useState<AchievementDef[]>([]);
 
-  const voiceRec = useSpeechCapture({ lang: voicePrefs.voiceAccent ?? "en-GB", mode: "turn" });
+  const voiceRec = useSpeechCapture(
+    profile?.learning_language || "en",
+    profile?.english_variant ?? undefined,
+    { mode: "turn" }
+  );
   const doneTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Timeout de seguridad: 30s → stop automático (onend dispara el callback)

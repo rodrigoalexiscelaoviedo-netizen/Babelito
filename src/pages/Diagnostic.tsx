@@ -47,7 +47,11 @@ function voiceErrorMsg(code: string | null): string {
 export default function Diagnostic() {
   const { session, profile, refreshProfile } = useAuth();
   const navigate = useNavigate();
-  const voiceRec = useSpeechCapture({ lang: "en-GB", mode: "turn" });
+  const voiceRec = useSpeechCapture(
+    profile?.learning_language || "en",
+    profile?.english_variant ?? undefined,
+    { mode: "turn" }
+  );
 
   // ── Text phase ──────────────────────────────────────────────────────────────
   const [idx, setIdx]         = useState(0);

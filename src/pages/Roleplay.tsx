@@ -127,10 +127,11 @@ function RoleplayChat({ scenario, onExit }: { scenario: Scenario; onExit: () => 
     return creatingSessionRef.current;
   }
 
-  const voice = useSpeechCapture({
-    lang: voicePrefs.voiceAccent ?? (profile?.english_variant === "American" ? "en-US" : "en-GB"),
-    mode: "turn",
-  });
+  const voice = useSpeechCapture(
+    profile?.learning_language || "en",
+    profile?.english_variant ?? undefined,
+    { mode: "turn" }
+  );
   const listening = voice.isRecording;
 
   // El hook es la única fuente de verdad mientras se graba (ver Conversation.tsx).

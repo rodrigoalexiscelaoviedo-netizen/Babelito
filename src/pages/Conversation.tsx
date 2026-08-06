@@ -50,10 +50,11 @@ export default function Conversation() {
   const sessionIdRef = useRef<string | null>(null);
   const creatingSessionRef = useRef<Promise<string | null> | null>(null);
 
-  const voice = useSpeechCapture({
-    lang: profile?.english_variant === "American" ? "en-US" : "en-GB",
-    mode: "turn",
-  });
+  const voice = useSpeechCapture(
+    profile?.learning_language || "en",
+    profile?.english_variant ?? undefined,
+    { mode: "turn" }
+  );
   const listening = voice.isRecording;
 
   // El hook es la única fuente de verdad mientras se graba: lo que se ve es

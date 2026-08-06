@@ -259,10 +259,28 @@ function errorMessage(code: string): string | null {
 
 // ── Hook público ───────────────────────────────────────────────────────────
 
+/**
+ * Mapea learning_language a código BCP47 para Web Speech API.
+ * @param learningLanguage 'en' o 'ca' (de user.learning_language)
+ * @param englishVariant opcional: 'American' o 'British' (solo aplica si learningLanguage === 'en')
+ */
+function getLangCode(learningLanguage: string, englishVariant?: string): string {
+  if (learningLanguage === "en") {
+    return englishVariant === "American" ? "en-US" : "en-GB";
+  }
+  if (learningLanguage === "ca") {
+    return "ca-ES";
+  }
+  return "en-US"; // default fallback
+}
+
 export function useSpeechCapture(
-  opts: { lang?: string; mode?: SpeechCaptureMode } = {}
+  learningLanguage: string = "en",
+  englishVariant?: string,
+  opts: { mode?: SpeechCaptureMode } = {}
 ): UseSpeechCapture {
-  const { lang = "en-GB", mode = "turn" } = opts;
+  const lang = getLangCode(learningLanguage, englishVariant);
+  const { mode = "turn" } = opts;
 
   const [isRecording, setIsRecording] = useState(false);
   const [interim, setInterim]         = useState("");

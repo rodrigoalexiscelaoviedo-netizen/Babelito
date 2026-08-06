@@ -11,6 +11,7 @@ export interface Profile {
   current_level: Level | null;
   target_level: Level | null;
   english_variant: string | null;
+  learning_language?: string; // 'en' or 'ca' (defaults to 'en')
   onboarding_complete: boolean;
   diagnostic_complete: boolean;
   profile_json: Record<string, unknown>;
