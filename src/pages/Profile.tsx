@@ -16,6 +16,7 @@ export default function Profile() {
   const [learningLanguage, setLearningLanguage] = useState<string>(profile?.learning_language ?? "en");
   const [saved, setSaved] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [confirmReset, setConfirmReset] = useState(false);
 
   // Notification settings
   const profileRaw = profile as unknown as Record<string, unknown>;
@@ -108,6 +109,20 @@ export default function Profile() {
     await supabase.from("profiles").update({ diagnostic_complete: false }).eq("id", session.user.id);
     await refreshProfile();
     navigate("/diagnostic");
+  }
+
+  // Reinicia el onboarding completo (idioma, meta, nivel autoevaluado) sin
+  // borrar la cuenta. Vuelve a mandar al flujo de onboarding desde cero.
+  async function restartOnboarding() {
+    if (!session) return;
+    setBusy(true);
+    await supabase
+      .from("profiles")
+      .update({ onboarding_complete: false, diagnostic_complete: false })
+      .eq("id", session.user.id);
+    await refreshProfile();
+    setBusy(false);
+    navigate("/onboarding");
   }
 
   return (
@@ -279,6 +294,36 @@ export default function Profile() {
         <button className="btn-ghost w-full" onClick={retest}>
           <RefreshCw size={16} /> Retake the level test
         </button>
+
+        {confirmReset ? (
+          <div className="card p-4 space-y-3">
+            <p className="text-sm text-paper-muted">
+              Restart onboarding? You'll choose your language, goal and level again.
+              Your account and history stay.
+            </p>
+            <div className="flex gap-3">
+              <button
+                className="flex-1 py-2.5 rounded-xl bg-ink-600 hover:bg-ink-500 text-paper font-medium transition"
+                onClick={() => setConfirmReset(false)}
+                disabled={busy}
+              >
+                Cancel
+              </button>
+              <button
+                className="flex-1 py-2.5 rounded-xl bg-coral/20 hover:bg-coral/30 text-coral font-medium transition"
+                onClick={restartOnboarding}
+                disabled={busy}
+              >
+                {busy ? "Resetting…" : "Restart"}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <button className="btn-ghost w-full" onClick={() => setConfirmReset(true)}>
+            <RefreshCw size={16} /> Restart onboarding
+          </button>
+        )}
+
         <button
           className="btn w-full bg-transparent border border-ink-600 text-paper-muted hover:text-coral hover:border-coral/40"
           onClick={async () => {

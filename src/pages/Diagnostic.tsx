@@ -18,6 +18,15 @@ import {
 
 type Phase = "text" | "oral_reading" | "oral_open" | "evaluating" | "done";
 
+// Niveles elegibles a mano — escape para que el diagnóstico nunca sea un muro.
+const MANUAL_LEVELS: { key: Level; label: string }[] = [
+  { key: "A1", label: "A1 · Just starting" },
+  { key: "A2", label: "A2 · Basic phrases" },
+  { key: "B1", label: "B1 · I get by" },
+  { key: "B2", label: "B2 · Comfortable" },
+  { key: "C1", label: "C1 · Advanced" },
+];
+
 // ── Voice waveform — shown while SpeechRecognition is active ────────────────
 function VoiceWave() {
   const delays = [0, 0.15, 0.05, 0.2, 0.1];
@@ -29,6 +38,24 @@ function VoiceWave() {
           className="voice-bar w-1.5 rounded-full bg-coral"
           style={{ animationDelay: `${d}s` }}
         />
+      ))}
+    </div>
+  );
+}
+
+// ── Manual level picker — lista de niveles A1..C1 ───────────────────────────
+function LevelPicker({ onPick, busy }: { onPick: (l: Level) => void; busy: boolean }) {
+  return (
+    <div className="flex flex-col gap-2">
+      {MANUAL_LEVELS.map((l) => (
+        <button
+          key={l.key}
+          onClick={() => onPick(l.key)}
+          disabled={busy}
+          className="card px-4 py-3.5 text-left font-medium hover:border-coral transition disabled:opacity-50"
+        >
+          {l.label}
+        </button>
       ))}
     </div>
   );
@@ -86,19 +113,25 @@ export default function Diagnostic() {
   // ── Exit confirmation ────────────────────────────────────────────────────────
   const [confirmExit, setConfirmExit] = useState(false);
 
+  // ── Manual level pick (escape / Catalan sin banco de preguntas) ──────────────
+  const [pickingLevel, setPickingLevel] = useState(false);
+
   // DIAGNOSTIC/READING_SENTENCES are English-only content — there's no Catalan
-  // question bank yet, so Catalan learners skip straight to a default level
-  // instead of taking a mislabelled English test.
+  // question bank yet, so Catalan learners pick a level by hand instead of
+  // taking a mislabelled English test.
   const isCatalan = (profile?.learning_language || "en") === "ca";
 
-  async function finishCatalanSetup() {
+  // Cierra el diagnóstico con un nivel elegido a mano. Sirve tanto para el
+  // arranque catalán como de escape para quien no quiere hacer el test inglés,
+  // así el diagnóstico deja de ser un muro sin salida.
+  async function finishWithLevel(level: Level) {
     if (!session) return;
     setBusy(true);
     await supabase
       .from("profiles")
       .update({
-        diagnosed_level: "A1",
-        current_level: "A1",
+        diagnosed_level: level,
+        current_level: level,
         diagnostic_complete: true,
       })
       .eq("id", session.user.id);
@@ -362,7 +395,37 @@ export default function Diagnostic() {
     </div>
   ) : null;
 
-  // ── Render: Catalan (no question bank yet — skip straight to a default level) ─
+  // ── Render: manual level pick (escape / Catalan sin banc de preguntes) ───────
+
+  if (pickingLevel) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-6">
+        <div className="w-full max-w-md animate-fade-up">
+          <p className="eyebrow mb-3">{isCatalan ? "Tria el teu nivell" : "Choose your level"}</p>
+          <h1 className="font-display text-2xl font-bold mb-2">
+            {isCatalan ? "Amb quin nivell comences?" : "Where are you starting from?"}
+          </h1>
+          <p className="text-paper-muted mb-6 text-sm">
+            {isCatalan
+              ? "S'anirà ajustant a mesura que practiquis."
+              : "It'll adjust as you practise — you can retake the test anytime in Settings."}
+          </p>
+          <LevelPicker onPick={finishWithLevel} busy={busy} />
+          {!isCatalan && (
+            <button
+              onClick={() => setPickingLevel(false)}
+              className="w-full mt-4 text-xs text-paper-faint hover:text-paper transition text-center"
+              disabled={busy}
+            >
+              ← Back to the test
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // ── Render: Catalan (no question bank yet — pick a level by hand) ─────────────
 
   if (isCatalan && phase === "text" && answers.length === 0) {
     return (
@@ -371,12 +434,10 @@ export default function Diagnostic() {
           <p className="eyebrow mb-3">Benvingut/da</p>
           <h1 className="font-display text-3xl font-bold mb-3">Comencem amb el català</h1>
           <p className="text-paper-muted mb-8">
-            El test de nivell encara només existeix en anglès. Comencem amb un nivell inicial i
+            El test de nivell encara només existeix en anglès. Tria amb quin nivell comences i
             s'anirà ajustant a mesura que practiquis.
           </p>
-          <button className="btn-coral w-full" onClick={finishCatalanSetup} disabled={busy}>
-            {busy ? "Preparant…" : "Començar →"}
-          </button>
+          <LevelPicker onPick={finishWithLevel} busy={busy} />
         </div>
       </div>
     );
@@ -728,6 +789,15 @@ export default function Diagnostic() {
             );
           })}
         </div>
+
+        {/* Escape: nadie queda atrapado en el test si no lo quiere hacer. */}
+        <button
+          onClick={() => setPickingLevel(true)}
+          disabled={busy}
+          className="w-full mt-6 text-xs text-paper-faint hover:text-paper transition text-center"
+        >
+          Prefiero elegir mi nivel a mano
+        </button>
       </div>
     </div>
   );

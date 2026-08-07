@@ -33,7 +33,10 @@ export default function Onboarding() {
   const { session, refreshProfile } = useAuth();
   const navigate = useNavigate();
   const [step, setStep] = useState(0);
-  const [learningLanguage, setLearningLanguage] = useState<"en" | "ca">("en");
+  // Sin default silencioso: el usuario DEBE elegir idioma explícitamente.
+  // (Antes arrancaba en "en" y se podía pasar el paso sin tocar nada → quedaba
+  //  en inglés sin querer. Fue el bug que encerró a Nadia en el test inglés.)
+  const [learningLanguage, setLearningLanguage] = useState<"en" | "ca" | null>(null);
   const [goal, setGoal] = useState<string | null>(null);
   const [level, setLevel] = useState<string | null>(null);
   const [variant, setVariant] = useState("British");
@@ -41,7 +44,7 @@ export default function Onboarding() {
   const [busy, setBusy] = useState(false);
 
   async function finish() {
-    if (!session) return;
+    if (!session || !learningLanguage) return;
     setBusy(true);
     await supabase
       .from("profiles")
@@ -80,7 +83,7 @@ export default function Onboarding() {
       canNext: !!learningLanguage,
     },
     {
-      title: "Why are you learning English?",
+      title: `Why are you learning ${learningLanguage === "ca" ? "Catalan" : "English"}?`,
       sub: "This shapes the topics your coach brings up.",
       body: (
         <div className="grid sm:grid-cols-2 gap-3">
