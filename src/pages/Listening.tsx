@@ -8,28 +8,85 @@ import {
   type LinkingPattern,
   type LinkingType,
 } from "../lib/linkingData";
+import { catalanListeningPatterns, type ListeningPattern } from "../lib/catalanListeningPatterns";
 import { speak } from "../lib/speech";
 import { useVoicePrefs } from "../lib/useVoicePrefs";
+import { useAuth } from "../context/AuthContext";
 import ShadowingBlock from "../components/ShadowingBlock";
 
 // Rate for native-speed playback
 const NATIVE_RATE = 1.2;
+
+// The train-my-ear quiz needs a consistent { written, spoken, distractors }
+// shape. catalanListeningPatterns.ts has inconsistent per-entry exercise
+// fields (slow/fast, wrong/correct, stressed/fast, ...), so this pulls out the
+// "reduced" form where the key is recognisable and falls back to the written
+// form otherwise, and builds distractors from other patterns' examples.
+type LinkingLike = LinkingPattern & { lang?: string };
+
+// Only "fast"/"correct" reliably hold a full spoken phrase in this data set —
+// other keys (e.g. "nasal", "c_soft") hold bare phonemes/contrast words, not
+// something worth reading aloud or showing as the "spoken" form.
+const FAST_FORM_KEYS = ["fast", "correct"];
+
+function firstFastForm(pairs: Array<Record<string, unknown>>): string | null {
+  for (const pair of pairs) {
+    for (const key of FAST_FORM_KEYS) {
+      const val = pair[key];
+      if (typeof val === "string" && val.trim()) return val;
+    }
+  }
+  return null;
+}
+
+function catalanPatternType(pattern: string): LinkingType {
+  const p = pattern.toLowerCase();
+  if (p.includes("linking") || p.includes("fusion")) return "linking";
+  if (p.includes("reduction")) return "reduction";
+  if (p.includes("elision") || p.includes("silent") || p.includes("deletion")) return "elision";
+  return "assimilation";
+}
+
+function catalanToLinkingPattern(lp: ListeningPattern, all: ListeningPattern[]): LinkingLike {
+  const spoken = firstFastForm(lp.exercise_word_pairs) ?? lp.catalan_example;
+  const distractors = all
+    .filter((other) => other.id !== lp.id)
+    .map((other) => other.catalan_example)
+    .filter((ex) => ex !== lp.catalan_example)
+    .slice(0, 2);
+  return {
+    id: lp.id,
+    type: catalanPatternType(lp.pattern),
+    written: lp.catalan_example,
+    spoken,
+    explanationEs: lp.explanation,
+    distractors,
+    lang: "ca-ES",
+  };
+}
+
+const CATALAN_PATTERNS: LinkingLike[] = catalanListeningPatterns.map((lp) =>
+  catalanToLinkingPattern(lp, catalanListeningPatterns)
+);
 
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 type View = "list" | "detail" | "train";
 
 export default function Listening() {
+  const { profile } = useAuth();
   const voicePrefs = useVoicePrefs();
+  const isCatalan = (profile?.learning_language || "en") === "ca";
+  const patterns = isCatalan ? CATALAN_PATTERNS : PATTERNS;
   const [view, setView] = useState<View>("list");
-  const [detail, setDetail] = useState<LinkingPattern | null>(null);
+  const [detail, setDetail] = useState<LinkingLike | null>(null);
 
-  function playSpoken(pattern: LinkingPattern, e?: React.MouseEvent) {
+  function playSpoken(pattern: LinkingLike, e?: React.MouseEvent) {
     e?.stopPropagation();
     speak(pattern.spoken, {
       voiceName: voicePrefs.voiceName ?? undefined,
       rate: NATIVE_RATE,
-      lang: voicePrefs.voiceAccent ?? "en-GB",
+      lang: pattern.lang ?? voicePrefs.voiceAccent ?? "en-GB",
     });
   }
 
@@ -47,6 +104,7 @@ export default function Listening() {
   if (view === "train") {
     return (
       <TrainView
+        patterns={patterns}
         voicePrefs={voicePrefs}
         playSpoken={playSpoken}
         onBack={() => setView("list")}
@@ -56,6 +114,8 @@ export default function Listening() {
 
   return (
     <ListView
+      patterns={patterns}
+      isCatalan={isCatalan}
       voicePrefs={voicePrefs}
       playSpoken={playSpoken}
       onSelect={(p) => {
@@ -70,19 +130,23 @@ export default function Listening() {
 // ─── List view ────────────────────────────────────────────────────────────────
 
 function ListView({
+  patterns,
+  isCatalan,
   playSpoken,
   onSelect,
   onTrain,
 }: {
+  patterns: LinkingLike[];
+  isCatalan: boolean;
   voicePrefs: ReturnType<typeof useVoicePrefs>;
-  playSpoken: (p: LinkingPattern, e?: React.MouseEvent) => void;
-  onSelect: (p: LinkingPattern) => void;
+  playSpoken: (p: LinkingLike, e?: React.MouseEvent) => void;
+  onSelect: (p: LinkingLike) => void;
   onTrain: () => void;
 }) {
   const [activeType, setActiveType] = useState<LinkingType | "all">("all");
 
   const filtered =
-    activeType === "all" ? PATTERNS : PATTERNS.filter((p) => p.type === activeType);
+    activeType === "all" ? patterns : patterns.filter((p) => p.type === activeType);
 
   return (
     <div className="animate-fade-up">
@@ -91,7 +155,9 @@ function ListView({
           <p className="eyebrow mb-2">Speaking</p>
           <h1 className="font-display text-3xl font-extrabold">Listening</h1>
           <p className="text-paper-muted mt-1">
-            Entrenás tu oído para el habla conectada de los nativos.
+            {isCatalan
+              ? "Entrena la teva orella per al català parlat ràpid."
+              : "Entrenás tu oído para el habla conectada de los nativos."}
           </p>
         </div>
         <button className="btn-coral shrink-0" onClick={onTrain}>
@@ -159,9 +225,9 @@ function PatternCard({
   playSpoken,
   onSelect,
 }: {
-  pattern: LinkingPattern;
-  playSpoken: (p: LinkingPattern, e?: React.MouseEvent) => void;
-  onSelect: (p: LinkingPattern) => void;
+  pattern: LinkingLike;
+  playSpoken: (p: LinkingLike, e?: React.MouseEvent) => void;
+  onSelect: (p: LinkingLike) => void;
 }) {
   return (
     <button
@@ -194,9 +260,9 @@ function DetailView({
   playSpoken,
   onBack,
 }: {
-  pattern: LinkingPattern;
+  pattern: LinkingLike;
   voicePrefs: ReturnType<typeof useVoicePrefs>;
-  playSpoken: (p: LinkingPattern, e?: React.MouseEvent) => void;
+  playSpoken: (p: LinkingLike, e?: React.MouseEvent) => void;
   onBack: () => void;
 }) {
   return (
@@ -237,7 +303,7 @@ function DetailView({
         <p className="eyebrow mb-3">Repetí</p>
         <ShadowingBlock
           text={pattern.written}
-          lang={voicePrefs.voiceAccent ?? "en-GB"}
+          lang={pattern.lang ?? voicePrefs.voiceAccent ?? "en-GB"}
           label="Listen & repeat"
         />
       </div>
@@ -256,22 +322,24 @@ function shuffle<T>(arr: T[]): T[] {
   return a;
 }
 
-function buildQueue(): LinkingPattern[] {
-  return shuffle(PATTERNS);
+function buildQueue(patterns: LinkingLike[]): LinkingLike[] {
+  return shuffle(patterns);
 }
 
 type TrainPhase = "listening" | "answered";
 
 export function TrainView({
+  patterns,
   voicePrefs,
   playSpoken,
   onBack,
 }: {
+  patterns: LinkingLike[];
   voicePrefs: ReturnType<typeof useVoicePrefs>;
-  playSpoken: (p: LinkingPattern, e?: React.MouseEvent) => void;
+  playSpoken: (p: LinkingLike, e?: React.MouseEvent) => void;
   onBack: () => void;
 }) {
-  const [queue] = useState<LinkingPattern[]>(buildQueue);
+  const [queue] = useState<LinkingLike[]>(() => buildQueue(patterns));
   const [idx, setIdx] = useState(0);
   const [phase, setPhase] = useState<TrainPhase>("listening");
   const [choices, setChoices] = useState<string[]>([]);
@@ -282,7 +350,7 @@ export function TrainView({
   const pattern = queue[idx];
 
   const buildChoices = useCallback(
-    (p: LinkingPattern) => {
+    (p: LinkingLike) => {
       const opts = shuffle([p.written, ...p.distractors]);
       setChoices(opts);
     },

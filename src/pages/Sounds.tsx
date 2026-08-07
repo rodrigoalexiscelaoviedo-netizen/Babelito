@@ -3,21 +3,51 @@ import { ArrowLeft, Volume2, CheckCircle2, XCircle } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabaseClient";
 import { SOUNDS, type SoundEntry } from "../lib/soundsData";
+import { catalanSounds, type CatalanSound } from "../lib/catalanSounds";
 import { speak } from "../lib/speech";
 import { useVoicePrefs } from "../lib/useVoicePrefs";
 import ShadowingBlock from "../components/ShadowingBlock";
+
+// The Sounds UI (minimal pairs game, shadowing) was built around SoundEntry.
+// catalanSounds.ts has a different shape (no minimal pairs / shadowing phrase
+// data yet) — this adapts what exists rather than inventing pair/quiz data.
+type SoundLike = SoundEntry & { lang?: string };
+
+function catalanToSoundEntry(cs: CatalanSound): SoundLike {
+  return {
+    id: cs.id,
+    ipa: cs.sound_ipa,
+    name: cs.name,
+    nameEs: cs.description,
+    articulation: cs.articulation,
+    examples: cs.words,
+    minimalPairs: [], // no minimal-pair data for Catalan sounds yet
+    shadowingPhrase: cs.examples[0]?.text ?? cs.words[0] ?? "",
+    lang: "ca-ES",
+  };
+}
+
+const CATALAN_SOUNDS: SoundLike[] = catalanSounds.map(catalanToSoundEntry);
 
 // ─── List view ───────────────────────────────────────────────────────────────
 
 export default function Sounds() {
   const { profile } = useAuth();
   const voicePrefs = useVoicePrefs();
-  const [selected, setSelected] = useState<SoundEntry | null>(null);
+  const isCatalan = (profile?.learning_language || "en") === "ca";
+  const allSounds = isCatalan ? CATALAN_SOUNDS : SOUNDS;
+  const [selected, setSelected] = useState<SoundLike | null>(null);
   const [needsPractice, setNeedsPractice] = useState<Set<string>>(new Set());
-  const [sorted, setSorted] = useState<SoundEntry[]>(SOUNDS);
+  const [sorted, setSorted] = useState<SoundLike[]>(allSounds);
 
   useEffect(() => {
-    if (!profile) return;
+    setSorted(allSounds);
+    setNeedsPractice(new Set());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isCatalan]);
+
+  useEffect(() => {
+    if (!profile || isCatalan) return; // no pronunciation-error log for Catalan yet
     (async () => {
       const { data } = await supabase
         .from("errors")
@@ -54,7 +84,7 @@ export default function Sounds() {
       const order = [...SOUNDS].sort((a, b) => (scores[b.id] ?? 0) - (scores[a.id] ?? 0));
       setSorted(order);
     })();
-  }, [profile]);
+  }, [profile, isCatalan]);
 
   if (selected) {
     return (
@@ -71,7 +101,9 @@ export default function Sounds() {
       <p className="eyebrow mb-2">Speaking</p>
       <h1 className="font-display text-3xl font-extrabold mb-1">Sounds</h1>
       <p className="text-paper-muted mb-8">
-        Los sonidos del inglés más difíciles para hispanohablantes. Tocá uno para practicar.
+        {isCatalan
+          ? "Els sons del català que costen més als castellanoparlants. Toca'n un per practicar."
+          : "Los sonidos del inglés más difíciles para hispanohablantes. Tocá uno para practicar."}
       </p>
 
       <div className="grid sm:grid-cols-2 gap-3">
@@ -97,7 +129,7 @@ function SoundCard({
   voicePrefs,
   onSelect,
 }: {
-  sound: SoundEntry;
+  sound: SoundLike;
   needsPractice: boolean;
   voicePrefs: ReturnType<typeof useVoicePrefs>;
   onSelect: () => void;
@@ -107,7 +139,7 @@ function SoundCard({
     speak(sound.examples[0], {
       voiceName: voicePrefs.voiceName ?? undefined,
       rate: voicePrefs.voiceRate ?? 0.85,
-      lang: voicePrefs.voiceAccent ?? "en-GB",
+      lang: sound.lang ?? voicePrefs.voiceAccent ?? "en-GB",
     });
   }
 
@@ -149,7 +181,7 @@ function SoundDetail({
   voicePrefs,
   onBack,
 }: {
-  sound: SoundEntry;
+  sound: SoundLike;
   voicePrefs: ReturnType<typeof useVoicePrefs>;
   onBack: () => void;
 }) {
@@ -183,15 +215,17 @@ function SoundDetail({
       {/* Ejemplos con audio */}
       <ExamplesSection sound={sound} voicePrefs={voicePrefs} />
 
-      {/* Minimal pairs */}
-      <MinimalPairsSection sound={sound} voicePrefs={voicePrefs} />
+      {/* Minimal pairs — only when the sound has pair data */}
+      {sound.minimalPairs.length > 0 && (
+        <MinimalPairsSection sound={sound} voicePrefs={voicePrefs} />
+      )}
 
       {/* Shadowing */}
       <div className="mb-6">
         <p className="eyebrow mb-3">Repetí</p>
         <ShadowingBlock
           text={sound.shadowingPhrase}
-          lang={voicePrefs.voiceAccent ?? "en-GB"}
+          lang={sound.lang ?? voicePrefs.voiceAccent ?? "en-GB"}
           label={`Shadowing: ${sound.ipa}`}
         />
       </div>
@@ -205,14 +239,14 @@ function ExamplesSection({
   sound,
   voicePrefs,
 }: {
-  sound: SoundEntry;
+  sound: SoundLike;
   voicePrefs: ReturnType<typeof useVoicePrefs>;
 }) {
   function playWord(word: string) {
     speak(word, {
       voiceName: voicePrefs.voiceName ?? undefined,
       rate: voicePrefs.voiceRate ?? 0.85,
-      lang: voicePrefs.voiceAccent ?? "en-GB",
+      lang: sound.lang ?? voicePrefs.voiceAccent ?? "en-GB",
     });
   }
 
