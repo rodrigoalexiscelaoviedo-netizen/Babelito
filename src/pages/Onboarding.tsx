@@ -24,10 +24,16 @@ const VARIANTS = [
   { key: "American", label: "American 🇺🇸" },
 ];
 
+const LANGUAGES = [
+  { key: "en", label: "English" },
+  { key: "ca", label: "Català" },
+];
+
 export default function Onboarding() {
   const { session, refreshProfile } = useAuth();
   const navigate = useNavigate();
   const [step, setStep] = useState(0);
+  const [learningLanguage, setLearningLanguage] = useState<"en" | "ca">("en");
   const [goal, setGoal] = useState<string | null>(null);
   const [level, setLevel] = useState<string | null>(null);
   const [variant, setVariant] = useState("British");
@@ -40,6 +46,7 @@ export default function Onboarding() {
     await supabase
       .from("profiles")
       .update({
+        learning_language: learningLanguage,
         learning_goal: goal,
         self_assessed_level: level,
         english_variant: variant,
@@ -52,6 +59,26 @@ export default function Onboarding() {
   }
 
   const steps = [
+    {
+      title: "What do you want to learn?",
+      sub: "You can switch this later in Settings.",
+      body: (
+        <div className="grid grid-cols-2 gap-3">
+          {LANGUAGES.map((l) => (
+            <button
+              key={l.key}
+              onClick={() => setLearningLanguage(l.key as "en" | "ca")}
+              className={`card px-4 py-6 text-center text-lg font-medium transition ${
+                learningLanguage === l.key ? "ring-2 ring-coral border-coral" : "hover:border-ink-500"
+              }`}
+            >
+              {l.label}
+            </button>
+          ))}
+        </div>
+      ),
+      canNext: !!learningLanguage,
+    },
     {
       title: "Why are you learning English?",
       sub: "This shapes the topics your coach brings up.",
@@ -97,6 +124,7 @@ export default function Onboarding() {
     {
       title: "Which accent do you want to sound like?",
       sub: "Your coach will lean into this variant.",
+      skip: learningLanguage === "ca",
       body: (
         <div className="grid grid-cols-2 gap-3">
           {VARIANTS.map((v) => (
@@ -127,7 +155,7 @@ export default function Onboarding() {
       ),
       canNext: interests.trim().length > 2,
     },
-  ];
+  ].filter((s) => !s.skip);
 
   const current = steps[step];
   const isLast = step === steps.length - 1;

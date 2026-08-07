@@ -15,6 +15,7 @@ import {
 } from "../lib/stories";
 import type { WordDefinition } from "../lib/dictionary";
 import type { VocabMap, WordStatus } from "../lib/vocabulary";
+import { scopeByLanguage } from "../lib/language";
 import { speak, pauseSpeech, resumeSpeech } from "../lib/speech";
 import { useVoicePrefs } from "../lib/useVoicePrefs";
 import ClickableText from "../components/ClickableText";
@@ -50,7 +51,7 @@ export default function Stories() {
     if (!profile) return;
     (async () => {
       const [s, p] = await Promise.all([
-        getStories(profile.id),
+        getStories(profile.id, profile.learning_language || "en"),
         getStoryProgress(profile.id),
       ]);
       setStories(s);
@@ -154,43 +155,45 @@ export default function Stories() {
         Read, discover vocabulary, then test your comprehension. Your learning words appear highlighted.
       </p>
 
-      {/* Generate block */}
-      <div className="card p-5 mb-8">
-        <h3 className="font-display font-bold mb-1">Generate a story</h3>
-        <p className="text-xs text-paper-muted mb-4">
-          Uses AI — generated with Gemini on Supabase Edge Function.
-        </p>
-        <div className="flex gap-3 mb-3">
-          <input
-            className="input flex-1"
-            placeholder="Topic (e.g. a musician who starts a business)"
-            value={genTopic}
-            onChange={(e) => setGenTopic(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleGenerate()}
-          />
-          <select
-            className="input w-24"
-            value={genLevel}
-            onChange={(e) => setGenLevel(e.target.value as Level)}
+      {/* Generate block — English only for now, generator prompt isn't multilingual yet */}
+      {(profile?.learning_language || "en") === "en" && (
+        <div className="card p-5 mb-8">
+          <h3 className="font-display font-bold mb-1">Generate a story</h3>
+          <p className="text-xs text-paper-muted mb-4">
+            Uses AI — generated with Gemini on Supabase Edge Function.
+          </p>
+          <div className="flex gap-3 mb-3">
+            <input
+              className="input flex-1"
+              placeholder="Topic (e.g. a musician who starts a business)"
+              value={genTopic}
+              onChange={(e) => setGenTopic(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleGenerate()}
+            />
+            <select
+              className="input w-24"
+              value={genLevel}
+              onChange={(e) => setGenLevel(e.target.value as Level)}
+            >
+              {["A2", "B1", "B2"].map((l) => (
+                <option key={l} value={l}>{l}</option>
+              ))}
+            </select>
+          </div>
+          {genError && <p className="text-coral text-sm mb-2">{genError}</p>}
+          <button
+            className="btn-coral w-full flex items-center justify-center gap-2"
+            onClick={handleGenerate}
+            disabled={generating || !genTopic.trim()}
           >
-            {["A2", "B1", "B2"].map((l) => (
-              <option key={l} value={l}>{l}</option>
-            ))}
-          </select>
+            {generating ? (
+              <span className="flex items-center gap-2"><BrandDots /> Generating…</span>
+            ) : (
+              "Generate story →"
+            )}
+          </button>
         </div>
-        {genError && <p className="text-coral text-sm mb-2">{genError}</p>}
-        <button
-          className="btn-coral w-full flex items-center justify-center gap-2"
-          onClick={handleGenerate}
-          disabled={generating || !genTopic.trim()}
-        >
-          {generating ? (
-            <span className="flex items-center gap-2"><BrandDots /> Generating…</span>
-          ) : (
-            "Generate story →"
-          )}
-        </button>
-      </div>
+      )}
 
       {/* Story cards */}
       {sorted.length === 0 ? (
@@ -255,10 +258,10 @@ function StoryReader({
   useEffect(() => {
     if (!profile) return;
     (async () => {
-      const { data } = await supabase
-        .from("user_vocabulary")
-        .select("*")
-        .eq("user_id", profile.id);
+      const { data } = await scopeByLanguage(
+        supabase.from("user_vocabulary").select("*").eq("user_id", profile.id),
+        profile.learning_language || "en"
+      );
       if (data) {
         const map: VocabMap = {};
         for (const row of data as Array<{ word: string; status: WordStatus; definition?: string; example?: string; phonetic?: string }>) {
@@ -360,6 +363,7 @@ function StoryReader({
           text={story.content}
           vocabMap={vocabMap}
           userId={profile!.id}
+          language={profile?.learning_language || "en"}
           voicePrefs={voicePrefs}
           source="story"
           highlightLearning

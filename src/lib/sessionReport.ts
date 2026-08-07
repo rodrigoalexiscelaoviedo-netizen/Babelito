@@ -1,6 +1,7 @@
 import { supabase } from "./supabaseClient";
 import { askCoach } from "./claude";
 import type { ChatTurn } from "./types";
+import { scopeByLanguage } from "./language";
 
 export interface KeyError {
   error: string;
@@ -45,7 +46,8 @@ export async function generateReport(
   userId: string,
   sessionId: string | null,
   kind: "conversation" | "roleplay",
-  turns: ChatTurn[]
+  turns: ChatTurn[],
+  language: string
 ): Promise<SessionReport> {
   const transcript = transcriptText(turns);
 
@@ -78,6 +80,7 @@ export async function generateReport(
       did_well: parsed.did_well,
       key_errors: parsed.key_errors,
       suggested_chunks: parsed.suggested_chunks,
+      language,
     })
     .select("*")
     .single();
@@ -86,11 +89,11 @@ export async function generateReport(
   return data as SessionReport;
 }
 
-export async function getReports(userId: string, limit = 5): Promise<SessionReport[]> {
-  const { data } = await supabase
-    .from("session_reports")
-    .select("*")
-    .eq("user_id", userId)
+export async function getReports(userId: string, language: string, limit = 5): Promise<SessionReport[]> {
+  const { data } = await scopeByLanguage(
+    supabase.from("session_reports").select("*").eq("user_id", userId),
+    language
+  )
     .order("created_at", { ascending: false })
     .limit(limit);
   return (data as SessionReport[]) ?? [];

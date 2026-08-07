@@ -5,6 +5,7 @@ import { supabase } from "../lib/supabaseClient";
 import { READING_TEXTS, type ReadingText } from "../lib/readingTexts";
 import type { WordDefinition } from "../lib/dictionary";
 import type { VocabMap, WordStatus } from "../lib/vocabulary";
+import { scopeByLanguage } from "../lib/language";
 import { speak, pauseSpeech, resumeSpeech } from "../lib/speech";
 import { useVoicePrefs } from "../lib/useVoicePrefs";
 import ClickableText from "../components/ClickableText";
@@ -110,10 +111,11 @@ function Reader({ text, onBack }: { text: ReadingText; onBack: () => void }) {
   useEffect(() => {
     if (!profile) return;
     (async () => {
-      const { data } = await supabase
-        .from("user_vocabulary")
-        .select("*")
-        .eq("user_id", profile.id);
+      // READING_TEXTS is English-only content, regardless of learning_language
+      const { data } = await scopeByLanguage(
+        supabase.from("user_vocabulary").select("*").eq("user_id", profile.id),
+        "en"
+      );
       if (data) {
         const map: VocabMap = {};
         for (const row of data as Array<{ word: string; status: WordStatus; definition?: string; example?: string; phonetic?: string }>) {
@@ -213,6 +215,7 @@ function Reader({ text, onBack }: { text: ReadingText; onBack: () => void }) {
           text={text.content}
           vocabMap={vocabMap}
           userId={profile!.id}
+          language="en"
           voicePrefs={voicePrefs}
           source="reading"
           onVocabUpdate={handleVocabUpdate}

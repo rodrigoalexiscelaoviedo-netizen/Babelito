@@ -1,4 +1,5 @@
 import { supabase } from "./supabaseClient";
+import { scopeByLanguage } from "./language";
 
 export interface ChunkData {
   id: number;
@@ -55,13 +56,11 @@ function todayISO(): string {
 }
 
 /** Devuelve una palabra al azar del vocabulario en 'learning', o null. */
-async function pickLearningWord(userId: string): Promise<string | null> {
-  const { data } = await supabase
-    .from("user_vocabulary")
-    .select("word")
-    .eq("user_id", userId)
-    .eq("status", "learning")
-    .limit(20);
+async function pickLearningWord(userId: string, language: string): Promise<string | null> {
+  const { data } = await scopeByLanguage(
+    supabase.from("user_vocabulary").select("word").eq("user_id", userId).eq("status", "learning"),
+    language
+  ).limit(20);
   if (!data || data.length === 0) return null;
   const pick = data[Math.floor(Math.random() * data.length)] as { word: string };
   return pick.word;
@@ -77,16 +76,14 @@ async function fetchChunk(chunkId: number): Promise<ChunkData | null> {
   return data as ChunkData | null;
 }
 
-export async function getTodayLesson(userId: string): Promise<DailyLesson> {
+export async function getTodayLesson(userId: string, language: string): Promise<DailyLesson> {
   const today = todayISO();
 
   // Check if lesson already exists for today
-  const { data: existing } = await supabase
-    .from("daily_lessons")
-    .select("*")
-    .eq("user_id", userId)
-    .eq("lesson_date", today)
-    .maybeSingle();
+  const { data: existing } = await scopeByLanguage(
+    supabase.from("daily_lessons").select("*").eq("user_id", userId).eq("lesson_date", today),
+    language
+  ).maybeSingle();
 
   if (existing) {
     const lesson = existing as DailyLesson;
@@ -94,7 +91,7 @@ export async function getTodayLesson(userId: string): Promise<DailyLesson> {
     // vocabulario en 'learning', quedaba null para siempre aunque el usuario
     // agregara palabras después. Se completa retroactivamente.
     if (!lesson.word) {
-      const word = await pickLearningWord(userId);
+      const word = await pickLearningWord(userId, language);
       if (word) {
         const { data: updated } = await supabase
           .from("daily_lessons")
@@ -112,16 +109,16 @@ export async function getTodayLesson(userId: string): Promise<DailyLesson> {
   }
 
   // Exclude chunk_ids used in last 3 daily_lessons
-  const { data: recentLessons } = await supabase
-    .from("daily_lessons")
-    .select("chunk_id")
-    .eq("user_id", userId)
+  const { data: recentLessons } = await scopeByLanguage(
+    supabase.from("daily_lessons").select("chunk_id").eq("user_id", userId),
+    language
+  )
     .order("lesson_date", { ascending: false })
     .limit(3);
 
   const recentChunkIds: number[] = (recentLessons ?? [])
     .map((l: { chunk_id: number | null }) => l.chunk_id)
-    .filter((id): id is number => id !== null);
+    .filter((id: number | null): id is number => id !== null);
 
   let chunkId: number | null = null;
   let chunk: ChunkData | null = null;
@@ -131,11 +128,10 @@ export async function getTodayLesson(userId: string): Promise<DailyLesson> {
     ? `(${recentChunkIds.join(",")})`
     : "(0)";
 
-  const { data: freshChunks } = await supabase
-    .from("chunks")
-    .select("id, english, spanish, category")
-    .not("id", "in", exclusionList)
-    .limit(20);
+  const { data: freshChunks } = await scopeByLanguage(
+    supabase.from("chunks").select("id, english, spanish, category").not("id", "in", exclusionList),
+    language
+  ).limit(20);
 
   if (freshChunks && freshChunks.length > 0) {
     const pick = freshChunks[Math.floor(Math.random() * freshChunks.length)] as ChunkData;
@@ -143,10 +139,10 @@ export async function getTodayLesson(userId: string): Promise<DailyLesson> {
     chunk = pick;
   } else {
     // Fallback: any chunk
-    const { data: anyChunks } = await supabase
-      .from("chunks")
-      .select("id, english, spanish, category")
-      .limit(10);
+    const { data: anyChunks } = await scopeByLanguage(
+      supabase.from("chunks").select("id, english, spanish, category"),
+      language
+    ).limit(10);
     if (anyChunks && anyChunks.length > 0) {
       const pick = anyChunks[Math.floor(Math.random() * anyChunks.length)] as ChunkData;
       chunkId = pick.id;
@@ -154,7 +150,7 @@ export async function getTodayLesson(userId: string): Promise<DailyLesson> {
     }
   }
 
-  const word = await pickLearningWord(userId);
+  const word = await pickLearningWord(userId, language);
 
   // Pick topic
   const topic = CONVERSATION_TOPICS[Math.floor(Math.random() * CONVERSATION_TOPICS.length)];
@@ -170,6 +166,7 @@ export async function getTodayLesson(userId: string): Promise<DailyLesson> {
       topic,
       completed: false,
       completed_at: null,
+      language,
     })
     .select("*")
     .single();
@@ -188,14 +185,14 @@ export async function getTodayLesson(userId: string): Promise<DailyLesson> {
  */
 export async function setLessonItem(
   userId: string,
+  language: string,
   item: LessonItem,
   value: boolean
 ): Promise<DailyLesson> {
-  const { data, error } = await supabase
-    .from("daily_lessons")
-    .update({ [item]: value })
-    .eq("user_id", userId)
-    .eq("lesson_date", todayISO())
+  const { data, error } = await scopeByLanguage(
+    supabase.from("daily_lessons").update({ [item]: value }).eq("user_id", userId).eq("lesson_date", todayISO()),
+    language
+  )
     .select("*")
     .single();
   if (error) throw new Error(error.message);
@@ -206,13 +203,11 @@ export async function setLessonItem(
  * Cierra la práctica del día. Solo marca completed si todos los ítems ACTIVOS
  * están tildados (ver activeItems: sin palabra del día alcanza con 2).
  */
-export async function completeLesson(userId: string): Promise<DailyLesson> {
-  const { data: current, error: readErr } = await supabase
-    .from("daily_lessons")
-    .select("*")
-    .eq("user_id", userId)
-    .eq("lesson_date", todayISO())
-    .single();
+export async function completeLesson(userId: string, language: string): Promise<DailyLesson> {
+  const { data: current, error: readErr } = await scopeByLanguage(
+    supabase.from("daily_lessons").select("*").eq("user_id", userId).eq("lesson_date", todayISO()),
+    language
+  ).single();
   if (readErr) throw new Error(readErr.message);
 
   const lesson = current as DailyLesson;

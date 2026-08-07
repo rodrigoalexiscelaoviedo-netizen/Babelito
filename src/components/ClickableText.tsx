@@ -10,6 +10,7 @@ interface ClickableTextProps {
   text: string;
   vocabMap: VocabMap;
   userId: string;
+  language: string;
   voicePrefs: VoicePrefs;
   source: string;
   /** In Stories mode: adds gold underline to 'learning' words as "words in practice" */
@@ -24,6 +25,7 @@ export default function ClickableText({
   text,
   vocabMap,
   userId,
+  language,
   voicePrefs,
   source,
   highlightLearning = false,
@@ -93,20 +95,29 @@ export default function ClickableText({
     if (!selectedWord) return;
     setSaveError("");
     try {
-      await upsertWord(userId, selectedWord, {
-        status,
-        definition: wordDef?.definition_es,
-        example: wordDef?.example,
-        phonetic: wordDef?.phonetic,
-        source,
-      });
+      await upsertWord(
+        userId,
+        selectedWord,
+        {
+          status,
+          definition: wordDef?.definition_es,
+          example: wordDef?.example,
+          phonetic: wordDef?.phonetic,
+          source,
+        },
+        language
+      );
       if (status === "learning") {
-        await addToReview(userId, {
-          item_type: "word",
-          content: selectedWord,
-          prompt: wordDef?.definition_es || selectedWord,
-          source_ref: selectedWord,
-        });
+        await addToReview(
+          userId,
+          {
+            item_type: "word",
+            content: selectedWord,
+            prompt: wordDef?.definition_es || selectedWord,
+            source_ref: selectedWord,
+          },
+          language
+        );
       }
       onVocabUpdate(selectedWord, status, wordDef);
     } catch (e) {
@@ -149,12 +160,16 @@ export default function ClickableText({
 
   async function addPhraseToReview() {
     if (!selectedSentence || !phraseExpl) return;
-    const result = await addToReview(userId, {
-      item_type: "chunk",
-      content: selectedSentence,
-      prompt: phraseExpl.es || selectedSentence,
-      source_ref: "",
-    });
+    const result = await addToReview(
+      userId,
+      {
+        item_type: "chunk",
+        content: selectedSentence,
+        prompt: phraseExpl.es || selectedSentence,
+        source_ref: "",
+      },
+      language
+    );
     if (result !== "error") setPhraseInDeck(true);
   }
 

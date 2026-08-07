@@ -1,4 +1,5 @@
 import { supabase } from "./supabaseClient";
+import { scopeByLanguage } from "./language";
 
 export type WordStatus = "new" | "learning" | "known";
 
@@ -21,12 +22,11 @@ export interface VocabWord {
   updated_at: string;
 }
 
-export async function getVocabulary(userId: string): Promise<VocabWord[]> {
-  const { data } = await supabase
-    .from("user_vocabulary")
-    .select("*")
-    .eq("user_id", userId)
-    .order("updated_at", { ascending: false });
+export async function getVocabulary(userId: string, language: string): Promise<VocabWord[]> {
+  const { data } = await scopeByLanguage(
+    supabase.from("user_vocabulary").select("*").eq("user_id", userId),
+    language
+  ).order("updated_at", { ascending: false });
   return (data as VocabWord[]) ?? [];
 }
 
@@ -39,15 +39,14 @@ export async function upsertWord(
     example?: string;
     phonetic?: string;
     source?: string;
-  }
+  },
+  language: string
 ): Promise<void> {
   const lower = word.toLowerCase().trim();
-  const { data: existing } = await supabase
-    .from("user_vocabulary")
-    .select("id, times_seen")
-    .eq("user_id", userId)
-    .eq("word", lower)
-    .maybeSingle();
+  const { data: existing } = await scopeByLanguage(
+    supabase.from("user_vocabulary").select("id, times_seen").eq("user_id", userId).eq("word", lower),
+    language
+  ).maybeSingle();
 
   if (existing) {
     await supabase
@@ -63,6 +62,7 @@ export async function upsertWord(
       user_id: userId,
       word: lower,
       times_seen: 1,
+      language,
       ...meta,
     });
   }

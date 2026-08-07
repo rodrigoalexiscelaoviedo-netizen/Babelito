@@ -53,7 +53,7 @@ export default function Nav() {
 
   useEffect(() => {
     if (!profile) return;
-    countDue(profile.id).then(setReviewCount);
+    countDue(profile.id, profile.learning_language || "en").then(setReviewCount);
   }, [profile]);
 
   // Close sheet when the user navigates

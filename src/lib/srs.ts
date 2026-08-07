@@ -1,4 +1,5 @@
 import { supabase } from "./supabaseClient";
+import { scopeByLanguage } from "./language";
 
 export interface ReviewItem {
   id: string;
@@ -66,13 +67,11 @@ export function calcNextReview(
 }
 
 /** Returns review items due today or earlier, ordered by next_review asc. */
-export async function getDueItems(userId: string): Promise<ReviewItem[]> {
-  const { data, error } = await supabase
-    .from("review_items")
-    .select("*")
-    .eq("user_id", userId)
-    .lte("next_review", today())
-    .order("next_review", { ascending: true });
+export async function getDueItems(userId: string, language: string): Promise<ReviewItem[]> {
+  const { data, error } = await scopeByLanguage(
+    supabase.from("review_items").select("*").eq("user_id", userId).lte("next_review", today()),
+    language
+  ).order("next_review", { ascending: true });
 
   if (error) {
     console.error("getDueItems:", error.message);
@@ -93,7 +92,8 @@ export async function addToReview(
     content: string;
     prompt: string;
     source_ref: string;
-  }
+  },
+  language: string
 ): Promise<"added" | "exists" | "error"> {
   const { data, error } = await supabase
     .from("review_items")
@@ -109,6 +109,7 @@ export async function addToReview(
         reps: 0,
         next_review: today(),
         last_reviewed: null,
+        language,
       },
       { onConflict: "user_id,item_type,content", ignoreDuplicates: true }
     )
@@ -144,23 +145,22 @@ export async function applyReview(
 }
 
 /** Count of items due today (for badges). */
-export async function countDue(userId: string): Promise<number> {
-  const { count, error } = await supabase
-    .from("review_items")
-    .select("id", { count: "exact", head: true })
-    .eq("user_id", userId)
-    .lte("next_review", today());
+export async function countDue(userId: string, language: string): Promise<number> {
+  const { count, error } = await scopeByLanguage(
+    supabase.from("review_items").select("id", { count: "exact", head: true }).eq("user_id", userId).lte("next_review", today()),
+    language
+  );
 
   if (error) return 0;
   return count ?? 0;
 }
 
 /** Total items in the deck (for Progress stats). */
-export async function deckSize(userId: string): Promise<number> {
-  const { count, error } = await supabase
-    .from("review_items")
-    .select("id", { count: "exact", head: true })
-    .eq("user_id", userId);
+export async function deckSize(userId: string, language: string): Promise<number> {
+  const { count, error } = await scopeByLanguage(
+    supabase.from("review_items").select("id", { count: "exact", head: true }).eq("user_id", userId),
+    language
+  );
 
   if (error) return 0;
   return count ?? 0;

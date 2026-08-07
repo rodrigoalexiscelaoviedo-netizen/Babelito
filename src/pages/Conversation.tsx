@@ -198,7 +198,7 @@ export default function Conversation() {
     setReportError("");
     try {
       const sid = sessionIdRef.current ?? sessionId;
-      const r = await generateReport(profile.id, sid, "conversation", turns);
+      const r = await generateReport(profile.id, sid, "conversation", turns, profile.learning_language || "en");
       const userTurns = countUserTurns(turns);
       const counts = userTurns >= MIN_USER_TURNS;
 

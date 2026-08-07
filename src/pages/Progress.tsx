@@ -31,6 +31,7 @@ import { errorLabel, errorHint } from "../lib/errorTypes";
 import { getStreak, getFreezeCount } from "../lib/dailyLesson";
 import { getReports, type SessionReport } from "../lib/sessionReport";
 import { deckSize } from "../lib/srs";
+import { scopeByLanguage } from "../lib/language";
 import { getAchievements, type AchievementWithStatus } from "../lib/achievements";
 import Loader from "../components/Loader";
 import Maica from "../components/Maica";
@@ -193,6 +194,7 @@ export default function Progress() {
   useEffect(() => {
     if (!profile) return;
     (async () => {
+      const learningLanguage = profile.learning_language || "en";
       const weekAgo = new Date();
       weekAgo.setDate(weekAgo.getDate() - 7);
       const weekAgoISO = weekAgo.toISOString();
@@ -201,12 +203,15 @@ export default function Progress() {
         await Promise.all([
           supabase.from("errors").select("error_type").eq("user_id", profile.id),
           supabase.from("sessions").select("created_at, duration_seconds").eq("user_id", profile.id),
-          supabase.from("user_vocabulary").select("status, created_at").eq("user_id", profile.id),
+          scopeByLanguage(supabase.from("user_vocabulary").select("status, created_at").eq("user_id", profile.id), learningLanguage),
           supabase.from("story_progress").select("completed").eq("user_id", profile.id).eq("completed", true),
-          supabase.from("daily_lessons").select("lesson_date, completed").eq("user_id", profile.id).gte("lesson_date", weekAgo.toISOString().slice(0, 10)),
+          scopeByLanguage(
+            supabase.from("daily_lessons").select("lesson_date, completed").eq("user_id", profile.id).gte("lesson_date", weekAgo.toISOString().slice(0, 10)),
+            learningLanguage
+          ),
           getStreak(profile.id),
-          getReports(profile.id, 5),
-          deckSize(profile.id),
+          getReports(profile.id, learningLanguage, 5),
+          deckSize(profile.id, learningLanguage),
           getFreezeCount(profile.id),
           getAchievements(profile.id),
         ]);

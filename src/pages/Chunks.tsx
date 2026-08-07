@@ -8,6 +8,7 @@ import { useVoicePrefs } from "../lib/useVoicePrefs";
 import ShadowingBlock from "../components/ShadowingBlock";
 import Loader from "../components/Loader";
 import { addToReview } from "../lib/srs";
+import { scopeByLanguage } from "../lib/language";
 
 const CATEGORY_LABELS: Record<string, string> = {
   meetings: "Meetings",
@@ -29,15 +30,19 @@ export default function Chunks() {
 
   useEffect(() => {
     if (!profile) return;
+    const learningLanguage = profile.learning_language || "en";
     (async () => {
       const [{ data: ch }, { data: uc }, { data: ri }] = await Promise.all([
-        supabase.from("chunks").select("*").order("id"),
+        scopeByLanguage(supabase.from("chunks").select("*"), learningLanguage).order("id"),
         supabase.from("user_chunks").select("chunk_id").eq("user_id", profile.id),
-        supabase.from("review_items").select("source_ref").eq("user_id", profile.id).eq("item_type", "chunk"),
+        scopeByLanguage(
+          supabase.from("review_items").select("source_ref").eq("user_id", profile.id).eq("item_type", "chunk"),
+          learningLanguage
+        ),
       ]);
       setChunks((ch as Chunk[]) ?? []);
-      setLearned(new Set((uc ?? []).map((r) => r.chunk_id)));
-      setInDeck(new Set((ri ?? []).map((r) => parseInt(r.source_ref, 10)).filter(Boolean)));
+      setLearned(new Set((uc ?? []).map((r: { chunk_id: number }) => r.chunk_id)));
+      setInDeck(new Set((ri ?? []).map((r: { source_ref: string }) => parseInt(r.source_ref, 10)).filter(Boolean)));
       setLoading(false);
     })();
   }, [profile]);
@@ -57,12 +62,16 @@ export default function Chunks() {
 
   async function handleAddReview(chunk: Chunk) {
     if (!profile) return;
-    const result = await addToReview(profile.id, {
-      item_type: "chunk",
-      content: chunk.english,
-      prompt: chunk.spanish,
-      source_ref: String(chunk.id),
-    });
+    const result = await addToReview(
+      profile.id,
+      {
+        item_type: "chunk",
+        content: chunk.english,
+        prompt: chunk.spanish,
+        source_ref: String(chunk.id),
+      },
+      profile.learning_language || "en"
+    );
     if (result !== "error") {
       setInDeck((prev) => new Set(prev).add(chunk.id));
     }

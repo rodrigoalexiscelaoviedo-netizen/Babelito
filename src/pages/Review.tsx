@@ -53,7 +53,7 @@ export default function Review() {
 
   useEffect(() => {
     if (!profile) return;
-    getDueItems(profile.id).then((due) => {
+    getDueItems(profile.id, profile.learning_language || "en").then((due) => {
       setItems(due);
       setPhase(due.length === 0 ? "empty" : "prompt");
     });

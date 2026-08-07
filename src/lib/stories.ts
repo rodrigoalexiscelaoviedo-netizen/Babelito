@@ -1,5 +1,6 @@
 import { supabase } from "./supabaseClient";
 import { askCoach, RetryableError } from "./claude";
+import { scopeByLanguage } from "./language";
 
 export interface StoryQuestion {
   question: string;
@@ -28,13 +29,14 @@ export interface StoryProgress {
   created_at: string;
 }
 
-export async function getStories(userId: string, level?: string): Promise<Story[]> {
+export async function getStories(userId: string, language: string, level?: string): Promise<Story[]> {
   let query = supabase
     .from("stories")
     .select("*")
     .or(`source.eq.preloaded,and(source.eq.ai_generated,user_id.eq.${userId})`)
     .order("created_at", { ascending: false });
 
+  query = scopeByLanguage(query, language);
   if (level) query = query.eq("level", level);
 
   const { data } = await query;
@@ -129,6 +131,7 @@ export async function generateStory(
       source: "ai_generated",
       user_id: userId,
       questions: parsed.questions,
+      language: "en", // generateStory only writes English prompts/content for now
     })
     .select("*")
     .single();

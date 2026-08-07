@@ -70,6 +70,8 @@ export default function Dashboard() {
   const doneCount = lesson ? items.filter((k) => lesson[k]).length : 0;
   const allChecked = lesson ? isTriadComplete(lesson) : false;
 
+  const learningLanguage = profile?.learning_language || "en";
+
   useEffect(() => {
     if (!profile) return;
     (async () => {
@@ -83,10 +85,10 @@ export default function Dashboard() {
               .from("user_chunks")
               .select("id", { count: "exact", head: true })
               .eq("user_id", profile.id),
-            getTodayLesson(profile.id),
+            getTodayLesson(profile.id, learningLanguage),
             // Vista de lectura: NUNCA consumir freezes al abrir el Home.
             getStreakInfo(profile.id, false),
-            countDue(profile.id),
+            countDue(profile.id, learningLanguage),
           ]);
 
         let topError: string | null = null;
@@ -120,7 +122,7 @@ export default function Dashboard() {
         );
         if (todayConvoDone && !todayLesson.convo_done) {
           try {
-            const updated = await setLessonItem(profile.id, "convo_done", true);
+            const updated = await setLessonItem(profile.id, learningLanguage, "convo_done", true);
             lessonToShow = { ...updated, chunk: todayLesson.chunk };
           } catch {
             /* no bloquear el Home por esto */
@@ -158,7 +160,7 @@ export default function Dashboard() {
     setCompleting(true);
     setItemError("");
     try {
-      const updated = await completeLesson(profile.id);
+      const updated = await completeLesson(profile.id, learningLanguage);
       setLesson({ ...updated, chunk: lesson.chunk });
 
       // Único punto donde se consumen los freezes, y se relee la racha real
@@ -187,7 +189,7 @@ export default function Dashboard() {
     setSavingItem(key);
     setItemError("");
     try {
-      const updated = await setLessonItem(profile.id, key, !lesson[key]);
+      const updated = await setLessonItem(profile.id, learningLanguage, key, !lesson[key]);
       setLesson({ ...updated, chunk: lesson.chunk });
     } catch (e) {
       setItemError(e instanceof Error ? e.message : "No se pudo guardar el cambio.");

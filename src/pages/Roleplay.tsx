@@ -231,7 +231,7 @@ Reply with only the hint text.`,
     setReportError("");
     try {
       const sid = sessionIdRef.current ?? sessionId;
-      const r = await generateReport(profile.id, sid, "roleplay", turns);
+      const r = await generateReport(profile.id, sid, "roleplay", turns, profile.learning_language || "en");
       const userTurns = countUserTurns(turns);
       const counts = userTurns >= MIN_USER_TURNS;
 

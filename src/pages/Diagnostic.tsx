@@ -86,6 +86,27 @@ export default function Diagnostic() {
   // ── Exit confirmation ────────────────────────────────────────────────────────
   const [confirmExit, setConfirmExit] = useState(false);
 
+  // DIAGNOSTIC/READING_SENTENCES are English-only content — there's no Catalan
+  // question bank yet, so Catalan learners skip straight to a default level
+  // instead of taking a mislabelled English test.
+  const isCatalan = (profile?.learning_language || "en") === "ca";
+
+  async function finishCatalanSetup() {
+    if (!session) return;
+    setBusy(true);
+    await supabase
+      .from("profiles")
+      .update({
+        diagnosed_level: "A1",
+        current_level: "A1",
+        diagnostic_complete: true,
+      })
+      .eq("id", session.user.id);
+    await refreshProfile();
+    setBusy(false);
+    navigate("/", { replace: true });
+  }
+
   function handleExit() {
     if (phase !== "text" || answers.length > 0) {
       setConfirmExit(true);
@@ -340,6 +361,26 @@ export default function Diagnostic() {
       </div>
     </div>
   ) : null;
+
+  // ── Render: Catalan (no question bank yet — skip straight to a default level) ─
+
+  if (isCatalan && phase === "text" && answers.length === 0) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-6">
+        <div className="w-full max-w-md text-center animate-fade-up">
+          <p className="eyebrow mb-3">Benvingut/da</p>
+          <h1 className="font-display text-3xl font-bold mb-3">Comencem amb el català</h1>
+          <p className="text-paper-muted mb-8">
+            El test de nivell encara només existeix en anglès. Comencem amb un nivell inicial i
+            s'anirà ajustant a mesura que practiquis.
+          </p>
+          <button className="btn-coral w-full" onClick={finishCatalanSetup} disabled={busy}>
+            {busy ? "Preparant…" : "Començar →"}
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   // ── Render: evaluating ──────────────────────────────────────────────────────
 
