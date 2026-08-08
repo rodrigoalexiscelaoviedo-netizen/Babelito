@@ -1,0 +1,26 @@
+-- ============================================================
+-- 0003_seed_catalan.sql — ANULADA. NO CORRER.
+-- ============================================================
+--
+-- Esta migración se reemplazó por `npm run seed:catalan`
+-- (scripts/seed-catalan.ts). Su contenido se vació a propósito: correrla
+-- volvía a meter datos mal mapeados.
+--
+-- Tenía dos fallas:
+--
+-- 1. No insertaba nada. El SQL Editor envuelve el script en una transacción,
+--    así que un error en cualquiera de las ~97 filas hacía rollback de todo
+--    sin indicar cuál. Perdimos varias vueltas contando filas para adivinarlo.
+--
+-- 2. Más grave: guardaba el catalán en la columna equivocada. La app pronuncia
+--    `chunks.english` (src/pages/Chunks.tsx:169 → speak(chunk.english)) y lo
+--    usa como ítem de repaso (Chunks.tsx:69). Esta migración ponía el inglés
+--    ahí y el catalán en `spanish`, así que un curso de catalán habría hecho
+--    practicar pronunciación INGLESA. Ningún SELECT count(*) lo detecta.
+--
+-- El mecanismo nuevo es idempotente, usa la service_role key (RLS bloquea a la
+-- anon key para filas globales con user_id = null) y reporta el error exacto
+-- de la fila que falle.
+--
+-- Se puede borrar este archivo. Queda como registro de por qué el seed pasó de
+-- SQL a mano a un script versionado.

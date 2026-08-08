@@ -1,30 +1,20 @@
 /**
- * Seed script: inserta contenido catalán en Supabase
- * - 15 historias (stories)
- * - ~80 chunks (diálogos extraídos)
- * - 200 palabras (user_vocabulary)
- * - 12 sounds + 10 patrones listening (hardcoded en TS, no BD)
+ * Contenido catalán: datos puros, sin efectos.
  *
- * Uso: npx ts-node src/scripts/seed-catalan.ts
+ * Antes este archivo creaba su propio cliente Supabase y se auto-ejecutaba,
+ * pero leía `import.meta.env` (solo existe bajo Vite, no bajo node/tsx) y usaba
+ * la anon key, con la que RLS bloquea insertar filas globales. Nunca pudo
+ * correr. Ahora solo exporta los datos; quien los inserta es
+ * `scripts/seed-catalan.ts` (npm run seed:catalan).
+ *
+ * Ojo con el mapeo a columnas: la app pronuncia `chunks.english`, así que el
+ * texto catalán va ahí, no en `spanish`. Lo hace el runner.
  */
-
-import { createClient } from "@supabase/supabase-js";
-
-// Read from .env or pass via environment
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || "";
-const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || "";
-
-if (!supabaseUrl || !supabaseKey) {
-  console.error("Missing VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY in .env");
-  throw new Error("Missing Supabase credentials");
-}
-
-const supabase = createClient(supabaseUrl, supabaseKey);
 
 // ─────────────────────────────────────────────────────────────────────────
 // STORIES (15 historias catalanas)
 // ─────────────────────────────────────────────────────────────────────────
-const catalanStories = [
+export const catalanStories = [
   {
     title: "El Café de la Marina",
     level: "A2",
@@ -543,7 +533,7 @@ const catalanStories = [
 // ─────────────────────────────────────────────────────────────────────────
 // CHUNKS (80 fragmentos de diálogo catalán)
 // ─────────────────────────────────────────────────────────────────────────
-const catalanChunks = [
+export const catalanChunks = [
   { content: "Bon dia! Com estàs?", english: "Good morning! How are you?", language: "ca" },
   { content: "Molt bé, merci. I tu?", english: "Very well, thanks. And you?", language: "ca" },
   { content: "Bé, malgrat tot.", english: "Well, all things considered.", language: "ca" },
@@ -631,7 +621,7 @@ const catalanChunks = [
 // ─────────────────────────────────────────────────────────────────────────
 // VOCABULARY (200 palabras catalanas)
 // ─────────────────────────────────────────────────────────────────────────
-const catalanVocabulary = [
+export const catalanVocabulary = [
   { word: "dia", definition: "período de 24 horas", example: "Tenim un gran dia per davant", times_seen: 0, source: "bootstrap" },
   { word: "nit", definition: "período oscuro del día", example: "Bona nit, fins demà", times_seen: 0, source: "bootstrap" },
   { word: "demà", definition: "el día después de hoy", example: "Demà vaig al mercat", times_seen: 0, source: "bootstrap" },
@@ -805,54 +795,3 @@ const catalanVocabulary = [
   { word: "pensa", definition: "piensa/pensar", example: "Pensa en el futur", times_seen: 0, source: "bootstrap" },
   { word: "recorda", definition: "recuerda/recordar", example: "Recorda el primer dia", times_seen: 0, source: "bootstrap" },
 ];
-
-// ─────────────────────────────────────────────────────────────────────────
-// MAIN SEED FUNCTION
-// ─────────────────────────────────────────────────────────────────────────
-async function seedCatalan() {
-  console.log("🇨🇦 TANDA 1: CARREGANT CONTINGUT CATALÁ");
-  console.log("==========================================\n");
-
-  // 1. Insert Stories
-  console.log("📖 Inserting 15 stories...");
-  try {
-    const { data: storiesData, error: storiesError } = await supabase
-      .from("stories")
-      .insert(catalanStories);
-    if (storiesError) throw storiesError;
-    console.log(`✅ ${catalanStories.length} stories inserted\n`);
-  } catch (err) {
-    console.error("❌ Stories error:", err);
-  }
-
-  // 2. Insert Chunks (diálogos)
-  console.log("🗣️ Inserting ~80 chunks...");
-  try {
-    const { error: chunksError } = await supabase
-      .from("chunks")
-      .insert(catalanChunks);
-    if (chunksError) throw chunksError;
-    console.log(`✅ ${catalanChunks.length} chunks inserted\n`);
-  } catch (err) {
-    console.error("❌ Chunks error:", err);
-  }
-
-  // 3. Insert Vocabulary
-  console.log("📚 Inserting 200 vocabulary words...");
-  try {
-    const { error: vocabError } = await supabase
-      .from("user_vocabulary")
-      .insert(catalanVocabulary);
-    if (vocabError) throw vocabError;
-    console.log(`✅ ${catalanVocabulary.length} words inserted\n`);
-  } catch (err) {
-    console.error("❌ Vocabulary error:", err);
-  }
-
-  console.log("🎯 HARDCODED IN TS (no DB):");
-  console.log("  • 12 sounds catalanes (src/lib/catalanSounds.ts)");
-  console.log("  • 10 listening patterns (src/lib/catalanListeningPatterns.ts)");
-  console.log("\n✨ TANDA 1 COMPLETE!\n");
-}
-
-seedCatalan().catch(console.error);

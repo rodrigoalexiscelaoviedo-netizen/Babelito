@@ -52,9 +52,9 @@ export function recognizeSpeech(lang = "en-GB", timeoutMs = 20000): Promise<stri
   });
 }
 
-/** Normalises a word for comparison: lowercase, strip punctuation. */
+/** Normalises a word for comparison: lowercase, strip punctuation, preserve accents. */
 function normalise(w: string): string {
-  return w.toLowerCase().replace(/[^a-z']/g, "");
+  return w.toLowerCase().replace(/[^a-zàèòçïü']/g, "");
 }
 
 /** Compares spoken text to target phrase word by word. */

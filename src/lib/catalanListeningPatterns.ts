@@ -19,7 +19,7 @@ export const catalanListeningPatterns: ListeningPattern[] = [
     catalan_example: "de aquí",
     phonetic: "/d·ə'a'ki/ → /də'ˑki/",
     explanation:
-      "Cuando una palabra termina en vocal y la siguiente empieza en vocal, las vocales se funden.",
+      "Quan una paraula termina en vocal i la següent comença en vocal, les vocals es fusionen.",
     exercise_word_pairs: [
       { slow: "de aquí", fast: "d'aquí", meaning: "de aquí (from here)" },
       { slow: "que és", fast: "qu'és", meaning: "que és (that is)" },
@@ -36,7 +36,7 @@ export const catalanListeningPatterns: ListeningPattern[] = [
     catalan_example: "he anat",
     phonetic: "/ə'anat/ (h is silent)",
     explanation:
-      "La 'h' en català NO se pronuncia; es silent. Es fácil pensar que sí.",
+      "La 'h' en català NO es pronuncia; és silent. És fàcil pensar que sí.",
     exercise_word_pairs: [
       {
         wrong: "h-e anat",
@@ -56,7 +56,7 @@ export const catalanListeningPatterns: ListeningPattern[] = [
     catalan_example: "una casa bonita",
     phonetic: "/ˈunə ˈkazə bəˈnita/",
     explanation:
-      "Las sílabas átonas se reducen casi a 'ə'. 'casa' sounds like 'ká-sə', not 'KA-sa'.",
+      "Les síl·labes àtones es redueixen quasi a 'ə'. 'casa' sona com 'ká-sə', no 'KA-sa'.",
     exercise_word_pairs: [
       {
         stressed: "CÁ-sa",
@@ -71,7 +71,7 @@ export const catalanListeningPatterns: ListeningPattern[] = [
     catalan_example: "que és",
     phonetic: "/kəˈɛs/",
     explanation:
-      "Las vocales átonas al final de word often disappear en fast speech.",
+      "Les vocals àtones al final de paraula sovint desapareixen en parla ràpida.",
     exercise_word_pairs: [
       { slow: "que és", fast: "qu'és", meaning: "that is" },
       { slow: "tot home", fast: "tot'hom", meaning: "every man" },
@@ -83,7 +83,7 @@ export const catalanListeningPatterns: ListeningPattern[] = [
     catalan_example: "a Barcelona",
     phonetic: "/ə barθəˈlonə/",
     explanation:
-      "Dos consonantes iguals entre dos sílabas se pronuncian como una única consonante larga.",
+      "Dos consonants iguals entre dues síl·labes es pronuncien com una única consonant llarga.",
     exercise_word_pairs: [
       {
         single: "a Barcelona",
@@ -98,7 +98,7 @@ export const catalanListeningPatterns: ListeningPattern[] = [
     catalan_example: "tot dia",
     phonetic: "/ˈtɔd ˈdiə/",
     explanation:
-      "La 't' final (sorda) se vuelve 'd' (sonora) ante vocal sonora.",
+      "La 't' final (sorda) es veu 'd' (sonora) davant vocal sonora.",
     exercise_word_pairs: [
       { slow: "tot + dia", fast: "tod dia", meaning: "all day" },
       {
@@ -114,7 +114,7 @@ export const catalanListeningPatterns: ListeningPattern[] = [
     catalan_example: "em dic",
     phonetic: "/əm ˈdik/",
     explanation:
-      "La 'n' final se adapta al punto de articulación del siguiente sonido.",
+      "La 'n' final s'adapta al punt d'articulació del següent so.",
     exercise_word_pairs: [
       { before_b: "em dic", nasal: "m", meaning: "I'm called" },
       {
@@ -130,7 +130,7 @@ export const catalanListeningPatterns: ListeningPattern[] = [
     catalan_example: "necia (silly woman)",
     phonetic: "/nəˈsiə/",
     explanation:
-      "La 'c' antes de 'e' o 'i' se vuelve 's' (o más fricativa).",
+      "La 'c' davant 'e' o 'i' es veu 's' (o més fricativa).",
     exercise_word_pairs: [
       {
         c_hard: "casa",
@@ -145,7 +145,7 @@ export const catalanListeningPatterns: ListeningPattern[] = [
     catalan_example: "poma i pera",
     phonetic: "/ˈpɔmə i ˈpɛɾə/",
     explanation:
-      "Las palabra se unen en habla rápida; es difícil saber dónde termina una y empieza otra.",
+      "Les paraules es fusionen en parla ràpida; és difícil saber on termina una i comença altra.",
     exercise_word_pairs: [
       {
         separate: "poma i pera",
@@ -160,7 +160,7 @@ export const catalanListeningPatterns: ListeningPattern[] = [
     catalan_example: "la idea",
     phonetic: "/ləˈidea/ (sometimes /ləˈidea/)",
     explanation:
-      "Algunos consonantes intervocales pueden desaparecer en habla rápida.",
+      "Alguns consonants intervocàlics poden desaparèixer en parla ràpida.",
     exercise_word_pairs: [
       {
         with: "la idea",

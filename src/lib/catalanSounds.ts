@@ -24,7 +24,7 @@ export const catalanSounds: CatalanSound[] = [
     category: "consonants",
     description:
       "El so de 'x' en catalán — entre el 'sh' anglès i la 'j' francesa",
-    articulation: "Coloca la llengua detàs dels dents superiors. Deixa escapar aire.",
+    articulation: "Coloca la llengua darrera dels dents superiors. Deixa anar aire.",
     words: ["xafar", "xarxa", "xiquet", "xumet"],
     examples: [
       {
@@ -40,8 +40,8 @@ export const catalanSounds: CatalanSound[] = [
     language: "ca",
     category: "consonants",
     description:
-      "El so de 'll' en català — com 'lli' en anglès pero més palatalized",
-    articulation: "Lengua plegada contra el paladar dur. Aire surt pels costats.",
+      "El so de 'll' en català — com 'lli' en anglès però més palatalitzat",
+    articulation: "Llengua plegada contra el paladar dur. Aire surt pels costats.",
     words: ["llum", "llibertat", "llei", "llonganissa"],
     examples: [
       {
@@ -59,7 +59,7 @@ export const catalanSounds: CatalanSound[] = [
     description:
       "El so de 'ny' en català — com 'gn' en italià (cognac) o 'ñ' en espanyol",
     articulation:
-      "Lengua toca el paladar suave mientras sale aire. Parecido a 'ny' en 'canyon'",
+      "Llengua toca el paladar tou mentre surt aire. Semblant a 'ny' en 'canyon'",
     words: ["any", "senyora", "canya", "enganyar"],
     examples: [
       {
@@ -74,9 +74,9 @@ export const catalanSounds: CatalanSound[] = [
     name: "Txina",
     language: "ca",
     category: "consonants",
-    description: "El so de 'tx' en català —similar al 'ch' en anglès 'chip'",
+    description: "El so de 'tx' en català — similar al 'ch' en anglès 'chip'",
     articulation:
-      "Posa la punta de la lengua darrera els dents inferiores. Sofles aire amb pressió.",
+      "Posa la punta de la llengua darrera els dents inferiors. Sofla aire amb pressió.",
     words: ["txina", "txocolata", "txec", "txano"],
     examples: [
       {
@@ -91,9 +91,9 @@ export const catalanSounds: CatalanSound[] = [
     name: "Jaqueta",
     language: "ca",
     category: "consonants",
-    description: "El so de 'j' en català — como 'judge' en anglès",
+    description: "El so de 'j' en català — com 'judge' en anglès",
     articulation:
-      "Similar a 'dj', la lengua comienza detrás dels dents inferiors.",
+      "Semblant a 'dj', la llengua comença darrera dels dents inferiors.",
     words: ["jaqueta", "judici", "joia", "jugar"],
     examples: [
       {
@@ -109,9 +109,9 @@ export const catalanSounds: CatalanSound[] = [
     language: "ca",
     category: "vowels",
     description:
-      "En català, 'e' té dos pronuncaciones: tancada (e) i oberta (è) — semblant a anglès 'bed' (oberta)",
+      "En català, 'e' té dues pronunciacions: tancada (e) i oberta (è) — semblant a anglès 'bed' (oberta)",
     articulation:
-      "e tancada: front, closed. è oberta: front, més open.",
+      "e tancada: davant, tancada. è oberta: davant, més oberta.",
     words: ["mestre", "dèble"],
     examples: [
       {
@@ -128,9 +128,9 @@ export const catalanSounds: CatalanSound[] = [
     language: "ca",
     category: "vowels",
     description:
-      "Com 'e', 'o' ha de dos sons: o tancada i ò oberta (més com 'or' en anglès 'short')",
+      "Com 'e', 'o' té dos sons: o tancada i ò oberta (més com 'or' en anglès 'short')",
     articulation:
-      "o tancada: back, high. ò oberta: back, més open.",
+      "o tancada: darrera, alta. ò oberta: darrera, més oberta.",
     words: ["coses", "còria"],
     examples: [
       {
@@ -146,9 +146,9 @@ export const catalanSounds: CatalanSound[] = [
     language: "ca",
     category: "consonants",
     description:
-      "Dos sons de 'r': la 'r' simple es més com un tap (English 'tt' in 'butter'), la 'r' múltiple és un trill",
+      "Dos sons de 'r': la 'r' simple és més com un tap (anglès 'tt' en 'butter'), la 'r' múltiple és un trill",
     articulation:
-      "r simple: tap, punta de la lengua toca el alvéolo. r múltiple: dos o més taps.",
+      "r simple: tap, punta de la llengua toca l'alvèol. r múltiple: dos o més taps.",
     words: ["roda", "rato"],
     examples: [
       {
@@ -164,8 +164,8 @@ export const catalanSounds: CatalanSound[] = [
     language: "ca",
     category: "consonants",
     description:
-      "'ng' finalment al català suena com 'ng' en anglès 'sing', no como 'nk'",
-    articulation: "Nasal velar, sense tocar con la lengua.",
+      "'ng' finalment en català sona com 'ng' en anglès 'sing', no com 'nk'",
+    articulation: "Nasal velar, sense tocar amb la llengua.",
     words: ["sang", "banca", "tanga", "fang"],
     examples: [
       {
@@ -181,9 +181,9 @@ export const catalanSounds: CatalanSound[] = [
     language: "ca",
     category: "consonants",
     description:
-      "'v' en català és similar a 'b' pero con los dientes entre los labios. Menos fricativa que en inglés.",
+      "'v' en català és similar a 'b' però amb els dents entre els llavis. Menys fricativa que en anglès.",
     articulation:
-      "Labi inferior toca los dientes superores. Fricativa sonora.",
+      "Llavi inferior toca els dents superiors. Fricativa sonora.",
     words: ["vacant", "vull", "vell", "vena"],
     examples: [
       {
@@ -199,10 +199,10 @@ export const catalanSounds: CatalanSound[] = [
     language: "ca",
     category: "consonants",
     description:
-      "'u' al principi de paraula o davant vocal sona com semiconsonant: /w/ (com 'w' en inglès 'want')",
+      "'u' al principi de paraula o davant vocal sona com semiconsonant: /w/ (com 'w' en anglès 'want')",
     articulation:
-      "Labi s'arrodoneixen, com per a 'u'. Aire surt ràpidament.",
-    words: ["vuit", "vuelo", "vuita", "vuitena"],
+      "Llavis s'arrodoneixen, com per a 'u'. Aire surt ràpidament.",
+    words: ["vuit", "vol", "vuita", "vuitena"],
     examples: [
       {
         text: "Vuit vuites i vuits",
@@ -217,9 +217,9 @@ export const catalanSounds: CatalanSound[] = [
     language: "ca",
     category: "vowels",
     description:
-      "La síl·laba neutra al català: la 'e' átona suena com 'ə' (schwa), molt reduit",
+      "La síl·laba neutra en català: la 'e' àtona sona com 'ə' (schwa), molt reduïda",
     articulation:
-      "Boca parcialment oberta, lengua centrada. El so més comodo de la boca.",
+      "Boca parcialment oberta, llengua centrada. El so més còmode de la boca.",
     words: ["poma", "casa", "gata", "boca"],
     examples: [
       {
