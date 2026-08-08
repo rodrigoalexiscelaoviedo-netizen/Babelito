@@ -33,7 +33,7 @@ export async function getStories(userId: string, language: string, level?: strin
   let query = supabase
     .from("stories")
     .select("*")
-    .or(`source.eq.preloaded,and(source.eq.ai_generated,user_id.eq.${userId})`)
+    .or(`source.eq.preloaded,and(source.eq.ai_generated,user_id.is.null),and(source.eq.ai_generated,user_id.eq.${userId})`)
     .order("created_at", { ascending: false });
 
   query = scopeByLanguage(query, language);
