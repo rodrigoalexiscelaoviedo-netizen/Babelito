@@ -21,10 +21,10 @@ export const catalanStories = [
     language: "ca",
     topic: "daily_life",
     content:
-      "En Tomás viu a prop de la platja, a Barcelona. Cada matí va al café de la Marina per prendre's un cafè. L'amo del café es dona Maria, que és molt amable. Avui Tomás arriba al café i veu que hi ha una nena petita que dibuixa. Maria li diu: 'Aquesta és la meva néta, s'anomena Clara.' Tomás s'asseu a la taula del costat i comença a parlar amb Clara sobre els seus dibuixos. Clara li mostra un quadre de la platja amb peixos de colors. Tomás pensa que és molt bonic. Després, Maria porta dos cafès i un suc de taronja per a Clara. Tots es riuen i passen una hora molt agradable junts.",
+      "En Tomàs viu a prop de la platja, a Barcelona. Cada matí va al cafè de la Marina per prendre's un cafè. L'amo del cafè és la dona Maria, que és molt amable. Avui Tomàs arriba al cafè i veu que hi ha una nena petita que dibuixa. Maria li diu: 'Aquesta és la meva néta, s'anomena Clara.' Tomàs s'asseu a la taula del costat i comença a parlar amb Clara sobre els seus dibuixos. Clara li mostra un quadre de la platja amb peixos de colors. Tomàs pensa que és molt bonic. Després, Maria porta dos cafès i un suc de taronja per a Clara. Tots es riuen i passen una hora molt agradable junts.",
     questions: [
       {
-        question: "Donde viu en Tomàs?",
+        question: "On viu en Tomàs?",
         options: [
           "A prop de la muntanya",
           "A prop de la platja",
@@ -161,7 +161,7 @@ export const catalanStories = [
     language: "ca",
     topic: "work",
     content:
-      "En Carles treballa en una empresa de disseny. Avui el seu jefe li encarrega un projecte nou: crear el logo d'una startup de tecnologia. En Carles s'estira en la cadira del despatx i comença a pensar. Dibuixa diversos esbossos al seu quadern. Els primers esborranys no li semblen bons. Decideix parlar amb els seus companys. Un d'ells suggereix combinar formes geomètriques amb colors moderns. En Carles agafa la idea i comença a treballar en l'ordenador. Després de tres hores, ha creat un logo que li agrada molt. Envia el disseny al seu jefe. L'endemà, el jefe li diu: 'Excelent treball, En Carles!' La satisfacció que sent és enorme.",
+      "En Carles treballa en una empresa de disseny. Avui el seu cap li encarrega un projecte nou: crear el logo d'una startup de tecnologia. En Carles s'estira en la cadira del despatx i comença a pensar. Dibuixa diversos esbossos al seu quadern. Els primers esborranys no li semblen bons. Decideix parlar amb els seus companys. Un d'ells suggereix combinar formes geomètriques amb colors moderns. En Carles agafa la idea i comença a treballar en l'ordenador. Després de tres hores, ha creat un logo que li agrada molt. Envia el disseny al seu cap. L'endemà, el cap li diu: 'Excel·lent treball, En Carles!' La satisfacció que sent és enorme.",
     questions: [
       {
         question: "Quin és el treball d'en Carles?",
@@ -169,7 +169,7 @@ export const catalanStories = [
         correct: 1,
       },
       {
-        question: "Quina és la tasca que li encargo el jefe?",
+        question: "Quina és la tasca que li encarga el cap?",
         options: ["Crear un web", "Crear un logo", "Editar un vídeo"],
         correct: 1,
       },
@@ -262,11 +262,11 @@ export const catalanStories = [
     language: "ca",
     topic: "sports",
     content:
-      "Avui és el gran partit: el barri juga contra el barri veí. En David és portero de l'equip local. Està nerviós però decidit. El partit comença i és molt emocionant. Els dos equips juguen bé, però ningú marca gols. En la segona meitat, l'equip contrari tira una pilota molt pràxima a la porta. En David es tira i l'atrapa amb les mans. Tots els seus companys criden 'Bravísim!' Una minut després, en David marca un gol de falta, directe, amb el peu. L'estadio va boig. La seva mare, que veu des de les grada, crida el seu nom. Al final, guanyen 1-0. En David és l'heroi del dia. Els seus companys el lleven a les espatles. Se sent orgullós i feliç.",
+      "Avui és el gran partit: el barri juga contra el barri veí. En David és porter de l'equip local. Està nerviós però decidit. El partit comença i és molt emocionant. Els dos equips juguen bé, però ningú marca gols. En la segona meitat, l'equip contrari tira una pilota molt pròxima a la porta. En David es tira i l'atrapa amb les mans. Tots els seus companys criden 'Fantàstic!' Un minut després, en David marca un gol de falta, directe, amb el peu. L'estadi va boig. La seva mare, que veu des de les grajoles, crida el seu nom. Al final, guanyen 1-0. En David és l'heroi del dia. Els seus companys el lleven a les espatlles. Se sent orgullós i feliç.",
     questions: [
       {
-        question: "Quin és el lloc d'en David al equip?",
-        options: ["Defensa", "Portero", "Delantero"],
+        question: "Quin és el lloc d'en David a l'equip?",
+        options: ["Defensa", "Porter", "Davanter"],
         correct: 1,
       },
       {
@@ -293,7 +293,7 @@ export const catalanStories = [
     language: "ca",
     topic: "learning",
     content:
-      "En Marc descobreix una biblioteca antiga que no havia vist mai, amagada darrere d'una escala en la plaça major. Quan entra, veu milers de llibres de tots colors. La bibliotecária, una senyora major amb ulleres, li somriu. 'Benvingut,' li diu. En Marc comença a explorar els prestatges. Trova llibres de tots els gèneres: ciència-ficció, fantasia, história, poesia. Li demana a la bibliotecária per recomendacions. Ella li diu: 'Llegeix aquest—és sobre un viatger que visita mons paral·lels.' En Marc agafa el llibre i comença a llegir aquell dia mateix. La lectura el transporta a mons imaginaris. Torna a la biblioteca cada dia, descobrint nous llibres i nuevas históries. Finalment, fa amistat amb la bibliotecária. Pensa que la biblioteca és el seu lloc favorit del mundial.",
+      "En Marc descobreix una biblioteca antiga que no havia vist mai, amagada darrere d'una escala a la plaça major. Quan entra, veu milers de llibres de tots colors. La bibliotecària, una senyora gran amb ulleres, li somriu. 'Benvingut,' li diu. En Marc comença a explorar els prestatges. Troba llibres de tots els gèneres: ciència-ficció, fantasia, història, poesia. Li demana a la bibliotecària recomanacions. Ella li diu: 'Llegeix aquest—és sobre un viatger que visita mons paral·lels.' En Marc agafa el llibre i comença a llegir aquell dia mateix. La lectura el transporta a mons imaginaris. Torna a la biblioteca cada dia, descobrint nous llibres i noves històries. Finalment, fa amistat amb la bibliotecària. Pensa que la biblioteca és el seu lloc favorit del món.",
     questions: [
       {
         question: "On es situa la biblioteca?",
@@ -305,16 +305,16 @@ export const catalanStories = [
         correct: 1,
       },
       {
-        question: "Com és la bibliotecária?",
-        options: ["Jove i alegre", "Mayor amb ulleres", "Moderna"],
+        question: "Com és la bibliotecària?",
+        options: ["Jove i alegre", "Gran amb ulleres", "Moderna"],
         correct: 1,
       },
       {
         question: "Quins gèneres de llibres hi ha?",
         options: [
-          "Solo detectius",
-          "Molts: ciència-ficció, fantasia, história",
-          "Solo poesia",
+          "Només detectius",
+          "Molts: ciència-ficció, fantasia, història",
+          "Només poesia",
         ],
         correct: 1,
       },
@@ -398,7 +398,7 @@ export const catalanStories = [
     language: "ca",
     topic: "travel",
     content:
-      "Els adolescents de l'institut organitzen una excursió a la muntanya. Vuitanta estudiants anboten sense falta; el professor Carles és el coordinador. Surten a les sis del matí en autobús. Arriben a la base i comencen la pujada. Es camina, es suda, es rieu dels bromes que fan. A mig camí, es paren a descansar i menjar. Hi ha sàndwixos, galetes i aigua freda. En Pau li diu al seu amic: 'Estoy mort de cansancio però és fantàstic estar aquí.' Finalment arriben al cim. La vista és estel·lar: es veu tot Barcelona en la distancia, el mar, les muntanyes. Els estudiants canten cançons i fan fotos. Alguns es troben l'energia per fer les últimes passes. Al final, tots descenen cansats però feliços. El professor Carles diu: 'Avui hem après que amb determinació, pots arribar a qualsevol lloc.'",
+      "Els adolescents de l'institut organitzen una excursió a la muntanya. Vuitanta estudiants hi van sense falta; el professor Carles és el coordinador. Surten a les sis del matí en autobús. Arriben a la base i comencen la pujada. Es camina, es suda, es riuen dels acudits que fan. A mig camí, es paren a descansar i menjar. Hi ha sandvitxos, galetes i aigua freda. En Pau li diu al seu amic: 'Estic mort de cansament però és fantàstic estar aquí.' Finalment arriben al cim. La vista és estel·lar: es veu tot Barcelona a la distància, el mar, les muntanyes. Els estudiants canten cançons i fan fotos. Alguns es troben l'energia per fer les últimes passes. Al final, tots descenen cansats però contents. El professor Carles diu: 'Avui hem après que amb determinació, pots arribar a qualsevol lloc.'",
     questions: [
       {
         question: "Quants estudiants van a l'excursió?",
@@ -413,9 +413,9 @@ export const catalanStories = [
       {
         question: "Quina vista veuen des del cim?",
         options: [
-          "Solo muntanyes",
+          "Només muntanyes",
           "Barcelona, mar i muntanyes",
-          "Solo el mar",
+          "Només el mar",
         ],
         correct: 1,
       },
@@ -437,7 +437,7 @@ export const catalanStories = [
     language: "ca",
     topic: "hobbies",
     content:
-      "La Laura comença classes de ball a una escola de dansa en el Poble Sec. La primera clase pot semblar intimidant: hi ha espejos grans, música alta i nens que ja saben ballar. La professora es dona Elisa, que té molt de carisma. Ella li diu a Laura: 'No et preocupis, tots vam ser principiants.' La classe comença amb calentament: es mouen els braços, les cames, es salta. Después aprenen els passos bàsics de salsa. Laura fa passos equivocats al principi, però Elisa la corregeix amb paciència. Despres d'una hora, Laura está suada però somriu. Surt de la classe pensant que torará la próxima setmana. El que va pensar que seria difícil va resultar ser divertit i emocionant.",
+      "La Laura comença classes de ball a una escola de dansa al Poble Sec. La primera classe pot semblar intimidant: hi ha miralls grans, música alta i nens que ja saben ballar. La professora és la dona Elisa, que té molt de carisma. Ella li diu a Laura: 'No et preocupis, tots vam ser principiants.' La classe comença amb calentament: es mouen els braços, les cames, es salta. Després aprenen els passos bàsics de salsa. Laura fa passos equivocats al principi, però Elisa la corregeix amb paciència. Després d'una hora, Laura està suada però somriu. Surt de la classe pensant que tornarà la propera setmana. El que va pensar que seria difícil va resultar ser divertit i emocionant.",
     questions: [
       {
         question: "On són les classes de dansa?",
@@ -468,7 +468,7 @@ export const catalanStories = [
     language: "ca",
     topic: "food",
     content:
-      "La família Montseny posseeix un restaurant tradicional català en Montcada. Es transmetre de generació en generació: primer el iaio, depois el pare, ara el fill major, en Ricard. El restaurant és petit però acollidor, amb taules de fusta, fotos antigues a les parets i l'aroma de la cuina casolana. En Ricard treballa com a xef; la seva mare és la recepcionista. El seu germà menor ajuda en la sala. Cada dia, clients fidels venen a menjar la coca de recapte de la mare o el pollastre al escaivada del iaio. Un dia arriba un crític de restaurant. En Ricard es posa nerviós però cuina amb el seu cor. El crític menja, somriu i diu: 'Aquí se sent l'amor pels productes i la tradició.' L'article que publica després és meravellós. En Ricard és orgullos d'haver mantingut viva la tradició familiar.",
+      "La família Montseny posseeix un restaurant tradicional català a Montcada. Es transmet de generació en generació: primer l'avi, després el pare, ara el fill major, en Ricard. El restaurant és petit però acollidor, amb taules de fusta, fotos antigues a les parets i l'aroma de la cuina casolana. En Ricard treballa com a xef; la seva mare és la recepcionista. El seu germà menor ajuda a la sala. Cada dia, clients fidels venen a menjar la coca de recapte de la mare o el pollastre a l'escaivada de l'avi. Un dia arriba un crític de restaurant. En Ricard es posa nerviós però cuina amb el seu cor. El crític menja, somriu i diu: 'Aquí se sent l'amor pels productes i la tradició.' L'article que publica després és meravellós. En Ricard és orgullós d'haver mantingut viva la tradició familiar.",
     questions: [
       {
         question: "Quin és el lloc del restaurant?",
