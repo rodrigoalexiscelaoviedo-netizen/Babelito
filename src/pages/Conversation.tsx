@@ -21,9 +21,22 @@ import { checkAchievements, markSeen, type AchievementDef } from "../lib/achieve
 import AchievementCelebration from "../components/AchievementCelebration";
 import { BrandDots } from "../components/Loader";
 
-const TOPICS = ["Your work", "Your weekend", "A goal you have", "Something you enjoy", "Free chat"];
+const TOPICS = learningLanguage === "ca" ? [
+    "El teu treball",
+    "El teu cap de setmana",
+    "Un objectiu que tens",
+    "Quelcom que gaudixsi",
+    "Xat lliure"
+  ] : [
+    "Your work",
+    "Your weekend",
+    "A goal you have",
+    "Something you enjoy",
+    "Free chat"
+  ];
 
 export default function Conversation() {
+  const learningLanguage = (profile?.learning_language as "en" | "ca") || "en";
   const { profile } = useAuth();
   const location = useLocation();
   const voicePrefs = useVoicePrefs();

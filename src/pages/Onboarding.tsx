@@ -29,6 +29,46 @@ const LANGUAGES = [
   { key: "ca", label: "Català" },
 ];
 
+function getGoalsForLanguage(lang: "en" | "ca" | null) {
+  if (!lang) lang = "en";
+  if (lang === "ca") {
+    return [
+      { key: "work", label: "Treball i reunions", emoji: "💼" },
+      { key: "career", label: "Millor feina", emoji: "🚀" },
+      { key: "travel", label: "Viatjar", emoji: "✈️" },
+      { key: "exams", label: "Exàmens / certificat", emoji: "🎓" },
+      { key: "general", label: "Fluïdesa general", emoji: "💬" },
+    ];
+  }
+  return [
+    { key: "work", label: "Work & meetings", emoji: "💼" },
+    { key: "career", label: "Get a better job", emoji: "🚀" },
+    { key: "travel", label: "Travel", emoji: "✈️" },
+    { key: "exams", label: "Exams / certificate", emoji: "🎓" },
+    { key: "general", label: "General fluency", emoji: "💬" },
+  ];
+}
+
+function getLevelsForLanguage(lang: "en" | "ca" | null) {
+  if (!lang) lang = "en";
+  if (lang === "ca") {
+    return [
+      { key: "A1", label: "Acabo de començar" },
+      { key: "A2", label: "Frases bàsiques" },
+      { key: "B1", label: "Em defenc" },
+      { key: "B2", label: "Força còmode" },
+      { key: "C1", label: "Força avançat" },
+    ];
+  }
+  return [
+    { key: "A1", label: "Just starting" },
+    { key: "A2", label: "Basic phrases" },
+    { key: "B1", label: "I get by" },
+    { key: "B2", label: "Fairly comfortable" },
+    { key: "C1", label: "Quite advanced" },
+  ];
+}
+
 export default function Onboarding() {
   const { session, refreshProfile } = useAuth();
   const navigate = useNavigate();
@@ -87,7 +127,7 @@ export default function Onboarding() {
       sub: "This shapes the topics your coach brings up.",
       body: (
         <div className="grid sm:grid-cols-2 gap-3">
-          {GOALS.map((g) => (
+          {getGoalsForLanguage(learningLanguage).map((g) => (
             <button
               key={g.key}
               onClick={() => setGoal(g.key)}
@@ -108,7 +148,7 @@ export default function Onboarding() {
       sub: "Just a gut feeling — we'll measure it properly next.",
       body: (
         <div className="flex flex-col gap-2">
-          {LEVELS.map((l) => (
+          {getLevelsForLanguage(learningLanguage).map((l) => (
             <button
               key={l.key}
               onClick={() => setLevel(l.key)}

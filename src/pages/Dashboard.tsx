@@ -43,6 +43,26 @@ interface Stats {
   chunksLearned: number;
 }
 
+function getCongratsForLanguage(lang: "en" | "ca" | null) {
+  if (!lang) lang = "en";
+  if (lang === "ca") {
+    return [
+      "¡Pràctica completa! El teu català segueix creixent. 💪",
+      "Un dia més, un pas més cap a la fluïdesa. Continua!",
+      "¡Ho aconseguires! La consistència és la clau per parlar bé.",
+      "Un dia més a la teva racha — estàs construint un hàbit real!",
+      "¡Excel·lent treball! Cada sessió compta. Fins demà!",
+    ];
+  }
+  return [
+    "¡Práctica completa! Your English keeps growing. 💪",
+    "Another day, another step toward fluency. Keep it up!",
+    "¡Lo lograste! Consistency is the real secret to speaking well.",
+    "One more day on your streak — you're building a real habit!",
+    "¡Excelente trabajo! Every session counts. See you tomorrow.",
+  ];
+}
+
 export default function Dashboard() {
   const { profile } = useAuth();
   const navigate = useNavigate();
@@ -147,13 +167,7 @@ export default function Dashboard() {
     })();
   }, [profile, reloadKey]);
 
-  const CONGRATS = [
-    "¡Práctica completa! Your English keeps growing. 💪",
-    "Another day, another step toward fluency. Keep it up!",
-    "¡Lo lograste! Consistency is the real secret to speaking well.",
-    "One more day on your streak — you're building a real habit!",
-    "¡Excelente trabajo! Every session counts. See you tomorrow.",
-  ];
+  const CONGRATS = getCongratsForLanguage((profile?.learning_language as "en" | "ca" | null) || "en");
 
   async function handleComplete() {
     if (!profile || !lesson) return;

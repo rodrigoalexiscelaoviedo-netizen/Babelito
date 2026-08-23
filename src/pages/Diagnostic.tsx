@@ -19,13 +19,8 @@ import {
 type Phase = "text" | "oral_reading" | "oral_open" | "evaluating" | "done";
 
 // Niveles elegibles a mano — escape para que el diagnóstico nunca sea un muro.
-const MANUAL_LEVELS: { key: Level; label: string }[] = [
-  { key: "A1", label: "A1 · Just starting" },
-  { key: "A2", label: "A2 · Basic phrases" },
-  { key: "B1", label: "B1 · I get by" },
-  { key: "B2", label: "B2 · Comfortable" },
-  { key: "C1", label: "C1 · Advanced" },
-];
+const isCatalan = true; // Será obtenido del contexto
+const MANUAL_LEVELS = getManualLevelsForLanguage(isCatalan ? "ca" : "en");
 
 // ── Voice waveform — shown while SpeechRecognition is active ────────────────
 function VoiceWave() {
@@ -62,8 +57,37 @@ function LevelPicker({ onPick, busy }: { onPick: (l: Level) => void; busy: boole
 }
 
 // ── Human-readable voice error messages ────────────────────────────────────
-function voiceErrorMsg(code: string | null): string {
+
+
+function getManualLevelsForLanguage(lang: "en" | "ca" | null) {
+  if (!lang) lang = "en";
+  if (lang === "ca") {
+    return [
+      { key: "A1", label: "A1 · Acabo de començar" },
+      { key: "A2", label: "A2 · Frases bàsiques" },
+      { key: "B1", label: "B1 · Em defenc" },
+      { key: "B2", label: "B2 · Còmode" },
+      { key: "C1", label: "C1 · Avançat" },
+    ];
+  }
+  return [
+    { key: "A1", label: "A1 · Just starting" },
+    { key: "A2", label: "A2 · Basic phrases" },
+    { key: "B1", label: "B1 · I get by" },
+    { key: "B2", label: "B2 · Comfortable" },
+    { key: "C1", label: "C1 · Advanced" },
+  ];
+}
+
+function voiceErrorMsg(code: string | null, isCatalan: boolean = false): string {
   if (!code) return "";
+  if (isCatalan) {
+    if (code === "not-allowed")  return "Micròfon denegat — verifica els permisos del navegador.";
+    if (code === "no-speech")    return "No s'ha detectat cap veu.";
+    if (code === "network")      return "Servei de veu no disponible (error de xarxa).";
+    if (code === "audio-capture") return "Micròfon no trobat o ja està en ús.";
+    return `Error de veu: ${code}.`;
+  }
   if (code === "not-allowed")  return "Microphone access denied — check your browser permissions.";
   if (code === "no-speech")    return "No speech detected.";
   if (code === "network")      return "Voice service unavailable (network error).";
