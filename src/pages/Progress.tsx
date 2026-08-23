@@ -178,6 +178,7 @@ function WeekBar({ label, value, max, color }: { label: string; value: number; m
 // ── Main component ────────────────────────────────────────────────────────────
 export default function Progress() {
   const { profile } = useAuth();
+  const learningLanguage = profile?.learning_language || "en";
   const [loading, setLoading] = useState(true);
   const [errs, setErrs] = useState<ErrRow[]>([]);
   const [sessions, setSessions] = useState<SessRow[]>([]);
@@ -280,78 +281,78 @@ export default function Progress() {
 
   return (
     <div className="animate-fade-up">
-      <p className="eyebrow mb-2">Your progress</p>
-      <h1 className="font-display text-3xl font-extrabold mb-6">How you're doing</h1>
+      <p className="eyebrow mb-2">{learningLanguage === "ca" ? "El teu progrés" : "Your progress"}</p>
+      <h1 className="font-display text-3xl font-extrabold mb-6">{learningLanguage === "ca" ? "Com estàs" : "How you're doing"}</h1>
 
       {/* ── Ring stats ─────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-3 md:grid-cols-6 gap-3 mb-8">
         <RingStat
-          label="Streak"
+          label={learningLanguage === "ca" ? "Racha" : "Streak"}
           value={streak}
           max={streakMilestone}
-          unit="days"
+          unit={learningLanguage === "ca" ? "dies" : "days"}
           sub={freezes > 0 ? `❄️ ${freezes}` : streakSub}
           color="#FF6B5E"
         />
         <RingStat
-          label="Sessions"
+          label={learningLanguage === "ca" ? "Sessions" : "Sessions"}
           value={sessions.length}
           max={Math.max(50, sessions.length)}
-          unit="total"
+          unit={learningLanguage === "ca" ? "total" : "total"}
           color="#36C5A8"
         />
         <RingStat
-          label="Minutes"
+          label={learningLanguage === "ca" ? "Minuts" : "Minutes"}
           value={totalMinutes}
           max={Math.max(120, totalMinutes)}
-          unit="min"
+          unit={learningLanguage === "ca" ? "min" : "min"}
           color="#F7C948"
         />
         <RingStat
-          label="Review deck"
+          label={learningLanguage === "ca" ? "Baralla de revisió" : "Review deck"}
           value={deck}
           max={50}
-          unit="cards"
-          sub={deck >= 50 ? "Goal reached!" : `${50 - deck} to 50`}
+          unit={learningLanguage === "ca" ? "cartes" : "cards"}
+          sub={deck >= 50 ? (learningLanguage === "ca" ? "Objectiu aconseguit!" : "Goal reached!") : `${50 - deck} ${learningLanguage === "ca" ? "a 50" : "to 50"}`}
           color="#FF6B5E"
         />
         <RingStat
-          label="Vocabulary"
+          label={learningLanguage === "ca" ? "Vocabulari" : "Vocabulary"}
           value={vocabTotal}
           max={Math.max(100, vocabTotal)}
-          unit="words"
-          sub={`${vocabKnown} known`}
+          unit={learningLanguage === "ca" ? "paraules" : "words"}
+          sub={`${vocabKnown} ${learningLanguage === "ca" ? "sabudes" : "known"}`}
           color="#36C5A8"
         />
         <RingStat
-          label="Stories"
+          label={learningLanguage === "ca" ? "Històries" : "Stories"}
           value={storyProg.length}
           max={Math.max(10, storyProg.length)}
-          unit="done"
+          unit={learningLanguage === "ca" ? "fetes" : "done"}
           color="#F7C948"
         />
       </div>
 
       {/* ── Weekly summary ─────────────────────────────────────────────────── */}
       <div className="card p-5 mb-6">
-        <h3 className="font-display font-bold mb-1">Tu semana</h3>
-        <p className="text-sm text-paper-muted mb-4">Last 7 days at a glance.</p>
+        <h3 className="font-display font-bold mb-1">{learningLanguage === "ca" ? "La teva setmana" : "Tu semana"}</h3>
+        <p className="text-sm text-paper-muted mb-4">{learningLanguage === "ca" ? "Últims 7 dies d'un cop d'ull." : "Last 7 days at a glance."}</p>
         <div className="space-y-3">
-          <WeekBar label="Active days" value={weekActiveDays} max={7} color="#FF6B5E" />
-          <WeekBar label="Sessions" value={weekSessions} max={7} color="#36C5A8" />
-          <WeekBar label="Minutes" value={weekMinutes} max={60} color="#F7C948" />
-          <WeekBar label="New words" value={weekWords} max={20} color="#36C5A8" />
+          <WeekBar label={learningLanguage === "ca" ? "Dies actius" : "Active days"} value={weekActiveDays} max={7} color="#FF6B5E" />
+          <WeekBar label={learningLanguage === "ca" ? "Sessions" : "Sessions"} value={weekSessions} max={7} color="#36C5A8" />
+          <WeekBar label={learningLanguage === "ca" ? "Minuts" : "Minutes"} value={weekMinutes} max={60} color="#F7C948" />
+          <WeekBar label={learningLanguage === "ca" ? "Paraules noves" : "New words"} value={weekWords} max={20} color="#36C5A8" />
         </div>
         {weekActiveDays === 7 && (
-          <p className="text-xs text-mint mt-3 text-center font-medium">🔥 Perfect week — 7/7 active days!</p>
+          <p className="text-xs text-mint mt-3 text-center font-medium">{learningLanguage === "ca" ? "🔥 Setmana perfecta — 7/7 dies actius!" : "🔥 Perfect week — 7/7 active days!"}</p>
         )}
       </div>
 
       {/* ── Achievements gallery ────────────────────────────────────────────── */}
       <div className="card p-5 mb-6">
-        <h3 className="font-display font-bold mb-1">Achievements</h3>
+        <h3 className="font-display font-bold mb-1">{learningLanguage === "ca" ? "Assoliments" : "Achievements"}</h3>
         <p className="text-sm text-paper-muted mb-4">
-          {achievements.filter((a) => a.unlocked).length} / {achievements.length} unlocked
+          {achievements.filter((a) => a.unlocked).length} / {achievements.length} {learningLanguage === "ca" ? "desbloqueats" : "unlocked"}
         </p>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {achievements.map((a) => (
@@ -383,8 +384,8 @@ export default function Progress() {
 
       {/* ── Vocabulary card ─────────────────────────────────────────────────── */}
       <div className="card p-5 mb-6">
-        <h3 className="font-display font-bold mb-1">Vocabulary</h3>
-        <p className="text-sm text-paper-muted mb-4">Words you've tracked while reading.</p>
+        <h3 className="font-display font-bold mb-1">{learningLanguage === "ca" ? "Vocabulari" : "Vocabulary"}</h3>
+        <p className="text-sm text-paper-muted mb-4">{learningLanguage === "ca" ? "Paraules que has registrat mentre llegia." : "Words you've tracked while reading."}</p>
         {vocabTotal === 0 ? (
           <div className="empty-state">
             <Maica mood="curious" size="md" className="mb-1" />
@@ -400,7 +401,7 @@ export default function Progress() {
           <div className="flex items-center gap-6">
             <div>
               <p className="font-display text-3xl font-bold">{vocabTotal}</p>
-              <p className="text-xs text-paper-muted mt-0.5">total words</p>
+              <p className="text-xs text-paper-muted mt-0.5">{learningLanguage === "ca" ? "paraules totals" : "total words"}</p>
             </div>
             <div className="flex-1 h-3 bg-ink-600 rounded-full overflow-hidden">
               <div
@@ -410,7 +411,7 @@ export default function Progress() {
             </div>
             <div className="text-right">
               <p className="font-display text-3xl font-bold text-mint">{vocabKnown}</p>
-              <p className="text-xs text-paper-muted mt-0.5">known</p>
+              <p className="text-xs text-paper-muted mt-0.5">{learningLanguage === "ca" ? "sabudes" : "known"}</p>
             </div>
           </div>
         )}
@@ -418,7 +419,7 @@ export default function Progress() {
 
       {/* ── Activity chart ──────────────────────────────────────────────────── */}
       <div className="card p-5 mb-6">
-        <h3 className="font-display font-bold mb-4">Last 14 days</h3>
+        <h3 className="font-display font-bold mb-4">{learningLanguage === "ca" ? "Últims 14 dies" : "Last 14 days"}</h3>
         <ResponsiveContainer width="100%" height={160}>
           <AreaChart data={days}>
             <defs>
@@ -440,8 +441,8 @@ export default function Progress() {
 
       {/* ── Session reports ─────────────────────────────────────────────────── */}
       <div className="card p-5 mb-6">
-        <h3 className="font-display font-bold mb-1">Recent session reports</h3>
-        <p className="text-sm text-paper-muted mb-4">AI-generated after each conversation or roleplay.</p>
+        <h3 className="font-display font-bold mb-1">{learningLanguage === "ca" ? "Informes de sessió recents" : "Recent session reports"}</h3>
+        <p className="text-sm text-paper-muted mb-4">{learningLanguage === "ca" ? "Generat per IA després de cada conversa o representació de rol." : "AI-generated after each conversation or roleplay."}</p>
         {reports.length === 0 ? (
           <div className="empty-state">
             <Maica mood="curious" size="md" className="mb-1" />
@@ -480,7 +481,7 @@ export default function Progress() {
                       <p className="text-sm text-paper-muted leading-relaxed">{r.summary}</p>
                       {r.did_well.length > 0 && (
                         <div>
-                          <p className="text-xs text-mint uppercase tracking-widest font-mono mb-1">Did well</p>
+                          <p className="text-xs text-mint uppercase tracking-widest font-mono mb-1">{learningLanguage === "ca" ? "Va anar bé" : "Did well"}</p>
                           <ul className="space-y-0.5">
                             {r.did_well.map((item, i) => (
                               <li key={i} className="text-sm flex gap-2">
@@ -492,7 +493,7 @@ export default function Progress() {
                       )}
                       {r.key_errors.length > 0 && (
                         <div>
-                          <p className="text-xs text-coral uppercase tracking-widest font-mono mb-1">Key errors</p>
+                          <p className="text-xs text-coral uppercase tracking-widest font-mono mb-1">{learningLanguage === "ca" ? "Errors claus" : "Key errors"}</p>
                           <div className="space-y-1.5">
                             {r.key_errors.map((e, i) => (
                               <div key={i} className="text-sm">
@@ -505,7 +506,7 @@ export default function Progress() {
                       )}
                       {r.suggested_chunks.length > 0 && (
                         <div>
-                          <p className="text-xs text-gold uppercase tracking-widest font-mono mb-1">Suggested chunks</p>
+                          <p className="text-xs text-gold uppercase tracking-widest font-mono mb-1">{learningLanguage === "ca" ? "Fragments suggerits" : "Suggested chunks"}</p>
                           <ul className="space-y-0.5">
                             {r.suggested_chunks.map((chunk, i) => (
                               <li key={i} className="font-mono text-xs text-paper-muted">"{chunk}"</li>
@@ -524,8 +525,8 @@ export default function Progress() {
 
       {/* ── Top errors ──────────────────────────────────────────────────────── */}
       <div className="card p-5">
-        <h3 className="font-display font-bold mb-1">What to work on</h3>
-        <p className="text-sm text-paper-muted mb-4">Your most frequent mistakes — these feed your coach.</p>
+        <h3 className="font-display font-bold mb-1">{learningLanguage === "ca" ? "En què treballar" : "What to work on"}</h3>
+        <p className="text-sm text-paper-muted mb-4">{learningLanguage === "ca" ? "Els teus errors més freqüents — alimenten al teu coach." : "Your most frequent mistakes — these feed your coach."}</p>
         {topErrors.length === 0 ? (
           <div className="empty-state">
             <Maica mood="curious" size="md" className="mb-1" />

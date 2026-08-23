@@ -127,22 +127,22 @@ export default function Profile() {
 
   return (
     <div className="animate-fade-up max-w-xl mx-auto">
-      <p className="eyebrow mb-2">Profile</p>
-      <h1 className="font-display text-3xl font-extrabold mb-8">Your settings</h1>
+      <p className="eyebrow mb-2">{learningLanguage === "ca" ? "Perfil" : "Profile"}</p>
+      <h1 className="font-display text-3xl font-extrabold mb-8">{learningLanguage === "ca" ? "La teva configuració" : "Your settings"}</h1>
 
       <div className="space-y-5">
-        <Field label="Name">
+        <Field label={learningLanguage === "ca" ? "Nom" : "Name"}>
           <input className="input" value={name} onChange={(e) => setName(e.target.value)} />
         </Field>
 
         <div className="grid grid-cols-2 gap-4">
-          <Field label="Current level">
+          <Field label={learningLanguage === "ca" ? "Nivell actual" : "Current level"}>
             <div className="input flex items-center justify-between">
               <span className="font-display font-bold text-coral">{profile?.current_level ?? "—"}</span>
-              <span className="text-xs text-paper-muted">measured</span>
+              <span className="text-xs text-paper-muted">{learningLanguage === "ca" ? "mesurat" : "measured"}</span>
             </div>
           </Field>
-          <Field label="Target level">
+          <Field label={learningLanguage === "ca" ? "Nivell objectiu" : "Target level"}>
             <select className="input" value={target} onChange={(e) => setTarget(e.target.value)}>
               {["A2", "B1", "B2", "C1"].map((l) => (
                 <option key={l} value={l}>{l}</option>
@@ -151,7 +151,7 @@ export default function Profile() {
           </Field>
         </div>
 
-        <Field label="Learning">
+        <Field label={learningLanguage === "ca" ? "Aprenent" : "Learning"}>
           <select
             className="input"
             value={learningLanguage}
@@ -171,7 +171,7 @@ export default function Profile() {
           </Field>
         )}
 
-        <Field label="What you like talking about">
+        <Field label={learningLanguage === "ca" ? "De què t'agrada parlar" : "What you like talking about"}>
           <textarea
             className="input min-h-[100px] resize-none"
             value={interests}
@@ -182,17 +182,17 @@ export default function Profile() {
         {/* ─── Voice settings ─── */}
         <div className="card p-5 space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="font-display font-bold">Coach voice</h3>
+            <h3 className="font-display font-bold">{learningLanguage === "ca" ? "Veu del coach" : "Coach voice"}</h3>
             <button
               onClick={testVoice}
               className="flex items-center gap-1.5 text-sm text-paper-muted hover:text-coral transition"
               type="button"
             >
-              <Volume2 size={14} /> Test voice
+              <Volume2 size={14} /> {learningLanguage === "ca" ? "Provar veu" : "Test voice"}
             </button>
           </div>
 
-          <Field label="Accent">
+          <Field label={learningLanguage === "ca" ? "Accent" : "Accent"}>
             <select
               className="input"
               value={voiceAccent}
@@ -206,13 +206,13 @@ export default function Profile() {
             </select>
           </Field>
 
-          <Field label="Voice">
+          <Field label={learningLanguage === "ca" ? "Veu" : "Voice"}>
             <select
               className="input"
               value={voiceName}
               onChange={(e) => setVoiceName(e.target.value)}
             >
-              <option value="">— Default for accent —</option>
+              <option value="">{learningLanguage === "ca" ? "— Per defecte per a l'accent —" : "— Default for accent —"}</option>
               {availableVoices.map((v) => (
                 <option key={v.name} value={v.name}>
                   {v.name}
@@ -220,11 +220,11 @@ export default function Profile() {
               ))}
             </select>
             <p className="mt-1 text-xs text-paper-faint">
-              Available voices depend on your device.
+              {learningLanguage === "ca" ? "Les veus disponibles depenen del teu dispositiu." : "Available voices depend on your device."}
             </p>
           </Field>
 
-          <Field label={`Speed: ${voiceRate.toFixed(2)}×`}>
+          <Field label={`${learningLanguage === "ca" ? "Velocitat" : "Speed"}: ${voiceRate.toFixed(2)}×`}>
             <input
               type="range"
               min={0.5}
@@ -235,8 +235,8 @@ export default function Profile() {
               className="w-full accent-coral"
             />
             <div className="flex justify-between text-xs text-paper-faint mt-0.5">
-              <span>0.5× slow</span>
-              <span>1.5× fast</span>
+              <span>{learningLanguage === "ca" ? "0.5× lent" : "0.5× slow"}</span>
+              <span>{learningLanguage === "ca" ? "1.5× ràpid" : "1.5× fast"}</span>
             </div>
           </Field>
         </div>
@@ -244,7 +244,7 @@ export default function Profile() {
         {/* ─── Notification settings ─── */}
         <div className="card p-5 space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="font-display font-bold">Daily reminder</h3>
+            <h3 className="font-display font-bold">{learningLanguage === "ca" ? "Recordatori diari" : "Daily reminder"}</h3>
             {notifStatus === "granted" ? (
               <Bell size={16} className="text-mint" />
             ) : (
@@ -259,11 +259,11 @@ export default function Profile() {
               checked={notifEnabled}
               onChange={(e) => handleToggleNotif(e.target.checked)}
             />
-            <span className="text-sm font-medium">Activate daily notifications</span>
+            <span className="text-sm font-medium">{learningLanguage === "ca" ? "Activar notificacions diàries" : "Activate daily notifications"}</span>
           </label>
 
           {notifEnabled && (
-            <Field label="Reminder time">
+            <Field label={learningLanguage === "ca" ? "Hora de recordatori" : "Reminder time"}>
               <input
                 type="time"
                 className="input"
@@ -275,31 +275,29 @@ export default function Profile() {
 
           {notifStatus === "denied" && (
             <p className="text-coral text-xs">
-              Permission was denied. Enable notifications for this site in your browser settings.
+              {learningLanguage === "ca" ? "Permís denegat. Habilita les notificacions per a aquest lloc en la configuració del navegador." : "Permission was denied. Enable notifications for this site in your browser settings."}
             </p>
           )}
 
           <p className="text-xs text-paper-faint leading-relaxed">
-            Notifications fire at the chosen time while the app is open in the browser.
-            On some Android devices they may not arrive if the browser is closed due to battery optimisation.
+            {learningLanguage === "ca" ? "Les notificacions es disparen a l'hora escollida mentre l'app està oberta al navegador. En alguns dispositius Android és possible que no arribin si el navegador està tancat per optimització de bateria." : "Notifications fire at the chosen time while the app is open in the browser. On some Android devices they may not arrive if the browser is closed due to battery optimisation."}
           </p>
         </div>
 
         <button className="btn-coral w-full" onClick={save} disabled={busy}>
-          {saved ? "Saved ✓" : busy ? "Saving…" : "Save changes"}
+          {saved ? (learningLanguage === "ca" ? "Guardat ✓" : "Saved ✓") : busy ? (learningLanguage === "ca" ? "Guardant…" : "Saving…") : (learningLanguage === "ca" ? "Guardar canvis" : "Save changes")}
         </button>
       </div>
 
       <div className="mt-10 pt-6 border-t border-ink-600 space-y-3">
         <button className="btn-ghost w-full" onClick={retest}>
-          <RefreshCw size={16} /> Retake the level test
+          <RefreshCw size={16} /> {learningLanguage === "ca" ? "Repetir la prova de nivell" : "Retake the level test"}
         </button>
 
         {confirmReset ? (
           <div className="card p-4 space-y-3">
             <p className="text-sm text-paper-muted">
-              Restart onboarding? You'll choose your language, goal and level again.
-              Your account and history stay.
+              {learningLanguage === "ca" ? "Reiniciar l'incorporació? Triaràs de nou l'idioma, l'objectiu i el nivell. El teu compte i l'historial es mantenen." : "Restart onboarding? You'll choose your language, goal and level again. Your account and history stay."}
             </p>
             <div className="flex gap-3">
               <button
@@ -307,20 +305,20 @@ export default function Profile() {
                 onClick={() => setConfirmReset(false)}
                 disabled={busy}
               >
-                Cancel
+                {learningLanguage === "ca" ? "Cancelar" : "Cancel"}
               </button>
               <button
                 className="flex-1 py-2.5 rounded-xl bg-coral/20 hover:bg-coral/30 text-coral font-medium transition"
                 onClick={restartOnboarding}
                 disabled={busy}
               >
-                {busy ? "Resetting…" : "Restart"}
+                {busy ? (learningLanguage === "ca" ? "Reiniciant…" : "Resetting…") : (learningLanguage === "ca" ? "Reiniciar" : "Restart")}
               </button>
             </div>
           </div>
         ) : (
           <button className="btn-ghost w-full" onClick={() => setConfirmReset(true)}>
-            <RefreshCw size={16} /> Restart onboarding
+            <RefreshCw size={16} /> {learningLanguage === "ca" ? "Reiniciar l'incorporació" : "Restart onboarding"}
           </button>
         )}
 
@@ -331,7 +329,7 @@ export default function Profile() {
             navigate("/login");
           }}
         >
-          <LogOut size={16} /> Sign out
+          <LogOut size={16} /> {learningLanguage === "ca" ? "Tancar sessió" : "Sign out"}
         </button>
       </div>
     </div>

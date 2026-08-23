@@ -25,6 +25,8 @@ function firstSentence(text: string): string {
 }
 
 export default function Reading() {
+  const { profile } = useAuth();
+  const learningLanguage = profile?.learning_language || "en";
   const [view, setView] = useState<"library" | "reader">("library");
   const [activeText, setActiveText] = useState<ReadingText | null>(null);
   const [customContent, setCustomContent] = useState("");
@@ -52,10 +54,10 @@ export default function Reading() {
 
   return (
     <div className="animate-fade-up">
-      <p className="eyebrow mb-2">Reading</p>
-      <h1 className="font-display text-3xl font-extrabold mb-2">Read & build vocabulary</h1>
+      <p className="eyebrow mb-2">{learningLanguage === "ca" ? "Lectura" : "Reading"}</p>
+      <h1 className="font-display text-3xl font-extrabold mb-2">{learningLanguage === "ca" ? "Llegeix i crea vocabulari" : "Read & build vocabulary"}</h1>
       <p className="text-paper-muted mb-8">
-        Click any word to look it up and track it. Coloured words are in your vocabulary list.
+        {learningLanguage === "ca" ? "Clica qualsevol paraula per cercar-la i rastreja-la. Les paraules colorejades estan a la teva llista de vocabulari." : "Click any word to look it up and track it. Coloured words are in your vocabulary list."}
       </p>
 
       <div className="grid sm:grid-cols-2 gap-4 mb-8">
@@ -79,10 +81,10 @@ export default function Reading() {
       </div>
 
       <div className="card p-5">
-        <h3 className="font-display font-bold mb-3">Paste your own text</h3>
+        <h3 className="font-display font-bold mb-3">{learningLanguage === "ca" ? "Enganxa el teu propi text" : "Paste your own text"}</h3>
         <textarea
           className="input min-h-[120px] resize-none w-full mb-3"
-          placeholder="Paste any English text here…"
+          placeholder={learningLanguage === "ca" ? "Enganxa qualsevol text en català aquí…" : "Paste any English text here…"}
           value={customContent}
           onChange={(e) => setCustomContent(e.target.value)}
         />
@@ -91,7 +93,7 @@ export default function Reading() {
           onClick={openCustom}
           disabled={!customContent.trim()}
         >
-          Read this text →
+          {learningLanguage === "ca" ? "Llegeix aquest text →" : "Read this text →"}
         </button>
       </div>
     </div>
@@ -101,6 +103,7 @@ export default function Reading() {
 function Reader({ text, onBack }: { text: ReadingText; onBack: () => void }) {
   const { profile } = useAuth();
   const voicePrefs = useVoicePrefs();
+  const learningLanguage = profile?.learning_language || "en";
   const [vocabMap, setVocabMap] = useState<VocabMap>({});
   const [loadingVocab, setLoadingVocab] = useState(true);
   const [scrollProgress, setScrollProgress] = useState(0);
@@ -189,7 +192,7 @@ function Reader({ text, onBack }: { text: ReadingText; onBack: () => void }) {
             <button
               onClick={handlePauseResume}
               className="text-paper-faint hover:text-mint transition"
-              aria-label={paused ? "Resume narration" : "Pause narration"}
+              aria-label={paused ? (learningLanguage === "ca" ? "Reprendre la narració" : "Resume narration") : (learningLanguage === "ca" ? "Pausar la narració" : "Pause narration")}
             >
               {paused ? <Play size={15} /> : <Pause size={15} />}
             </button>
@@ -197,9 +200,9 @@ function Reader({ text, onBack }: { text: ReadingText; onBack: () => void }) {
           <button
             onClick={handleFullNarration}
             className="flex items-center gap-1 text-xs text-paper-faint hover:text-coral transition"
-            aria-label="Listen to full text"
+            aria-label={learningLanguage === "ca" ? "Escoltar text complet" : "Listen to full text"}
           >
-            <Volume2 size={15} /> Listen
+            <Volume2 size={15} /> {learningLanguage === "ca" ? "Escoltar" : "Listen"}
           </button>
         </div>
       </div>
@@ -226,7 +229,7 @@ function Reader({ text, onBack }: { text: ReadingText; onBack: () => void }) {
           <ShadowingBlock
             text={shadowSentence}
             lang={voicePrefs.voiceAccent ?? "en-GB"}
-            label="Shadowing practice"
+            label={learningLanguage === "ca" ? "Pràctica d'ombra" : "Shadowing practice"}
           />
         </div>
       </div>
