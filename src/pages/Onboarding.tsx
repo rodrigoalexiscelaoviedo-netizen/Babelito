@@ -3,21 +3,43 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabaseClient";
 import { useAuth } from "../context/AuthContext";
 
-const GOALS = [
-  { key: "work", label: "Work & meetings", emoji: "💼" },
-  { key: "career", label: "Get a better job", emoji: "🚀" },
-  { key: "travel", label: "Travel", emoji: "✈️" },
-  { key: "exams", label: "Exams / certificate", emoji: "🎓" },
-  { key: "general", label: "General fluency", emoji: "💬" },
-];
+function getGoalsForLanguage(lang: "en" | "ca") {
+  if (lang === "ca") {
+    return [
+      { key: "work", label: "Treball i reunions", emoji: "💼" },
+      { key: "career", label: "Millor feina", emoji: "🚀" },
+      { key: "travel", label: "Viatjar", emoji: "✈️" },
+      { key: "exams", label: "Exàmens / certificat", emoji: "🎓" },
+      { key: "general", label: "Fluïdesa general", emoji: "💬" },
+    ];
+  }
+  return [
+    { key: "work", label: "Work & meetings", emoji: "💼" },
+    { key: "career", label: "Get a better job", emoji: "🚀" },
+    { key: "travel", label: "Travel", emoji: "✈️" },
+    { key: "exams", label: "Exams / certificate", emoji: "🎓" },
+    { key: "general", label: "General fluency", emoji: "💬" },
+  ];
+}
 
-const LEVELS = [
-  { key: "A1", label: "Just starting" },
-  { key: "A2", label: "Basic phrases" },
-  { key: "B1", label: "I get by" },
-  { key: "B2", label: "Fairly comfortable" },
-  { key: "C1", label: "Quite advanced" },
-];
+function getLevelsForLanguage(lang: "en" | "ca") {
+  if (lang === "ca") {
+    return [
+      { key: "A1", label: "Acabo de començar" },
+      { key: "A2", label: "Frases bàsiques" },
+      { key: "B1", label: "Em defenc" },
+      { key: "B2", label: "Força còmode" },
+      { key: "C1", label: "Força avançat" },
+    ];
+  }
+  return [
+    { key: "A1", label: "Just starting" },
+    { key: "A2", label: "Basic phrases" },
+    { key: "B1", label: "I get by" },
+    { key: "B2", label: "Fairly comfortable" },
+    { key: "C1", label: "Quite advanced" },
+  ];
+}
 
 const VARIANTS = [
   { key: "British", label: "British 🇬🇧" },
@@ -63,8 +85,12 @@ export default function Onboarding() {
 
   const steps = [
     {
-      title: "What do you want to learn?",
-      sub: "You can switch this later in Settings.",
+      title: learningLanguage === "ca"
+        ? "Quin idioma vols aprendre?"
+        : "What do you want to learn?",
+      sub: learningLanguage === "ca"
+        ? "Ho pots canviar més tard a Configuració."
+        : "You can switch this later in Settings.",
       body: (
         <div className="grid grid-cols-2 gap-3">
           {LANGUAGES.map((l) => (
@@ -83,11 +109,15 @@ export default function Onboarding() {
       canNext: !!learningLanguage,
     },
     {
-      title: `Why are you learning ${learningLanguage === "ca" ? "Catalan" : "English"}?`,
-      sub: "This shapes the topics your coach brings up.",
+      title: learningLanguage === "ca"
+        ? "Per què estàs aprenent català?"
+        : "Why are you learning English?",
+      sub: learningLanguage === "ca"
+        ? "Això forma els temes que el teu coach proposa."
+        : "This shapes the topics your coach brings up.",
       body: (
         <div className="grid sm:grid-cols-2 gap-3">
-          {GOALS.map((g) => (
+          {getGoalsForLanguage(learningLanguage || "en").map((g) => (
             <button
               key={g.key}
               onClick={() => setGoal(g.key)}
@@ -104,11 +134,15 @@ export default function Onboarding() {
       canNext: !!goal,
     },
     {
-      title: "How would you rate your English right now?",
-      sub: "Just a gut feeling — we'll measure it properly next.",
+      title: learningLanguage === "ca"
+        ? "Com t'avalues tu mateix en català?"
+        : "How would you rate your English right now?",
+      sub: learningLanguage === "ca"
+        ? "És una sensació — ho mesurarem bé més tard."
+        : "Just a gut feeling — we'll measure it properly next.",
       body: (
         <div className="flex flex-col gap-2">
-          {LEVELS.map((l) => (
+          {getLevelsForLanguage(learningLanguage || "en").map((l) => (
             <button
               key={l.key}
               onClick={() => setLevel(l.key)}
@@ -125,8 +159,12 @@ export default function Onboarding() {
       canNext: !!level,
     },
     {
-      title: "Which accent do you want to sound like?",
-      sub: "Your coach will lean into this variant.",
+      title: learningLanguage === "ca"
+        ? "Quin accent vols?"
+        : "Which accent do you want to sound like?",
+      sub: learningLanguage === "ca"
+        ? "El teu coach usarà aquest variant."
+        : "Your coach will lean into this variant.",
       skip: learningLanguage === "ca",
       body: (
         <div className="grid grid-cols-2 gap-3">
@@ -146,12 +184,18 @@ export default function Onboarding() {
       canNext: !!variant,
     },
     {
-      title: "What do you love talking about?",
-      sub: "Hobbies, work, anything. Your coach uses this to make conversations feel like yours.",
+      title: learningLanguage === "ca"
+        ? "De quin tema t'encanta parlar?"
+        : "What do you love talking about?",
+      sub: learningLanguage === "ca"
+        ? "Aficions, treball, el que sigui. El teu coach usa això per fer que les converses semblin teves."
+        : "Hobbies, work, anything. Your coach uses this to make conversations feel like yours.",
       body: (
         <textarea
           className="input min-h-[120px] resize-none"
-          placeholder="e.g. I'm a sales manager, I DJ on weekends, I love football and travelling…"
+          placeholder={learningLanguage === "ca"
+            ? "Ex: Sóc gerent de vendes, dj els cap de setmana, m'encanta el futbol i viatjar…"
+            : "e.g. I'm a sales manager, I DJ on weekends, I love football and travelling…"}
           value={interests}
           onChange={(e) => setInterests(e.target.value)}
         />
@@ -179,7 +223,7 @@ export default function Onboarding() {
         </div>
 
         <p className="eyebrow mb-2">
-          Step {step + 1} of {steps.length}
+          {learningLanguage === "ca" ? "Pas" : "Step"} {step + 1} {learningLanguage === "ca" ? "de" : "of"} {steps.length}
         </p>
         <h1 className="font-display text-3xl font-bold mb-1">{current.title}</h1>
         <p className="text-paper-muted mb-7">{current.sub}</p>
@@ -192,11 +236,13 @@ export default function Onboarding() {
             onClick={() => setStep((s) => Math.max(0, s - 1))}
             disabled={step === 0}
           >
-            Back
+            {learningLanguage === "ca" ? "Enrere" : "Back"}
           </button>
           {isLast ? (
             <button className="btn-coral" onClick={finish} disabled={!current.canNext || busy}>
-              {busy ? "Saving…" : "Take the level test →"}
+              {busy
+                ? (learningLanguage === "ca" ? "Guardant…" : "Saving…")
+                : (learningLanguage === "ca" ? "Fes la prova de nivell →" : "Take the level test →")}
             </button>
           ) : (
             <button
@@ -204,7 +250,7 @@ export default function Onboarding() {
               onClick={() => setStep((s) => s + 1)}
               disabled={!current.canNext}
             >
-              Continue
+              {learningLanguage === "ca" ? "Continua" : "Continue"}
             </button>
           )}
         </div>

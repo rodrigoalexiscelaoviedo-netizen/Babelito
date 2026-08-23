@@ -18,14 +18,24 @@ import {
 
 type Phase = "text" | "oral_reading" | "oral_open" | "evaluating" | "done";
 
-// Niveles elegibles a mano — escape para que el diagnóstico nunca sea un muro.
-const MANUAL_LEVELS: { key: Level; label: string }[] = [
-  { key: "A1", label: "A1 · Just starting" },
-  { key: "A2", label: "A2 · Basic phrases" },
-  { key: "B1", label: "B1 · I get by" },
-  { key: "B2", label: "B2 · Comfortable" },
-  { key: "C1", label: "C1 · Advanced" },
-];
+function getManualLevelsForLanguage(lang: "en" | "ca"): { key: Level; label: string }[] {
+  if (lang === "ca") {
+    return [
+      { key: "A1", label: "A1 · Acabo de començar" },
+      { key: "A2", label: "A2 · Frases bàsiques" },
+      { key: "B1", label: "B1 · Em defenc" },
+      { key: "B2", label: "B2 · Còmode" },
+      { key: "C1", label: "C1 · Avançat" },
+    ];
+  }
+  return [
+    { key: "A1", label: "A1 · Just starting" },
+    { key: "A2", label: "A2 · Basic phrases" },
+    { key: "B1", label: "B1 · I get by" },
+    { key: "B2", label: "B2 · Comfortable" },
+    { key: "C1", label: "C1 · Advanced" },
+  ];
+}
 
 // ── Voice waveform — shown while SpeechRecognition is active ────────────────
 function VoiceWave() {
@@ -44,10 +54,10 @@ function VoiceWave() {
 }
 
 // ── Manual level picker — lista de niveles A1..C1 ───────────────────────────
-function LevelPicker({ onPick, busy }: { onPick: (l: Level) => void; busy: boolean }) {
+function LevelPicker({ onPick, busy, isCatalan }: { onPick: (l: Level) => void; busy: boolean; isCatalan: boolean }) {
   return (
     <div className="flex flex-col gap-2">
-      {MANUAL_LEVELS.map((l) => (
+      {getManualLevelsForLanguage(isCatalan ? "ca" : "en").map((l) => (
         <button
           key={l.key}
           onClick={() => onPick(l.key)}
@@ -62,8 +72,17 @@ function LevelPicker({ onPick, busy }: { onPick: (l: Level) => void; busy: boole
 }
 
 // ── Human-readable voice error messages ────────────────────────────────────
-function voiceErrorMsg(code: string | null): string {
+function voiceErrorMsg(code: string | null, isCatalan: boolean = false): string {
   if (!code) return "";
+
+  if (isCatalan) {
+    if (code === "not-allowed")  return "Micròfon denegat — verifica els permisos del navegador.";
+    if (code === "no-speech")    return "No s'ha detectat cap veu.";
+    if (code === "network")      return "Servei de veu no disponible (error de xarxa).";
+    if (code === "audio-capture") return "Micròfon no trobat o ja està en ús.";
+    return `Error de veu: ${code}.`;
+  }
+
   if (code === "not-allowed")  return "Microphone access denied — check your browser permissions.";
   if (code === "no-speech")    return "No speech detected.";
   if (code === "network")      return "Voice service unavailable (network error).";
@@ -159,7 +178,9 @@ export default function Diagnostic() {
     generateOpenQuestion(interests)
       .then((qText) => { setOpenQuestion(qText); setLoadingQuestion(false); })
       .catch(() => {
-        setOpenQuestion("Tell me about something you enjoy doing in your free time.");
+        setOpenQuestion(isCatalan
+          ? "Parla'm sobre alguna cosa que t'encanti fer al teu temps lliure."
+          : "Tell me about something you enjoy doing in your free time.");
         setLoadingQuestion(false);
       });
   }, [phase, profile]);
@@ -407,10 +428,10 @@ export default function Diagnostic() {
           </h1>
           <p className="text-paper-muted mb-6 text-sm">
             {isCatalan
-              ? "S'anirà ajustant a mesura que practiquis."
+              ? "S'anirà ajustant a mesura que practiquis — pots repetir la prova en qualsevol moment a Configuració."
               : "It'll adjust as you practise — you can retake the test anytime in Settings."}
           </p>
-          <LevelPicker onPick={finishWithLevel} busy={busy} />
+          <LevelPicker onPick={finishWithLevel} busy={busy} isCatalan={isCatalan} />
           {!isCatalan && (
             <button
               onClick={() => setPickingLevel(false)}
@@ -437,7 +458,7 @@ export default function Diagnostic() {
             El test de nivell encara només existeix en anglès. Tria amb quin nivell comences i
             s'anirà ajustant a mesura que practiquis.
           </p>
-          <LevelPicker onPick={finishWithLevel} busy={busy} />
+          <LevelPicker onPick={finishWithLevel} busy={busy} isCatalan={isCatalan} />
         </div>
       </div>
     );
@@ -450,8 +471,12 @@ export default function Diagnostic() {
       <div className="min-h-screen flex items-center justify-center p-6">
         <div className="text-center animate-fade-up">
           <BrandDots size="md" />
-          <p className="mt-4 text-paper-muted">Evaluating your speaking…</p>
-          <p className="text-xs text-paper-faint mt-1">This takes a few seconds</p>
+          <p className="mt-4 text-paper-muted">
+            {isCatalan ? "Avaluant la teva parla…" : "Evaluating your speaking…"}
+          </p>
+          <p className="text-xs text-paper-faint mt-1">
+            {isCatalan ? "Això pren uns pocs segons" : "This takes a few seconds"}
+          </p>
         </div>
       </div>
     );
@@ -464,36 +489,54 @@ export default function Diagnostic() {
     return (
       <div className="min-h-screen flex items-center justify-center p-6">
         <div className="w-full max-w-md text-center animate-fade-up">
-          <p className="eyebrow mb-3">Level assessment</p>
+          <p className="eyebrow mb-3">
+            {isCatalan ? "Avaluació de nivell" : "Level assessment"}
+          </p>
           <div className="font-display text-7xl font-extrabold text-coral mb-2">{finalLevel}</div>
-          <p className="text-paper-muted mb-6">Your starting level in Babelito.</p>
+          <p className="text-paper-muted mb-6">
+            {isCatalan
+              ? "El teu nivell inicial a Babelito."
+              : "Your starting level in Babelito."}
+          </p>
 
           {hasSpeaking && (
             <div className="card p-5 mb-6 text-left space-y-3">
-              <p className="text-xs text-paper-faint uppercase tracking-widest font-mono mb-1">Breakdown</p>
+              <p className="text-xs text-paper-faint uppercase tracking-widest font-mono mb-1">
+                {isCatalan ? "Desglose" : "Breakdown"}
+              </p>
               <div className="flex justify-between items-center">
-                <span className="text-sm text-paper-muted">Written English</span>
+                <span className="text-sm text-paper-muted">
+                  {isCatalan ? "Català escrit" : "Written English"}
+                </span>
                 <span className="font-display font-bold text-coral">{textLevel}</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-sm text-paper-muted">Reading aloud</span>
+                <span className="text-sm text-paper-muted">
+                  {isCatalan ? "Lectura en veu alta" : "Reading aloud"}
+                </span>
                 <span className="font-display font-bold text-mint">{oralReadingLevel}</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-sm text-paper-muted">Spoken fluency</span>
+                <span className="text-sm text-paper-muted">
+                  {isCatalan ? "Fluïdesa parlada" : "Spoken fluency"}
+                </span>
                 <span className="font-display font-bold text-mint">{oralOpenLevel}</span>
               </div>
               <p className="text-xs text-paper-faint mt-2 border-t border-ink-600 pt-3">
-                Your level is set to the lowest score — that's where you need the most practice.
+                {isCatalan
+                  ? "El teu nivell es fixa en la puntuació més baixa — allà és on necessites més pràctica."
+                  : "Your level is set to the lowest score — that's where you need the most practice."}
               </p>
             </div>
           )}
 
           <p className="text-paper-muted text-sm mb-8">
-            Every conversation from now on is tuned to this level — and it'll move up as you improve.
+            {isCatalan
+              ? "Totes les converses a partir d'ara estan sintonitzades a aquest nivell — i pujarà mentre millores."
+              : "Every conversation from now on is tuned to this level — and it'll move up as you improve."}
           </p>
           <button className="btn-coral w-full" onClick={() => navigate("/", { replace: true })}>
-            Enter Babelito →
+            {isCatalan ? "Entra a Babelito →" : "Enter Babelito →"}
           </button>
         </div>
       </div>
@@ -511,8 +554,14 @@ export default function Diagnostic() {
         {exitOverlay}
         <div className="w-full max-w-lg animate-fade-up">
           <div className="mb-6">
-            <p className="eyebrow mb-1">Part C · Quick chat</p>
-            <p className="text-sm text-paper-muted">Speak your answer naturally. There's no right or wrong.</p>
+            <p className="eyebrow mb-1">
+              {isCatalan ? "Part C · Xat ràpid" : "Part C · Quick chat"}
+            </p>
+            <p className="text-sm text-paper-muted">
+              {isCatalan
+                ? "Parla la teva resposta naturalment. No hi ha res bé ni malament."
+                : "Speak your answer naturally. There's no right or wrong."}
+            </p>
           </div>
 
           {loadingQuestion ? (
@@ -522,7 +571,9 @@ export default function Diagnostic() {
           ) : (
             <>
               <div className="card p-6 mb-6">
-                <p className="text-xs text-paper-faint font-mono uppercase tracking-widest mb-2">Question</p>
+                <p className="text-xs text-paper-faint font-mono uppercase tracking-widest mb-2">
+                  {isCatalan ? "Pregunta" : "Question"}
+                </p>
                 <p className="font-display text-xl font-bold leading-snug">{openQuestion}</p>
                 <button
                   onClick={() => speak(openQuestion, "en-GB")}
@@ -539,21 +590,26 @@ export default function Diagnostic() {
                   <>
                     <div className="flex items-center gap-3 mb-3">
                       <VoiceWave />
-                      <span className="text-xs text-coral font-mono">Listening…</span>
+                      <span className="text-xs text-coral font-mono">
+                        {isCatalan ? "Escoltant…" : "Listening…"}
+                      </span>
                     </div>
                     <p className="text-sm text-paper-muted italic min-h-[24px]">
-                      {voiceRec.interim || "Speak now…"}
+                      {voiceRec.interim || (isCatalan ? "Parla ara…" : "Speak now…")}
                     </p>
                   </>
                 ) : hasAnswered ? (
                   <>
                     {voiceErrorC && !openTranscript && (
                       <p className="text-xs text-coral mb-2">
-                        ⚠ {voiceErrorMsg(voiceErrorC)} Try again or type below.
+                        ⚠ {voiceErrorMsg(voiceErrorC, isCatalan)}
+                        {isCatalan ? " Prova de nou o escriu sota." : " Try again or type below."}
                       </p>
                     )}
                     <p className="text-xs text-paper-faint font-mono uppercase tracking-widest mb-1">
-                      {openTranscript ? "Your answer" : "Type your answer"}
+                      {openTranscript
+                        ? (isCatalan ? "La teva resposta" : "Your answer")
+                        : (isCatalan ? "Escriu la teva resposta" : "Type your answer")}
                     </p>
                     <textarea
                       value={openTranscript}
@@ -565,7 +621,9 @@ export default function Diagnostic() {
                   </>
                 ) : (
                   <p className="text-sm text-paper-faint text-center pt-2">
-                    Tap the microphone to start speaking — or type your answer below.
+                    {isCatalan
+                      ? "Toca el micròfon per començar a parlar — o escriu la teva resposta sota."
+                      : "Tap the microphone to start speaking — or type your answer below."}
                   </p>
                 )}
               </div>
@@ -587,7 +645,8 @@ export default function Diagnostic() {
                     onClick={handleStopOpen}
                     className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-coral text-ink-900 font-semibold transition"
                   >
-                    <Square size={16} /> Done
+                    <Square size={16} />
+                    {isCatalan ? "Fet" : "Done"}
                   </button>
                 ) : (
                   <button
@@ -595,7 +654,9 @@ export default function Diagnostic() {
                     className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-ink-600 hover:bg-ink-500 text-paper font-semibold transition"
                   >
                     <Mic size={16} />
-                    {hasAnswered ? "Try again" : "Speak your answer"}
+                    {hasAnswered
+                      ? (isCatalan ? "Prova de nou" : "Try again")
+                      : (isCatalan ? "Parla la teva resposta" : "Speak your answer")}
                   </button>
                 )}
               </div>
@@ -606,7 +667,9 @@ export default function Diagnostic() {
                   disabled={busy}
                   className="btn-coral w-full mt-4 flex items-center justify-center gap-2"
                 >
-                  {busy ? <><BrandDots /> Saving…</> : "Finish assessment →"}
+                  {busy
+                    ? <><BrandDots /> {isCatalan ? "Guardant…" : "Saving…"}</>
+                    : (isCatalan ? "Completa l'avaluació →" : "Finish assessment →")}
                 </button>
               )}
             </>
@@ -639,9 +702,13 @@ export default function Diagnostic() {
           </div>
 
           <div className="mb-6">
-            <p className="eyebrow mb-1">Part B · Reading aloud</p>
+            <p className="eyebrow mb-1">
+              {isCatalan ? "Part B · Lectura en veu alta" : "Part B · Reading aloud"}
+            </p>
             <p className="text-sm text-paper-muted">
-              Sentence {readingIdx + 1} of {READING_SENTENCES.length} — read it clearly in English.
+              {isCatalan
+                ? `Frase ${readingIdx + 1} de ${READING_SENTENCES.length} — llegeix-la clarament en anglès.`
+                : `Sentence ${readingIdx + 1} of ${READING_SENTENCES.length} — read it clearly in English.`}
             </p>
           </div>
 
@@ -662,21 +729,26 @@ export default function Diagnostic() {
               <>
                 <div className="flex items-center gap-3 mb-3">
                   <VoiceWave />
-                  <span className="text-xs text-coral font-mono">Listening…</span>
+                  <span className="text-xs text-coral font-mono">
+                    {isCatalan ? "Escoltant…" : "Listening…"}
+                  </span>
                 </div>
                 <p className="text-sm text-paper-muted italic min-h-[20px]">
-                  {voiceRec.interim || "Read the sentence above…"}
+                  {voiceRec.interim || (isCatalan ? "Llegeix la frase de dalt…" : "Read the sentence above…")}
                 </p>
               </>
             ) : hasRecorded ? (
               <>
                 {voiceErrorB && !currentTranscript && (
                   <p className="text-xs text-coral mb-2">
-                    ⚠ {voiceErrorMsg(voiceErrorB)} Try again or type what you said.
+                    ⚠ {voiceErrorMsg(voiceErrorB, isCatalan)}
+                    {isCatalan ? " Prova de nou o escriu el que vas dir." : " Try again or type what you said."}
                   </p>
                 )}
                 <p className="text-xs text-paper-faint font-mono uppercase tracking-widest mb-1">
-                  {currentTranscript ? "You said" : "Type what you said"}
+                  {currentTranscript
+                    ? (isCatalan ? "Tu vas dir" : "You said")
+                    : (isCatalan ? "Escriu el que vas dir" : "Type what you said")}
                 </p>
                 <textarea
                   value={currentTranscript}
@@ -688,7 +760,9 @@ export default function Diagnostic() {
               </>
             ) : (
               <p className="text-sm text-paper-faint text-center pt-2">
-                Tap the microphone, read the sentence, then tap Done.
+                {isCatalan
+                  ? "Toca el micròfon, llegeix la frase, després toca Fet."
+                  : "Tap the microphone, read the sentence, then tap Done."}
               </p>
             )}
           </div>
@@ -718,7 +792,9 @@ export default function Diagnostic() {
                 className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-ink-600 hover:bg-ink-500 text-paper font-semibold transition"
               >
                 <Mic size={16} />
-                {hasRecorded ? "Try again" : "Tap to read"}
+                {hasRecorded
+                  ? (isCatalan ? "Prova de nou" : "Try again")
+                  : (isCatalan ? "Toca per llegir" : "Tap to read")}
               </button>
             )}
           </div>
@@ -762,7 +838,7 @@ export default function Diagnostic() {
 
         <div className="flex items-center justify-between mb-6">
           <p className="eyebrow">
-            Question {idx + 1} / {DIAGNOSTIC.length}
+            {isCatalan ? "Pregunta" : "Question"} {idx + 1} / {DIAGNOSTIC.length}
           </p>
           <span className="font-mono text-xs text-paper-faint">{q.skill}</span>
         </div>

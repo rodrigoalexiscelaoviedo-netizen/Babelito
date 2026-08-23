@@ -21,12 +21,26 @@ import { checkAchievements, markSeen, type AchievementDef } from "../lib/achieve
 import AchievementCelebration from "../components/AchievementCelebration";
 import { BrandDots } from "../components/Loader";
 
-const TOPICS = ["Your work", "Your weekend", "A goal you have", "Something you enjoy", "Free chat"];
-
 export default function Conversation() {
   const { profile } = useAuth();
   const location = useLocation();
   const voicePrefs = useVoicePrefs();
+
+  const learningLanguage = profile?.learning_language || "en";
+
+  const TOPICS = learningLanguage === "ca" ? [
+    "El teu treball",
+    "El teu cap de setmana",
+    "Un objectiu que tens",
+    "Quelcom que gaudixis",
+    "Xat lliure"
+  ] : [
+    "Your work",
+    "Your weekend",
+    "A goal you have",
+    "Something you enjoy",
+    "Free chat"
+  ];
 
   // Support pre-seeded topic from Dashboard daily lesson
   const locationTopic = (location.state as { topic?: string } | null)?.topic ?? null;
@@ -276,6 +290,7 @@ Reply with only the hint text — no explanation, no punctuation around it.`;
         counted={reportCounted}
         error={reportError}
         onClose={() => setReport(null)}
+        learningLanguage={learningLanguage}
       />
     );
   }
@@ -296,11 +311,16 @@ Reply with only the hint text — no explanation, no punctuation around it.`;
   if (turns.length === 0) {
     return (
       <div className="animate-fade-up max-w-2xl mx-auto">
-        <p className="eyebrow mb-2">Live conversation</p>
-        <h1 className="font-display text-3xl font-extrabold mb-2">What should we talk about?</h1>
+        <p className="eyebrow mb-2">
+          {learningLanguage === "ca" ? "Conversa en directe" : "Live conversation"}
+        </p>
+        <h1 className="font-display text-3xl font-extrabold mb-2">
+          {learningLanguage === "ca" ? "De quin tema volem parlar?" : "What should we talk about?"}
+        </h1>
         <p className="text-paper-muted mb-8">
-          Pick a topic or just start. Your coach adapts to your {profile?.current_level ?? "level"}{" "}
-          and watches the mistakes you tend to make.
+          {learningLanguage === "ca"
+            ? `Tria un tema o simplement comença. El teu coach s'adapta al teu ${profile?.current_level ?? "nivell"} i observa els errors que tens tendència a cometre.`
+            : `Pick a topic or just start. Your coach adapts to your ${profile?.current_level ?? "level"} and watches the mistakes you tend to make.`}
         </p>
         <div className="grid sm:grid-cols-2 gap-3 mb-8">
           {TOPICS.map((t) => (
@@ -323,21 +343,25 @@ Reply with only the hint text — no explanation, no punctuation around it.`;
               }`}
             >
               {locationTopic}
-              <span className="ml-2 text-xs text-coral font-mono">· today's topic</span>
+              <span className="ml-2 text-xs text-coral font-mono">
+                · {learningLanguage === "ca" ? "tema d'avui" : "today's topic"}
+              </span>
             </button>
           )}
         </div>
         <button
           className="btn-coral w-full"
           onClick={() =>
-            send(
-              topic && topic !== "Free chat"
+            send(learningLanguage === "ca"
+              ? (topic && topic !== (learningLanguage === "ca" ? "Xat lliure" : "Free chat")
+                ? `Hola! Vull parlar sobre: ${topic.toLowerCase()}.`
+                : "Hola! Estic llist per practicar.")
+              : (topic && topic !== "Free chat"
                 ? `Hi! I'd like to talk about: ${topic.toLowerCase()}.`
-                : "Hi! I'm ready to practise."
-            )
+                : "Hi! I'm ready to practise."))
           }
         >
-          Start talking →
+          {learningLanguage === "ca" ? "Comença a parlar →" : "Start talking →"}
         </button>
       </div>
     );
@@ -356,9 +380,12 @@ Reply with only the hint text — no explanation, no punctuation around it.`;
           className="flex items-center gap-1.5 text-xs text-paper-muted hover:text-coral transition disabled:opacity-40"
         >
           {generatingReport ? (
-            <span className="flex items-center gap-2"><BrandDots /> Generating report…</span>
+            <span className="flex items-center gap-2">
+              <BrandDots />
+              {learningLanguage === "ca" ? "Generant informe…" : "Generating report…"}
+            </span>
           ) : (
-            "Finish & see report →"
+            learningLanguage === "ca" ? "Finalitza i veu l'informe →" : "Finish & see report →"
           )}
         </button>
       </div>
@@ -367,11 +394,16 @@ Reply with only the hint text — no explanation, no punctuation around it.`;
       <div className="mb-2 text-right">
         {turnsRemaining(turns) > 0 ? (
           <p className="text-[11px] text-paper-faint">
-            Te {turnsRemaining(turns) === 1 ? "falta" : "faltan"} {turnsRemaining(turns)}{" "}
-            {turnsRemaining(turns) === 1 ? "intercambio" : "intercambios"} para que esta sesión cuente
+            {learningLanguage === "ca"
+              ? `Te ${turnsRemaining(turns) === 1 ? "falta" : "falten"} ${turnsRemaining(turns)} ${turnsRemaining(turns) === 1 ? "intercanvi" : "intercanvis"} perquè aquesta sessió compti`
+              : `Te ${turnsRemaining(turns) === 1 ? "falta" : "faltan"} ${turnsRemaining(turns)} ${turnsRemaining(turns) === 1 ? "intercambio" : "intercambios"} para que esta sesión cuente`}
           </p>
         ) : (
-          <p className="text-[11px] text-mint">✓ Esta sesión va a contar para tu racha</p>
+          <p className="text-[11px] text-mint">
+            {learningLanguage === "ca"
+              ? "✓ Aquesta sessió comptarà per a la teva racha"
+              : "✓ Esta sesión va a contar para tu racha"}
+          </p>
         )}
       </div>
       {reportError && <p className="text-coral text-xs mb-2">{reportError}</p>}
@@ -402,13 +434,15 @@ Reply with only the hint text — no explanation, no punctuation around it.`;
           <div className="flex justify-start">
             <div className="card px-4 py-3 border-gold/30 max-w-[85%]">
               <p className="text-sm text-paper-muted mb-2">
-                El coach está con mucha demanda ahora mismo. Probá de nuevo.
+                {learningLanguage === "ca"
+                  ? "El coach té molta demanda ara mateix. Prova de nou."
+                  : "El coach está con mucha demanda ahora mismo. Probá de nuevo."}
               </p>
               <button
                 className="flex items-center gap-1.5 text-xs font-medium text-gold hover:text-gold/80 transition"
                 onClick={() => { const t = retryText; setRetryText(null); send(t); }}
               >
-                <Loader2 size={12} /> Reintentar
+                <Loader2 size={12} /> {learningLanguage === "ca" ? "Reintenta" : "Reintentar"}
               </button>
             </div>
           </div>
@@ -430,7 +464,9 @@ Reply with only the hint text — no explanation, no punctuation around it.`;
                   className="flex items-center gap-2 text-xs text-paper-faint hover:text-gold transition disabled:opacity-60"
                 >
                   {hintLoading ? <BrandDots /> : <span>💡</span>}
-                  {hintLoading ? "Getting hint…" : "Need a hint?"}
+                  {hintLoading
+                    ? (learningLanguage === "ca" ? "Obtenint pista…" : "Getting hint…")
+                    : (learningLanguage === "ca" ? "Necessites una pista?" : "Need a hint?")}
                 </button>
               )}
             </div>
@@ -464,7 +500,9 @@ Reply with only the hint text — no explanation, no punctuation around it.`;
           <textarea
             className="flex-1 resize-none bg-transparent px-2 py-2 text-paper placeholder:text-paper-faint focus:outline-none max-h-32"
             rows={1}
-            placeholder="Type in English… or tap the mic"
+            placeholder={learningLanguage === "ca"
+              ? "Escriu en català… o toca el mic"
+              : "Type in English… or tap the mic"}
             value={displayValue}
             readOnly={listening}
             onChange={(e) => setInput(e.target.value)}
@@ -480,9 +518,9 @@ Reply with only the hint text — no explanation, no punctuation around it.`;
               <button
                 onClick={toggleMic}
                 className="flex items-center gap-1.5 px-3 h-10 rounded-xl bg-coral text-ink-900 font-semibold text-sm transition"
-                aria-label="Listo — stop recording"
+                aria-label={learningLanguage === "ca" ? "Fet — stop recording" : "Listo — stop recording"}
               >
-                <Square size={15} /> Listo
+                <Square size={15} /> {learningLanguage === "ca" ? "Fet" : "Listo"}
               </button>
             ) : (
               <button
@@ -591,18 +629,24 @@ function ReportPanel({
   onClose,
   counted = true,
   error = "",
+  learningLanguage = "en",
 }: {
   report: SessionReport;
   onClose: () => void;
   counted?: boolean;
   error?: string;
+  learningLanguage?: string;
 }) {
   return (
     <div className="animate-fade-up max-w-xl mx-auto">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <p className="eyebrow mb-1">Session report</p>
-          <h1 className="font-display text-2xl font-extrabold">How it went</h1>
+          <p className="eyebrow mb-1">
+            {learningLanguage === "ca" ? "Informe de sessió" : "Session report"}
+          </p>
+          <h1 className="font-display text-2xl font-extrabold">
+            {learningLanguage === "ca" ? "Com va anar" : "How it went"}
+          </h1>
         </div>
         <button onClick={onClose} className="text-paper-muted hover:text-paper">
           <X size={20} />
@@ -611,10 +655,13 @@ function ReportPanel({
 
       {!counted && (
         <div className="card p-4 mb-4 border-gold/40">
-          <p className="text-sm text-gold font-medium mb-1">Esta sesión no se registró</p>
+          <p className="text-sm text-gold font-medium mb-1">
+            {learningLanguage === "ca" ? "Aquesta sessió no s'ha registrat" : "Esta sesión no se registró"}
+          </p>
           <p className="text-xs text-paper-muted">
-            Fue muy corta: hacen falta al menos {MIN_USER_TURNS} intercambios tuyos para que
-            cuente en tu racha. El reporte de abajo sigue siendo válido.
+            {learningLanguage === "ca"
+              ? `Va ser molt curta: calen almenys ${MIN_USER_TURNS} intercanvis teus perquè compti en la teva racha. El informe de sota segueix sent vàlid.`
+              : `Fue muy corta: hacen falta al menos ${MIN_USER_TURNS} intercambios tuyos para que cuente en tu racha. El reporte de abajo sigue siendo válido.`}
           </p>
         </div>
       )}
@@ -630,7 +677,9 @@ function ReportPanel({
 
       {report.did_well.length > 0 && (
         <div className="card p-5 mb-4 border-mint/20">
-          <p className="eyebrow text-mint mb-3">What you did well</p>
+          <p className="eyebrow text-mint mb-3">
+            {learningLanguage === "ca" ? "El que has fet bé" : "What you did well"}
+          </p>
           <ul className="space-y-1.5">
             {report.did_well.map((item, i) => (
               <li key={i} className="flex items-start gap-2 text-sm">
@@ -644,7 +693,9 @@ function ReportPanel({
 
       {report.key_errors.length > 0 && (
         <div className="card p-5 mb-4 border-coral/20">
-          <p className="eyebrow text-coral mb-3">Key errors</p>
+          <p className="eyebrow text-coral mb-3">
+            {learningLanguage === "ca" ? "Errors clau" : "Key errors"}
+          </p>
           <div className="space-y-3">
             {report.key_errors.map((e, i) => (
               <div key={i} className="text-sm">
@@ -658,7 +709,9 @@ function ReportPanel({
 
       {report.suggested_chunks.length > 0 && (
         <div className="card p-5 mb-6">
-          <p className="eyebrow text-gold mb-3">Chunks you could use next time</p>
+          <p className="eyebrow text-gold mb-3">
+            {learningLanguage === "ca" ? "Expressions que podries usar la pròxima vegada" : "Chunks you could use next time"}
+          </p>
           <ul className="space-y-1.5">
             {report.suggested_chunks.map((chunk, i) => (
               <li key={i} className="font-mono text-sm text-paper-muted">
@@ -673,7 +726,7 @@ function ReportPanel({
         Generated by AI · Gemini via Supabase Edge Function
       </p>
       <button className="btn-coral w-full" onClick={onClose}>
-        Back to conversation
+        {learningLanguage === "ca" ? "Torna a la conversa" : "Back to conversation"}
       </button>
     </div>
   );

@@ -147,13 +147,26 @@ export default function Dashboard() {
     })();
   }, [profile, reloadKey]);
 
-  const CONGRATS = [
-    "¡Práctica completa! Your English keeps growing. 💪",
-    "Another day, another step toward fluency. Keep it up!",
-    "¡Lo lograste! Consistency is the real secret to speaking well.",
-    "One more day on your streak — you're building a real habit!",
-    "¡Excelente trabajo! Every session counts. See you tomorrow.",
-  ];
+  function getCongratsForLanguage(lang: "en" | "ca") {
+    if (lang === "ca") {
+      return [
+        "¡Pràctica completa! El teu català segueix creixent. 💪",
+        "Un dia més, un pas més cap a la fluïdesa. Continua!",
+        "¡Ho aconseguires! La consistència és la clau per parlar bé.",
+        "Un dia més a la teva racha — estàs construint un hàbit real!",
+        "¡Excel·lent treball! Cada sessió compta. Fins demà!",
+      ];
+    }
+    return [
+      "¡Práctica completa! Your English keeps growing. 💪",
+      "Another day, another step toward fluency. Keep it up!",
+      "¡Lo lograste! Consistency is the real secret to speaking well.",
+      "One more day on your streak — you're building a real habit!",
+      "¡Excelente trabajo! Every session counts. See you tomorrow.",
+    ];
+  }
+
+  const CONGRATS = getCongratsForLanguage(learningLanguage as "en" | "ca");
 
   async function handleComplete() {
     if (!profile || !lesson) return;
@@ -200,7 +213,9 @@ export default function Dashboard() {
 
   const firstName = profile?.name?.split(" ")[0] ?? "there";
   const hour = new Date().getHours();
-  const greeting = hour < 12 ? "Good morning" : hour < 19 ? "Good afternoon" : "Good evening";
+  const greeting = learningLanguage === "ca"
+    ? (hour < 12 ? "Bon dia" : hour < 19 ? "Bona tarda" : "Bona nit")
+    : (hour < 12 ? "Good morning" : hour < 19 ? "Good afternoon" : "Good evening");
 
   const maicaMood: MaicaMood = lesson?.completed
     ? "celebrating"
@@ -214,7 +229,12 @@ export default function Dashboard() {
     ? "Maica te extrañó 🐾"
     : "¡Maica te está esperando! 🐾";
 
-  const modules = [
+  const modules = learningLanguage === "ca" ? [
+    { to: "/conversation", label: "Parla amb el coach", desc: "Conversa en directe amb feedback", icon: MessageCircle, accent: "coral" },
+    { to: "/roleplay", label: "Representa una escena", desc: "Entrevistes, crides, reunions", icon: Drama, accent: "mint" },
+    { to: "/chunks", label: "Biblioteca d'expressions", desc: "Expressions ja fetes", icon: Library, accent: "gold" },
+    { to: "/correct", label: "Corregeix la meva escriptura", desc: "Enganxa un correu o missatge", icon: PencilLine, accent: "coral" },
+  ] : [
     { to: "/conversation", label: "Talk to your coach", desc: "Live conversation with feedback", icon: MessageCircle, accent: "coral" },
     { to: "/roleplay", label: "Roleplay a scene", desc: "Interviews, calls, meetings", icon: Drama, accent: "mint" },
     { to: "/chunks", label: "Chunks library", desc: "Ready-made expressions", icon: Library, accent: "gold" },
@@ -268,17 +288,28 @@ export default function Dashboard() {
                 <Maica mood="celebrating" size="md" className="mx-auto" />
               </div>
               <p className="font-display text-7xl font-extrabold text-coral leading-none mb-1">{streak}</p>
-              <p className="font-display text-lg font-bold mb-4">{streak === 1 ? "day" : "days"} streak 🎉</p>
+              <p className="font-display text-lg font-bold mb-4">
+                {learningLanguage === "ca"
+                  ? (streak === 1 ? "dia" : "dies")
+                  : (streak === 1 ? "day" : "days")}
+                {" "}streak 🎉
+              </p>
 
               {/* Message */}
               <p className="text-sm text-paper-muted leading-relaxed mb-4">{celebMsg}</p>
 
               {/* Freezes */}
               {freezesLeft > 0 && (
-                <p className="text-xs text-paper-faint mb-3">❄️ {freezesLeft} freeze{freezesLeft !== 1 ? "s" : ""} available this month</p>
+                <p className="text-xs text-paper-faint mb-3">
+                  ❄️ {freezesLeft} {learningLanguage === "ca"
+                    ? (freezesLeft !== 1 ? "congelacions disponibles aquest mes" : "congelació disponible aquest mes")
+                    : (freezesLeft !== 1 ? "freezes available this month" : "freeze available this month")}
+                </p>
               )}
 
-              <p className="text-xs text-paper-faint">Tap anywhere to continue</p>
+              <p className="text-xs text-paper-faint">
+                {learningLanguage === "ca" ? "Toca en qualsevol lloc per continuar" : "Tap anywhere to continue"}
+              </p>
             </div>
           </div>
         </>
@@ -308,7 +339,9 @@ export default function Dashboard() {
       {/* Daily practice card */}
       <div className="card p-5 mb-6">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="font-display font-bold text-lg">Tu práctica de hoy</h2>
+          <h2 className="font-display font-bold text-lg">
+            {learningLanguage === "ca" ? "La teva pràctica d'avui" : "Tu práctica de hoy"}
+          </h2>
           <div className="flex flex-col items-end gap-0.5">
             <span className="flex items-center gap-1.5 text-coral font-display font-bold">
               {streak > 0 && !lesson?.completed && (
@@ -329,7 +362,11 @@ export default function Dashboard() {
           </div>
         ) : loadError || !lesson ? (
           <div className="text-center py-6">
-            <p className="text-sm text-coral mb-1">No pudimos cargar tu práctica de hoy.</p>
+            <p className="text-sm text-coral mb-1">
+              {learningLanguage === "ca"
+                ? "No hem pogut carregar la teva pràctica d'avui."
+                : "No pudimos cargar tu práctica de hoy."}
+            </p>
             {loadError && <p className="text-xs text-paper-faint mb-3">{loadError}</p>}
             <button
               className="btn-coral px-4 py-2 text-sm"
@@ -338,14 +375,20 @@ export default function Dashboard() {
                 setReloadKey((k) => k + 1);
               }}
             >
-              Reintentar
+              {learningLanguage === "ca" ? "Reintenta" : "Reintentar"}
             </button>
           </div>
         ) : lesson?.completed ? (
           <div className="text-center py-6">
             <CheckCircle2 size={36} className="text-mint mx-auto mb-2 animate-check-pop" />
-            <p className="font-display font-bold text-mint">All done for today!</p>
-            <p className="text-xs text-paper-muted mt-1">Come back tomorrow to keep your streak.</p>
+            <p className="font-display font-bold text-mint">
+              {learningLanguage === "ca" ? "Finalitzat per avui!" : "All done for today!"}
+            </p>
+            <p className="text-xs text-paper-muted mt-1">
+              {learningLanguage === "ca"
+                ? "Torna demà per mantenir la teva racha."
+                : "Come back tomorrow to keep your streak."}
+            </p>
           </div>
         ) : (
           <div className="space-y-3">
@@ -361,7 +404,7 @@ export default function Dashboard() {
               )}
               <div className="flex-1 min-w-0">
                 <p className="text-xs text-paper-muted uppercase tracking-widest font-mono mb-0.5">
-                  Chunk of the day
+                  {learningLanguage === "ca" ? "Expressió del dia" : "Chunk of the day"}
                 </p>
                 {lesson?.chunk?.english ? (
                   <>
@@ -371,11 +414,19 @@ export default function Dashboard() {
                     )}
                   </>
                 ) : lesson?.chunk_id ? (
-                  <p className="font-medium leading-snug text-paper-muted">Loading chunk…</p>
+                  <p className="font-medium leading-snug text-paper-muted">
+                    {learningLanguage === "ca" ? "Carregant expressió…" : "Loading chunk…"}
+                  </p>
                 ) : (
-                  <p className="text-paper-muted text-sm">No chunk available.</p>
+                  <p className="text-paper-muted text-sm">
+                    {learningLanguage === "ca" ? "Cap expressió disponible." : "No chunk available."}
+                  </p>
                 )}
-                <p className="text-xs text-paper-faint mt-1">Practise saying it out loud 3 times.</p>
+                <p className="text-xs text-paper-faint mt-1">
+                  {learningLanguage === "ca"
+                    ? "Practica dient-la en veu alta 3 vegades."
+                    : "Practise saying it out loud 3 times."}
+                </p>
               </div>
             </div>
 
@@ -391,13 +442,19 @@ export default function Dashboard() {
               )}
               <div className="flex-1 min-w-0">
                 <p className="text-xs text-paper-muted uppercase tracking-widest font-mono mb-0.5">
-                  Mini-conversation
+                  {learningLanguage === "ca" ? "Mini-conversa" : "Mini-conversation"}
                 </p>
-                <p className="font-medium leading-snug">{lesson?.topic ?? "Free chat"}</p>
+                <p className="font-medium leading-snug">
+                  {lesson?.topic ?? (learningLanguage === "ca" ? "Xat lliure" : "Free chat")}
+                </p>
                 <p className="text-xs text-paper-faint mt-1">
                   {lesson.convo_done
-                    ? "Hecho — se tildó al registrarse tu sesión ✓"
-                    : `Tap to open your coach → (se tilda al completar ${MIN_USER_TURNS} intercambios)`}
+                    ? (learningLanguage === "ca"
+                      ? "Fet — es va marcar al registrar-se la teva sessió ✓"
+                      : "Hecho — se tildó al registrarse tu sesión ✓")
+                    : (learningLanguage === "ca"
+                      ? `Toca per obrir el teu coach → (es marca al completar ${MIN_USER_TURNS} intercanvis)`
+                      : `Tap to open your coach → (se tilda al completar ${MIN_USER_TURNS} intercambios)`)}
                 </p>
               </div>
             </div>
@@ -415,7 +472,7 @@ export default function Dashboard() {
                 )}
                 <div className="flex-1 min-w-0">
                   <p className="text-xs text-paper-muted uppercase tracking-widest font-mono mb-0.5">
-                    Word of the day
+                    {learningLanguage === "ca" ? "Paraula del dia" : "Word of the day"}
                   </p>
                   <div className="flex items-center gap-2">
                     <p className="font-display font-bold">{lesson.word}</p>
@@ -432,7 +489,7 @@ export default function Dashboard() {
                           lang: voicePrefs.voiceAccent,
                         });
                       }}
-                      aria-label="Pronounce"
+                      aria-label={learningLanguage === "ca" ? "Pronuncia" : "Pronounce"}
                     >
                       <Volume2 size={15} />
                     </button>
@@ -453,13 +510,19 @@ export default function Dashboard() {
                 <div className="flex items-center gap-2 min-w-0">
                   <BookOpen size={16} className="text-mint shrink-0" />
                   <div className="min-w-0">
-                    <p className="text-sm font-medium text-mint">Aprendé una palabra nueva</p>
+                    <p className="text-sm font-medium text-mint">
+                      {learningLanguage === "ca" ? "Aprèn una paraula nova" : "Aprendé una palabra nueva"}
+                    </p>
                     <p className="text-xs text-paper-faint">
-                      Tocá cualquier palabra al leer para seguirla — mañana aparece acá
+                      {learningLanguage === "ca"
+                        ? "Toca qualsevol paraula al llegir per seguir-la — demà apareix aquí"
+                        : "Tocá cualquier palabra al leer para seguirla — mañana aparece acá"}
                     </p>
                   </div>
                 </div>
-                <span className="text-xs text-mint/70 shrink-0 ml-2">Reading →</span>
+                <span className="text-xs text-mint/70 shrink-0 ml-2">
+                  {learningLanguage === "ca" ? "Lectura →" : "Reading →"}
+                </span>
               </Link>
             )}
 
@@ -471,10 +534,14 @@ export default function Dashboard() {
                 <div className="flex items-center gap-2">
                   <Layers size={16} className="text-gold" />
                   <span className="text-sm font-medium text-gold">
-                    {reviewsDue} review{reviewsDue !== 1 ? "s" : ""} due
+                    {reviewsDue} {learningLanguage === "ca"
+                      ? (reviewsDue !== 1 ? "revisions necessàries" : "revisió necessària")
+                      : (reviewsDue !== 1 ? "reviews due" : "review due")}
                   </span>
                 </div>
-                <span className="text-xs text-gold/70">Practice now →</span>
+                <span className="text-xs text-gold/70">
+                  {learningLanguage === "ca" ? "Practica ara →" : "Practice now →"}
+                </span>
               </Link>
             )}
 
@@ -488,13 +555,19 @@ export default function Dashboard() {
               {completing ? (
                 <span className="flex items-center gap-2"><BrandDots /> Guardando…</span>
               ) : (
-                "Complete today's practice ✓"
+                learningLanguage === "ca"
+                  ? "Completa la pràctica d'avui ✓"
+                  : "Complete today's practice ✓"
               )}
             </button>
             {!allChecked && (
               <p className="text-xs text-paper-faint text-center">
-                {doneCount}/{items.length} — completá {items.length === 1 ? "la tarea" : "las tareas"} de arriba
-                {!lesson.word && " (la palabra del día no cuenta hoy)"}
+                {learningLanguage === "ca"
+                  ? `${doneCount}/${items.length} — completa ${items.length === 1 ? "la tasca" : "les tasques"} de dalt`
+                  : `${doneCount}/${items.length} — completá ${items.length === 1 ? "la tarea" : "las tareas"} de arriba`}
+                {!lesson.word && (learningLanguage === "ca"
+                  ? " (la paraula del dia no compta avui)"
+                  : " (la palabra del día no cuenta hoy)")}
               </p>
             )}
           </div>
@@ -506,10 +579,14 @@ export default function Dashboard() {
         <div className="card p-4">
           <div className="flex items-center gap-2 text-paper-muted mb-1">
             <Flame size={15} className="text-coral" />
-            <span className="text-xs">Streak</span>
+            <span className="text-xs">
+              {learningLanguage === "ca" ? "Racha" : "Streak"}
+            </span>
           </div>
           <p className="font-display text-2xl font-bold">
-            {streak} <span className="text-sm font-normal text-paper-muted">days</span>
+            {streak} <span className="text-sm font-normal text-paper-muted">
+              {learningLanguage === "ca" ? "dies" : "days"}
+            </span>
           </p>
           {freezesLeft > 0 && (
             <p className="text-[10px] text-paper-faint mt-0.5">❄️ {freezesLeft}</p>
@@ -518,7 +595,9 @@ export default function Dashboard() {
         <div className="card p-4">
           <div className="flex items-center gap-2 text-paper-muted mb-1">
             <Target size={15} className="text-mint" />
-            <span className="text-xs">Level</span>
+            <span className="text-xs">
+              {learningLanguage === "ca" ? "Nivell" : "Level"}
+            </span>
           </div>
           <p className="font-display text-2xl font-bold">{profile?.current_level ?? "—"}</p>
         </div>
@@ -532,7 +611,9 @@ export default function Dashboard() {
         <div className="card p-4">
           <div className="flex items-center gap-2 text-paper-muted mb-1">
             <Library size={15} className="text-mint" />
-            <span className="text-xs">Chunks</span>
+            <span className="text-xs">
+              {learningLanguage === "ca" ? "Expressions" : "Chunks"}
+            </span>
           </div>
           <p className="font-display text-2xl font-bold">{stats?.chunksLearned ?? 0}</p>
         </div>
@@ -545,10 +626,13 @@ export default function Dashboard() {
           className="card mb-8 flex items-center justify-between p-5 hover:border-coral/50 transition group"
         >
           <div>
-            <p className="eyebrow mb-1 text-coral">Coach noticed</p>
+            <p className="eyebrow mb-1 text-coral">
+              {learningLanguage === "ca" ? "El coach ha notat" : "Coach noticed"}
+            </p>
             <p className="font-medium">
-              You keep slipping on <strong>{errorLabel(stats.topError)}</strong>. Want to drill it
-              in a quick chat?
+              {learningLanguage === "ca"
+                ? `Segueixes cometent errors en <strong>${errorLabel(stats.topError)}</strong>. Vols practicar-ho en un xat ràpid?`
+                : `You keep slipping on <strong>${errorLabel(stats.topError)}</strong>. Want to drill it in a quick chat?`}
             </p>
           </div>
           <span className="text-coral group-hover:translate-x-1 transition">→</span>
@@ -580,7 +664,8 @@ export default function Dashboard() {
 
       <div className="mt-6 text-center">
         <Link to="/progress" className="inline-flex items-center gap-2 text-sm text-paper-muted hover:text-paper">
-          <BarChart3 size={15} /> See your full progress
+          <BarChart3 size={15} />
+          {learningLanguage === "ca" ? "Veu el teu progrés complet" : "See your full progress"}
         </Link>
       </div>
     </div>
