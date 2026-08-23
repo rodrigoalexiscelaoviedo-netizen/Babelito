@@ -21,7 +21,7 @@ import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabaseClient";
 import { askCoach, RetryableError } from "../lib/claude";
 import { buildRoleplayPrompt, parseErrors } from "../lib/buildSystemPrompt";
-import { SCENARIOS, type Scenario } from "../lib/scenarios";
+import { SCENARIOS, SCENARIOS_CA, type Scenario } from "../lib/scenarios";
 import { speak, pauseSpeech, resumeSpeech, speechSupported } from "../lib/speech";
 import { useSpeechCapture } from "../lib/useSpeechCapture";
 import { useVoicePrefs } from "../lib/useVoicePrefs";
@@ -54,7 +54,7 @@ export default function Roleplay() {
           {learningLanguage === "ca" ? "en qualsevol moment per obtenir retroalimentació completa." : "any time to get full feedback."}
         </p>
         <div className="grid sm:grid-cols-2 gap-4">
-          {SCENARIOS.map((s) => {
+          {(learningLanguage === "ca" ? SCENARIOS_CA : SCENARIOS).map((s) => {
             const Icon = SCENARIO_ICONS[s.icon] ?? Drama;
             return (
               <button

@@ -40,16 +40,30 @@ export function isTriadComplete(lesson: DailyLesson): boolean {
   return activeItems(lesson).every((k) => lesson[k]);
 }
 
-const CONVERSATION_TOPICS = [
-  "Your morning routine",
-  "A hobby you enjoy",
-  "Your favourite place to visit",
-  "How technology affects your life",
-  "A book or film you liked recently",
-  "Your goals for this month",
-  "A challenge you overcame",
-  "What you find most interesting about your job",
-];
+function getConversationTopics(language: string): string[] {
+  if (language === "ca") {
+    return [
+      "La teva rutina del matí",
+      "Un lloc que t'agrada de Barcelona",
+      "El que has fet aquest cap de setmana",
+      "Una afició teva",
+      "El teu barri",
+      "Menjar que t'agrada cuinar",
+      "Un repte que has superat",
+      "La teva família i els teus amics",
+    ];
+  }
+  return [
+    "Your morning routine",
+    "A hobby you enjoy",
+    "Your favourite place to visit",
+    "How technology affects your life",
+    "A book or film you liked recently",
+    "Your goals for this month",
+    "A challenge you overcame",
+    "What you find most interesting about your job",
+  ];
+}
 
 function todayISO(): string {
   return new Date().toISOString().slice(0, 10);
@@ -153,7 +167,8 @@ export async function getTodayLesson(userId: string, language: string): Promise<
   const word = await pickLearningWord(userId, language);
 
   // Pick topic
-  const topic = CONVERSATION_TOPICS[Math.floor(Math.random() * CONVERSATION_TOPICS.length)];
+  const topics = getConversationTopics(language);
+  const topic = topics[Math.floor(Math.random() * topics.length)];
 
   // Insert lesson — only columns that actually exist in daily_lessons
   const { data: inserted, error } = await supabase

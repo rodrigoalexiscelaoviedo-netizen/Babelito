@@ -39,9 +39,11 @@ export default function Profile() {
 
   useEffect(() => {
     function loadVoices() {
-      const all = getVoices("en");
+      const voiceLang = learningLanguage === "ca" ? "ca" : "en";
+      const all = getVoices(voiceLang);
       const accents = [...new Set(all.map((v) => v.lang))].sort();
-      const withFallbacks = [...new Set(["en-GB", "en-US", ...accents])];
+      const defaultAccents = learningLanguage === "ca" ? ["ca-ES"] : ["en-GB", "en-US"];
+      const withFallbacks = [...new Set([...defaultAccents, ...accents])];
       setAvailableAccents(withFallbacks);
       const forAccent = all.filter((v) => v.lang === voiceAccent);
       setAvailableVoices(forAccent);
@@ -50,7 +52,7 @@ export default function Profile() {
     if (typeof window !== "undefined" && "speechSynthesis" in window) {
       window.speechSynthesis.onvoiceschanged = loadVoices;
     }
-  }, [voiceAccent]);
+  }, [voiceAccent, learningLanguage]);
 
   function handleAccentChange(accent: string) {
     setVoiceAccent(accent);
@@ -58,7 +60,10 @@ export default function Profile() {
   }
 
   function testVoice() {
-    speak("Hello! I am your English coach. How are you feeling today?", {
+    const testText = learningLanguage === "ca"
+      ? "Hola! Soc el teu coach de català. Com et sents avui?"
+      : "Hello! I am your English coach. How are you feeling today?";
+    speak(testText, {
       voiceName: voiceName || undefined,
       rate: voiceRate,
       lang: voiceAccent,
@@ -222,6 +227,11 @@ export default function Profile() {
             <p className="mt-1 text-xs text-paper-faint">
               {learningLanguage === "ca" ? "Les veus disponibles depenen del teu dispositiu." : "Available voices depend on your device."}
             </p>
+            {learningLanguage === "ca" && availableVoices.length === 0 && (
+              <p className="mt-2 text-xs text-coral">
+                No hi ha voces en català disponibles en aquest dispositiu. Prova d'usar el navegador Chrome o Firefox en Android.
+              </p>
+            )}
           </Field>
 
           <Field label={`${learningLanguage === "ca" ? "Velocitat" : "Speed"}: ${voiceRate.toFixed(2)}×`}>

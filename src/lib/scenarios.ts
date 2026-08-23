@@ -66,3 +66,61 @@ export const SCENARIOS: Scenario[] = [
     icon: "Coffee",
   },
 ];
+
+// Escenarios catalanes — contexto Barcelona, vida quotidiana
+export const SCENARIOS_CA: Scenario[] = [
+  {
+    id: 1,
+    title: "Demanar al bar",
+    description: "Esmorzar i una cafè amb llet a la barra del barri.",
+    coach_role: "Cambrera simpàtica i parlanchina.",
+    opening: "Hola! Bon dia. Què et poso?",
+    difficulty: "A2",
+    icon: "Coffee",
+  },
+  {
+    id: 2,
+    title: "Al mercat",
+    description: "Comprar verdura, fruita i peix al mercat de la Boqueria.",
+    coach_role: "Vendedor/a del mercat, amable i cridanera.",
+    opening: "Hola! Què necessites? Mira aquest tomàquet, és de l'Empordà!",
+    difficulty: "A2",
+    icon: "Library",
+  },
+  {
+    id: 3,
+    title: "Xerrar amb el veí",
+    description: "A l'escala, sobre el barri i les tradicions catalanes.",
+    coach_role: "Veí amable, gran coneixedor del barri.",
+    opening: "Hola! Fa bon dia, eh? De quin barri ets? No t'havia vist aquí...",
+    difficulty: "A2",
+    icon: "Users",
+  },
+  {
+    id: 4,
+    title: "Quedar amb amics",
+    description: "Proposar plans pel cap de setmana, canviar hora, parlar de la festa major.",
+    coach_role: "Amic/a teu/a de tota la vida, bromista i fàcil.",
+    opening: "Ei! Vols quedar dijous per prendre algo? Conec una terrassa nova molt bona!",
+    difficulty: "B1",
+    icon: "Wine",
+  },
+  {
+    id: 5,
+    title: "Tràmit a l'ajuntament",
+    description: "Demanar cita per a padró o explicar un problema de veïnatge.",
+    coach_role: "Funcionari/a formal però amable, explicador/a.",
+    opening: "Bon dia! Què em diu? Ja té cita o és la primera vegada que ve?",
+    difficulty: "B1",
+    icon: "Briefcase",
+  },
+  {
+    id: 6,
+    title: "Entrevista de feina",
+    description: "Parlar sobre experiència professional i per què vols treballar a Barcelona.",
+    coach_role: "Entrevistador/a professional, amb accent català.",
+    opening: "Hola! Parla'ns sobre tu i per què t'interessa treballar aquí a l'empresa.",
+    difficulty: "B1",
+    icon: "TrendingUp",
+  },
+];

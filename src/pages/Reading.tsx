@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { ArrowLeft, BookOpen, Volume2, Pause, Play } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabaseClient";
-import { READING_TEXTS, type ReadingText } from "../lib/readingTexts";
+import { READING_TEXTS, READING_TEXTS_CA, type ReadingText } from "../lib/readingTexts";
 import type { WordDefinition } from "../lib/dictionary";
 import type { VocabMap, WordStatus } from "../lib/vocabulary";
 import { scopeByLanguage } from "../lib/language";
@@ -61,7 +61,7 @@ export default function Reading() {
       </p>
 
       <div className="grid sm:grid-cols-2 gap-4 mb-8">
-        {READING_TEXTS.map((t) => (
+        {(learningLanguage === "ca" ? READING_TEXTS_CA : READING_TEXTS).map((t) => (
           <button
             key={t.id}
             onClick={() => openText(t)}

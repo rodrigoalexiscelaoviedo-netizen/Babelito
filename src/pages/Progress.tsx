@@ -389,12 +389,16 @@ export default function Progress() {
         {vocabTotal === 0 ? (
           <div className="empty-state">
             <Maica mood="curious" size="md" className="mb-1" />
-            <p className="empty-state-title">Sin palabras aún</p>
+            <p className="empty-state-title">
+              {learningLanguage === "ca" ? "Sense paraules aún" : "No words yet"}
+            </p>
             <p className="empty-state-sub">
-              Explorá el módulo de lectura y tocá las palabras que no conocés para guardarlas.
+              {learningLanguage === "ca"
+                ? "Explora el mòdul de lectura i fes clic en les paraules que no coneixes per guardar-les."
+                : "Explore the reading module and click the words you don't know to save them."}
             </p>
             <Link to="/reading" className="btn-mint mt-1 text-sm px-4 py-2">
-              Ir a Reading <ArrowRight size={14} />
+              {learningLanguage === "ca" ? "Anar a Lectura" : "Go to Reading"} <ArrowRight size={14} />
             </Link>
           </div>
         ) : (
@@ -446,12 +450,16 @@ export default function Progress() {
         {reports.length === 0 ? (
           <div className="empty-state">
             <Maica mood="curious" size="md" className="mb-1" />
-            <p className="empty-state-title">Sin reportes aún</p>
+            <p className="empty-state-title">
+              {learningLanguage === "ca" ? "Sense informes ainda" : "No reports yet"}
+            </p>
             <p className="empty-state-sub">
-              Terminá una conversación o roleplay y tu coach genera un reporte detallado.
+              {learningLanguage === "ca"
+                ? "Termina una conversa o representació de rol i el teu coach generarà un informe detallat."
+                : "Complete a conversation or roleplay and your coach will generate a detailed report."}
             </p>
             <Link to="/conversation" className="btn-coral mt-1 text-sm px-4 py-2">
-              Hablar con el coach <ArrowRight size={14} />
+              {learningLanguage === "ca" ? "Parlar amb el coach" : "Talk to the coach"} <ArrowRight size={14} />
             </Link>
           </div>
         ) : (

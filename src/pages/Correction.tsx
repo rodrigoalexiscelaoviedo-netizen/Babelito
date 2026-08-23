@@ -4,9 +4,11 @@ import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabaseClient";
 import { askCoach } from "../lib/claude";
 import { buildCorrectionPrompt, parseErrors } from "../lib/buildSystemPrompt";
+import type { ReadingText } from "../lib/readingTexts";
 
 export default function Correction() {
   const { profile } = useAuth();
+  const learningLanguage = profile?.learning_language || "en";
   const [text, setText] = useState("");
   const [result, setResult] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -49,21 +51,26 @@ export default function Correction() {
 
   return (
     <div className="animate-fade-up max-w-2xl mx-auto">
-      <p className="eyebrow mb-2">Writing check</p>
-      <h1 className="font-display text-3xl font-extrabold mb-2">Fix my writing</h1>
+      <p className="eyebrow mb-2">
+        {learningLanguage === "ca" ? "Revisió d'escriptura" : "Writing check"}
+      </p>
+      <h1 className="font-display text-3xl font-extrabold mb-2">
+        {learningLanguage === "ca" ? "Corregeix el meu text" : "Fix my writing"}
+      </h1>
       <p className="text-paper-muted mb-6">
-        Paste an email or message. You'll get it corrected, made more natural, and in real{" "}
-        {profile?.english_variant ?? "British"} English.
+        {learningLanguage === "ca"
+          ? "Enganxa un correu o missatge. Te'l corregirem, farem més natural i afegiran millores gramaticals."
+          : `Paste an email or message. You'll get it corrected, made more natural, and in real ${profile?.english_variant ?? "British"} English.`}
       </p>
 
       <textarea
         className="input min-h-[160px] resize-none mb-3"
-        placeholder="Paste your English text here…"
+        placeholder={learningLanguage === "ca" ? "Enganxa el teu text en català aquí…" : "Paste your English text here…"}
         value={text}
         onChange={(e) => setText(e.target.value)}
       />
       <button className="btn-coral w-full mb-8" onClick={correct} disabled={busy || !text.trim()}>
-        <Sparkles size={16} /> {busy ? "Checking…" : "Check it"}
+        <Sparkles size={16} /> {busy ? (learningLanguage === "ca" ? "Revisant…" : "Checking…") : learningLanguage === "ca" ? "Revisa'l" : "Check it"}
       </button>
 
       {result && (
