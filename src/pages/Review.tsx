@@ -158,7 +158,7 @@ NEVER reveal the answer. Reply with only the hint text.`,
           <Maica mood="curious" size="md" className="mx-auto mb-2" />
           <h1 className="font-display text-2xl font-extrabold mb-2">Tu mazo está listo</h1>
           <p className="text-paper-muted text-sm mb-6">
-            No hay repasos pendientes hoy. Agregá chunks o palabras para seguir practicando hablado.
+            No hay repasos pendientes hoy. Agrega chunks o palabras para seguir practicando hablado.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <Link to="/chunks" className="btn-mint text-sm">

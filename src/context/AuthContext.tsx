@@ -7,6 +7,8 @@ interface AuthCtx {
   session: AuthSession | null;
   profile: Profile | null;
   loading: boolean;
+  /** Set when the profile could not be loaded (network, RLS, missing row). */
+  profileError: string | null;
   refreshProfile: () => Promise<void>;
   signOut: () => Promise<void>;
 }
@@ -15,6 +17,7 @@ const Ctx = createContext<AuthCtx>({
   session: null,
   profile: null,
   loading: true,
+  profileError: null,
   refreshProfile: async () => {},
   signOut: async () => {},
 });
@@ -23,10 +26,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<AuthSession | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [profileError, setProfileError] = useState<string | null>(null);
 
+  // Nunca se traga el error: antes un fallo dejaba al usuario en un loader infinito.
   const loadProfile = useCallback(async (userId: string) => {
-    const { data, error } = await supabase.from("profiles").select("*").eq("id", userId).single();
-    if (!error && data) setProfile(data as Profile);
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", userId)
+      .maybeSingle();
+    if (error) {
+      setProfileError(error.message);
+      return;
+    }
+    setProfileError(data ? null : "profile-missing");
+    setProfile((data as Profile) ?? null);
   }, []);
 
   const refreshProfile = useCallback(async () => {
@@ -49,6 +63,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         loadProfile(newSession.user.id);
       } else {
         setProfile(null);
+        setProfileError(null);
       }
     });
     return () => sub.subscription.unsubscribe();
@@ -57,16 +72,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signOut = useCallback(async () => {
     await supabase.auth.signOut();
     setProfile(null);
+    setProfileError(null);
   }, []);
 
   return (
-    <Ctx.Provider value={{ session, profile, loading, refreshProfile, signOut }}>
+    <Ctx.Provider value={{ session, profile, loading, profileError, refreshProfile, signOut }}>
       {children}
     </Ctx.Provider>
   );
 }
 
-// eslint-disable-next-line react-refresh/only-export-components
 export function useAuth() {
   return useContext(Ctx);
 }

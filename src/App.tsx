@@ -14,13 +14,11 @@ const Correction = lazy(() => import("./pages/Correction"));
 const Roleplay = lazy(() => import("./pages/Roleplay"));
 const Reading = lazy(() => import("./pages/Reading"));
 const Stories = lazy(() => import("./pages/Stories"));
-const Pronunciation = lazy(() => import("./pages/Pronunciation"));
 const Sounds = lazy(() => import("./pages/Sounds"));
 const Review = lazy(() => import("./pages/Review"));
 const Listening = lazy(() => import("./pages/Listening"));
 const Progress = lazy(() => import("./pages/Progress"));
 const Profile   = lazy(() => import("./pages/Profile"));
-const LiveTest  = lazy(() => import("./pages/LiveTest"));
 
 function Shell({ children }: { children: JSX.Element }) {
   return (
@@ -63,11 +61,8 @@ export default function App() {
         <Route path="/sounds" element={<Shell><Sounds /></Shell>} />
         <Route path="/review" element={<Shell><Review /></Shell>} />
         <Route path="/listening" element={<Shell><Listening /></Shell>} />
-        <Route path="/pronunciation" element={<Shell><Pronunciation /></Shell>} />
         <Route path="/progress" element={<Shell><Progress /></Shell>} />
         <Route path="/profile" element={<Shell><Profile /></Shell>} />
-        {/* Dev-only spike page — not linked from Nav */}
-        <Route path="/live-test" element={<Shell><LiveTest /></Shell>} />
       </Routes>
     </Suspense>
   );

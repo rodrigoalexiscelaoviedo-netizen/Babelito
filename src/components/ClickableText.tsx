@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from "react";
 import { Volume2, X, Layers } from "lucide-react";
-import { lookupWord, lookupPhrase, type WordDefinition, type PhraseExplanation } from "../lib/dictionary";
+import { lookupWord, lookupPhrase, dictLang, type WordDefinition, type PhraseExplanation } from "../lib/dictionary";
 import { upsertWord, type VocabMap, type WordStatus } from "../lib/vocabulary";
 import { speak } from "../lib/speech";
 import type { VoicePrefs } from "../lib/useVoicePrefs";
@@ -82,7 +82,7 @@ export default function ClickableText({
       return;
     }
     setLoadingDef(true);
-    const def = await lookupWord(word);
+    const def = await lookupWord(word, dictLang(language));
     defCache.current.set(word, def);
     setWordDef(def);
     setLoadingDef(false);
@@ -152,7 +152,7 @@ export default function ClickableText({
       return;
     }
     setLoadingPhrase(true);
-    const expl = await lookupPhrase(sentence);
+    const expl = await lookupPhrase(sentence, dictLang(language));
     phraseCache.current.set(sentence, expl);
     setPhraseExpl(expl);
     setLoadingPhrase(false);
@@ -317,7 +317,7 @@ export default function ClickableText({
           {loadingDef && <p className="text-paper-muted text-sm">Looking up…</p>}
           {!loadingDef && !wordDef && (
             <p className="text-paper-faint text-xs mb-3">
-              No encontramos la definición, pero podés guardar la palabra igual.
+              No encontramos la definición, pero puedes guardar la palabra igual.
             </p>
           )}
           {saveError && <p className="text-coral text-xs mb-2">{saveError}</p>}
@@ -329,7 +329,7 @@ export default function ClickableText({
               </p>
               <p className="text-sm">
                 <span className="text-paper-muted">EN: </span>
-                {wordDef.definition_en}
+                {wordDef.definition_target}
               </p>
               {wordDef.example && (
                 <p className="text-xs text-paper-faint italic mt-1">"{wordDef.example}"</p>

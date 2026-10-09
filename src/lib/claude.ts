@@ -45,7 +45,7 @@ export async function askCoach({ system, messages, maxTokens = 1024, temperature
       (fetchErr.name === "TimeoutError" || fetchErr.name === "AbortError");
     throw new RetryableError(
       isTimeout
-        ? "El coach tardó demasiado. Intentá de nuevo."
+        ? "El coach tardó demasiado. Intenta de nuevo."
         : "No se pudo conectar con el coach."
     );
   }
@@ -63,4 +63,11 @@ export async function askCoach({ system, messages, maxTokens = 1024, temperature
   }
 
   return (data.text as string) ?? "";
+}
+
+/** Últimos turnos que se mandan al coach. El historial completo sigue en la UI. */
+export const COACH_CONTEXT_TURNS = 24;
+
+export function recentTurns(turns: ChatTurn[], max: number = COACH_CONTEXT_TURNS): ChatTurn[] {
+  return turns.length > max ? turns.slice(-max) : turns;
 }

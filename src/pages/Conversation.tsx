@@ -3,7 +3,7 @@ import { useLocation } from "react-router-dom";
 import { Mic, Send, Volume2, Square, Pause, Play, Loader2, X, ChevronDown, ChevronUp } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabaseClient";
-import { askCoach, RetryableError } from "../lib/claude";
+import { askCoach, recentTurns, RetryableError } from "../lib/claude";
 import { buildConversationPrompt, parseErrors } from "../lib/buildSystemPrompt";
 import {
   speechSupported,
@@ -163,7 +163,7 @@ export default function Conversation() {
     setThinking(true);
 
     try {
-      const raw = await askCoach({ system: systemRef.current, messages: nextTurns });
+      const raw = await askCoach({ system: systemRef.current, messages: recentTurns(nextTurns) });
       const { clean, errorTypes } = parseErrors(raw);
       const coachTurn: ChatTurn = { role: "assistant", content: clean };
       const updated = [...nextTurns, coachTurn];
@@ -412,6 +412,7 @@ Reply with only the hint text — no explanation, no punctuation around it.`;
         {turns.map((t, i) => (
           <div key={i} className={`flex ${t.role === "user" ? "justify-end" : "justify-start"}`}>
             <div
+              data-role={t.role}
               className={`max-w-[85%] rounded-xl2 px-4 py-3 ${
                 t.role === "user"
                   ? "bg-coral text-ink-900"
@@ -436,7 +437,7 @@ Reply with only the hint text — no explanation, no punctuation around it.`;
               <p className="text-sm text-paper-muted mb-2">
                 {learningLanguage === "ca"
                   ? "El coach té molta demanda ara mateix. Prova de nou."
-                  : "El coach está con mucha demanda ahora mismo. Probá de nuevo."}
+                  : "El coach está con mucha demanda ahora mismo. Prueba de nuevo."}
               </p>
               <button
                 className="flex items-center gap-1.5 text-xs font-medium text-gold hover:text-gold/80 transition"

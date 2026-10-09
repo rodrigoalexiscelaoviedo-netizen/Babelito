@@ -19,7 +19,7 @@ import { BrandDots } from "../components/Loader";
 import type { LucideIcon } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabaseClient";
-import { askCoach, RetryableError } from "../lib/claude";
+import { askCoach, recentTurns, RetryableError } from "../lib/claude";
 import { buildRoleplayPrompt, parseErrors } from "../lib/buildSystemPrompt";
 import { SCENARIOS, SCENARIOS_CA, type Scenario } from "../lib/scenarios";
 import { speak, pauseSpeech, resumeSpeech, speechSupported } from "../lib/speech";
@@ -277,7 +277,7 @@ Reply with only the hint text.`,
     setInput("");
     setThinking(true);
     try {
-      const raw = await askCoach({ system: systemRef.current, messages: next });
+      const raw = await askCoach({ system: systemRef.current, messages: recentTurns(next) });
       const { clean, errorTypes } = parseErrors(raw);
       const updated = [...next, { role: "assistant", content: clean } as ChatTurn];
       setTurns(updated);
@@ -496,7 +496,7 @@ Reply with only the hint text.`,
           <div className="flex justify-start">
             <div className="card px-4 py-3 border-gold/30">
               <p className="text-sm text-paper-muted mb-2">
-                El coach está con mucha demanda ahora mismo. Probá de nuevo.
+                El coach está con mucha demanda ahora mismo. Prueba de nuevo.
               </p>
               <button
                 className="flex items-center gap-1.5 text-xs font-medium text-gold hover:text-gold/80 transition"

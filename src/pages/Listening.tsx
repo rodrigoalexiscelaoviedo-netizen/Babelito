@@ -163,7 +163,7 @@ function ListView({
           <p className="text-paper-muted mt-1">
             {isCatalan
               ? "Entrena la teva orella per al català parlat ràpid."
-              : "Entrenás tu oído para el habla conectada de los nativos."}
+              : "Entrenas tu oído para el habla conectada de los nativos."}
           </p>
         </div>
         <button className="btn-coral shrink-0" onClick={onTrain}>

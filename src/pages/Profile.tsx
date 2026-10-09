@@ -4,7 +4,7 @@ import { LogOut, RefreshCw, Volume2, Bell, BellOff } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabaseClient";
 import { getVoices, speak } from "../lib/speech";
-import { requestNotificationPermission, getNotificationPermission } from "../lib/notifications";
+import { subscribeToPush, unsubscribeFromPush, getNotificationPermission } from "../lib/notifications";
 
 export default function Profile() {
   const { profile, session, refreshProfile, signOut } = useAuth();
@@ -85,7 +85,8 @@ export default function Profile() {
         voice_rate: voiceRate,
         voice_accent: voiceAccent,
         notification_time: notifEnabled ? notifTime : null,
-        notification_sent_today: false,
+        // Hora local del dispositivo: el cron de recordatorios la usa para disparar a la hora correcta.
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       })
       .eq("id", session.user.id);
     await refreshProfile();
@@ -95,17 +96,20 @@ export default function Profile() {
   }
 
   async function handleToggleNotif(enabled: boolean) {
+    if (!session) return;
     if (enabled) {
-      const result = await requestNotificationPermission();
-      if (result === "granted") {
-        setNotifEnabled(true);
-        setNotifStatus("granted");
-      } else {
+      try {
+        const result = await subscribeToPush(session.user.id);
+        const granted = result === "granted";
+        setNotifEnabled(granted);
+        setNotifStatus(granted ? "granted" : "denied");
+      } catch {
         setNotifEnabled(false);
         setNotifStatus("denied");
       }
     } else {
       setNotifEnabled(false);
+      await unsubscribeFromPush().catch(() => {});
     }
   }
 
@@ -290,7 +294,7 @@ export default function Profile() {
           )}
 
           <p className="text-xs text-paper-faint leading-relaxed">
-            {learningLanguage === "ca" ? "Les notificacions es disparen a l'hora escollida mentre l'app està oberta al navegador. En alguns dispositius Android és possible que no arribin si el navegador està tancat per optimització de bateria." : "Notifications fire at the chosen time while the app is open in the browser. On some Android devices they may not arrive if the browser is closed due to battery optimisation."}
+            {learningLanguage === "ca" ? "Rebràs el recordatori a l'hora escollida, encara que l'app estigui tancada. Activat per dispositiu." : "You'll get the reminder at the chosen time, even when the app is closed. Set per device."}
           </p>
         </div>
 

@@ -1,15 +1,6 @@
+import { addLocalDays } from "../lib/dates";
 import { useEffect, useRef, useState } from "react";
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-  AreaChart,
-  Area,
-  CartesianGrid,
-} from "recharts";
+import { ActivityArea, HorizontalBars } from "../components/Charts";
 import {
   Flame,
   ChevronDown,
@@ -21,7 +12,7 @@ import {
   BookMarked,
   Trophy,
   Lock,
-  BookText,
+
   ArrowRight,
 } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -196,10 +187,6 @@ export default function Progress() {
     if (!profile) return;
     (async () => {
       const learningLanguage = profile.learning_language || "en";
-      const weekAgo = new Date();
-      weekAgo.setDate(weekAgo.getDate() - 7);
-      const weekAgoISO = weekAgo.toISOString();
-
       const [{ data: e }, { data: s }, { data: v }, { data: sp }, { data: dl }, streakCount, latestReports, deckCount, freezeCount, achList] =
         await Promise.all([
           supabase.from("errors").select("error_type").eq("user_id", profile.id),
@@ -207,7 +194,7 @@ export default function Progress() {
           scopeByLanguage(supabase.from("user_vocabulary").select("status, created_at").eq("user_id", profile.id), learningLanguage),
           supabase.from("story_progress").select("completed").eq("user_id", profile.id).eq("completed", true),
           scopeByLanguage(
-            supabase.from("daily_lessons").select("lesson_date, completed").eq("user_id", profile.id).gte("lesson_date", weekAgo.toISOString().slice(0, 10)),
+            supabase.from("daily_lessons").select("lesson_date, completed").eq("user_id", profile.id).gte("lesson_date", addLocalDays(-7)),
             learningLanguage
           ),
           getStreak(profile.id),
@@ -228,8 +215,6 @@ export default function Progress() {
       setDeck(deckCount);
       setAchievements(achList);
       setLoading(false);
-
-      void weekAgoISO; // used above via weekAgo.toISOString()
     })();
   }, [profile]);
 
@@ -424,23 +409,7 @@ export default function Progress() {
       {/* ── Activity chart ──────────────────────────────────────────────────── */}
       <div className="card p-5 mb-6">
         <h3 className="font-display font-bold mb-4">{learningLanguage === "ca" ? "Últims 14 dies" : "Last 14 days"}</h3>
-        <ResponsiveContainer width="100%" height={160}>
-          <AreaChart data={days}>
-            <defs>
-              <linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#FF6B5E" stopOpacity={0.5} />
-                <stop offset="100%" stopColor="#FF6B5E" stopOpacity={0} />
-              </linearGradient>
-            </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="#222C44" vertical={false} />
-            <XAxis dataKey="day" stroke="#5A6379" fontSize={11} tickLine={false} axisLine={false} />
-            <YAxis stroke="#5A6379" fontSize={11} tickLine={false} axisLine={false} allowDecimals={false} width={20} />
-            <Tooltip
-              contentStyle={{ background: "#1A2236", border: "1px solid #2C3852", borderRadius: 12, color: "#EAEEF7" }}
-            />
-            <Area type="monotone" dataKey="sessions" stroke="#FF6B5E" strokeWidth={2} fill="url(#g)" />
-          </AreaChart>
-        </ResponsiveContainer>
+        <ActivityArea data={days} height={160} />
       </div>
 
       {/* ── Session reports ─────────────────────────────────────────────────── */}
@@ -540,7 +509,7 @@ export default function Progress() {
             <Maica mood="curious" size="md" className="mb-1" />
             <p className="empty-state-title">¡Todo limpio por ahora!</p>
             <p className="empty-state-sub">
-              Tus errores aparecen acá después de practicar con el coach. Empezá una conversación.
+              Tus errores aparecen aquí después de practicar con el coach. Empieza una conversación.
             </p>
             <Link to="/conversation" className="btn-ghost mt-1 text-sm px-4 py-2">
               Conversar con el coach <ArrowRight size={14} />
@@ -548,25 +517,7 @@ export default function Progress() {
           </div>
         ) : (
           <>
-            <ResponsiveContainer width="100%" height={topErrors.length * 46}>
-              <BarChart data={topErrors} layout="vertical" margin={{ left: 0, right: 16 }}>
-                <XAxis type="number" hide allowDecimals={false} />
-                <YAxis
-                  type="category"
-                  dataKey="label"
-                  stroke="#8A93A8"
-                  fontSize={12}
-                  tickLine={false}
-                  axisLine={false}
-                  width={120}
-                />
-                <Tooltip
-                  cursor={{ fill: "#222C44" }}
-                  contentStyle={{ background: "#1A2236", border: "1px solid #2C3852", borderRadius: 12, color: "#EAEEF7" }}
-                />
-                <Bar dataKey="count" fill="#36C5A8" radius={[0, 6, 6, 0]} barSize={18} />
-              </BarChart>
-            </ResponsiveContainer>
+            <HorizontalBars data={topErrors} />
             <div className="mt-4 space-y-2">
               {topErrors.slice(0, 3).map((e) => (
                 <p key={e.type} className="text-sm text-paper-muted">

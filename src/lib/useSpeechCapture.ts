@@ -294,7 +294,7 @@ export function useSpeechCapture(
   const start = useCallback(
     (onDone?: SpeechDoneCallback) => {
       if (!supported) {
-        setError("Este navegador no soporta reconocimiento de voz. Probá Chrome.");
+        setError("Este navegador no soporta reconocimiento de voz. Prueba Chrome.");
         onDone?.("", "not-supported");
         return;
       }
@@ -338,7 +338,7 @@ export function useSpeechCapture(
       });
 
       if (!mine) {
-        setError("Este navegador no soporta reconocimiento de voz. Probá Chrome.");
+        setError("Este navegador no soporta reconocimiento de voz. Prueba Chrome.");
         onDoneRef.current = null;
         onDone?.("", "not-supported");
         return;

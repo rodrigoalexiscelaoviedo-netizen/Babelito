@@ -21,6 +21,8 @@ export interface Profile {
   voice_name: string | null;
   voice_rate: number | null;
   voice_accent: string | null;
+  // Control de la consolidación diaria de nivel (lib/leveling.ts)
+  level_updated_on?: string | null;
 }
 
 export type SessionType = "conversation" | "roleplay" | "text_correction";

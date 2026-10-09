@@ -1,3 +1,4 @@
+import { localDateISO } from "./dates";
 import { supabase } from "./supabaseClient";
 import { scopeByLanguage } from "./language";
 
@@ -18,7 +19,7 @@ export interface ReviewItem {
 export type ReviewQuality = "good" | "again";
 
 function toDateStr(d: Date): string {
-  return d.toISOString().slice(0, 10);
+  return localDateISO(d);
 }
 
 function today(): string {

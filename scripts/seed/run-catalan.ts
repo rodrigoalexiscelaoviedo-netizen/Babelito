@@ -15,7 +15,7 @@
  *   spanish  ← la glosa        (lo que se muestra como pista)
  *
  * Uso (PowerShell):
- *   $env:SUPABASE_SERVICE_ROLE_KEY="..."; npx tsx scripts/seed-catalan.ts
+ *   $env:SUPABASE_SERVICE_ROLE_KEY="..."; npx tsx scripts/seed/run-catalan.ts
  *
  * La service_role key se pasa en el momento y NO se guarda en .env.local,
  * respetando lo que documenta .env.local.example: esa key no vive cerca del
@@ -26,7 +26,7 @@
 
 import { readFileSync } from "node:fs";
 import { createClient } from "@supabase/supabase-js";
-import { catalanStories, catalanChunks } from "../src/scripts/seed-catalan";
+import { catalanStories, catalanChunks } from "./catalan-data";
 
 const LANG = "ca";
 const BATCH = 50;
@@ -61,7 +61,7 @@ if (!serviceKey) {
   console.error(
     "✖ Falta SUPABASE_SERVICE_ROLE_KEY.\n" +
       "  Se pasa en el momento, no se guarda. En PowerShell:\n" +
-      '    $env:SUPABASE_SERVICE_ROLE_KEY="..."; npx tsx scripts/seed-catalan.ts\n' +
+      '    $env:SUPABASE_SERVICE_ROLE_KEY="..."; npx tsx scripts/seed/run-catalan.ts\n' +
       "  La sacás de Supabase → Settings → API → service_role.",
   );
   process.exit(1);

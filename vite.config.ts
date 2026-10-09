@@ -7,12 +7,13 @@ export default defineConfig({
     port: 5173,
   },
   build: {
+    // Chunks estables para cachear entre despliegues. Sin recharts (ver components/Charts.tsx).
     rollupOptions: {
       output: {
         manualChunks: {
           react: ["react", "react-dom", "react-router-dom"],
-          charts: ["recharts"],
           supabase: ["@supabase/supabase-js"],
+          i18n: ["i18next", "react-i18next"],
         },
       },
     },

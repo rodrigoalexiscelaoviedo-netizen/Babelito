@@ -1,7 +1,6 @@
-// Babelito Service Worker v0.1.4
-// Handles notification clicks to open the app.
-// Note: push scheduling is done from the main thread (notifications.ts + setInterval in App.tsx).
-// Cache buster: 0.1.4 (Aug 8, 2026 — multiidioma + Catalan seed)
+// Babelito Service Worker v0.2.0
+// - push: muestra el recordatorio diario que envía el servidor (Web Push).
+// - notificationclick: enfoca la app abierta o abre la ruta indicada en el push.
 
 self.addEventListener("install", (event) => {
   event.waitUntil(self.skipWaiting());
@@ -11,23 +10,40 @@ self.addEventListener("activate", (event) => {
   event.waitUntil(self.clients.claim());
 });
 
+self.addEventListener("push", (event) => {
+  let payload = {};
+  try {
+    payload = event.data ? event.data.json() : {};
+  } catch {
+    payload = { body: event.data ? event.data.text() : "" };
+  }
+
+  event.waitUntil(
+    self.registration.showNotification(payload.title || "Babelito", {
+      body: payload.body || "",
+      icon: "/icon-192.png",
+      badge: "/icon-192.png",
+      tag: "babelito-daily",
+      data: { url: payload.url || "/" },
+    })
+  );
+});
+
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
+  const target = (event.notification.data && event.notification.data.url) || "/";
 
   event.waitUntil(
     self.clients
       .matchAll({ type: "window", includeUncontrolled: true })
       .then((clients) => {
-        // If app is already open, focus it
         for (const client of clients) {
           if (client.url.includes(self.location.origin) && "focus" in client) {
+            client.navigate?.(target);
             return client.focus();
           }
         }
-        // Otherwise open a new window at the dashboard
-        if (self.clients.openWindow) {
-          return self.clients.openWindow("/");
-        }
+        if (self.clients.openWindow) return self.clients.openWindow(target);
       })
       .catch((err) => {
         console.warn("[SW] notificationclick error:", err);

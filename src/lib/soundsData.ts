@@ -23,7 +23,7 @@ export const SOUNDS: SoundEntry[] = [
     name: "th suave (think)",
     nameEs: "Como en 'think', 'three', 'bath'",
     articulation:
-      "Sacá la punta de la lengua entre los dientes superiores e inferiores y soplá suave, sin activar la voz.",
+      "Saca la punta de la lengua entre los dientes superiores e inferiores y sopla suave, sin activar la voz.",
     examples: ["think", "three", "bath"],
     minimalPairs: [
       { a: "think", b: "sink", soundA: "/θ/", soundB: "/s/" },
@@ -38,7 +38,7 @@ export const SOUNDS: SoundEntry[] = [
     name: "th sonoro (this)",
     nameEs: "Como en 'this', 'that', 'the'",
     articulation:
-      "Igual que /θ/ pero con voz: lengua entre los dientes y hacés vibrar las cuerdas vocales.",
+      "Igual que /θ/ pero con voz: lengua entre los dientes y haces vibrar las cuerdas vocales.",
     examples: ["this", "that", "breathe"],
     minimalPairs: [
       { a: "this", b: "dis", soundA: "/ð/", soundB: "/d/" },
@@ -128,7 +128,7 @@ export const SOUNDS: SoundEntry[] = [
     name: "v labio-dental (very)",
     nameEs: "Como en 'very', 'vote', 'love' — el labio inferior toca los dientes",
     articulation:
-      "Mordé suavemente el labio inferior con los dientes superiores y hacé vibrar la voz. No es /b/ — el aire sale entre los dientes y el labio.",
+      "Muerde suavemente el labio inferior con los dientes superiores y haz vibrar la voz. No es /b/ — el aire sale entre los dientes y el labio.",
     examples: ["very", "vote", "love"],
     minimalPairs: [
       { a: "very", b: "berry", soundA: "/v/", soundB: "/b/" },
@@ -143,7 +143,7 @@ export const SOUNDS: SoundEntry[] = [
     name: "h aspirada (hello)",
     nameEs: "Como en 'hello', 'hot', 'have' — aire soplado sin voz, nunca muda",
     articulation:
-      "Simplemente soplá aire por la boca con la garganta abierta, como si empañaras un vidrio. Ningún contacto de lengua ni labios.",
+      "Simplemente sopla aire por la boca con la garganta abierta, como si empañaras un vidrio. Ningún contacto de lengua ni labios.",
     examples: ["hello", "hot", "have"],
     minimalPairs: [
       { a: "hair", b: "air", soundA: "/h/", soundB: "∅" },
@@ -188,7 +188,7 @@ export const SOUNDS: SoundEntry[] = [
     name: "terminaciones -ed",
     nameEs: "Verbos en pasado: -ed suena /t/, /d/ o /ɪd/ según el verbo",
     articulation:
-      "Regla: si el verbo termina en /t/ o /d/, decís /ɪd/ (wanted, needed). Si termina en consonante sorda, decís /t/ (worked, laughed). En el resto, /d/ (played, loved).",
+      "Regla: si el verbo termina en /t/ o /d/, dices /ɪd/ (wanted, needed). Si termina en consonante sorda, dices /t/ (worked, laughed). En el resto, /d/ (played, loved).",
     examples: ["worked", "wanted", "played"],
     minimalPairs: [
       { a: "worked", b: "walked", soundA: "/t/", soundB: "/t/" },
