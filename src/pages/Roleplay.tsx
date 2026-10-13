@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { useEffect, useRef, useState } from "react";
 import {
   Send,
@@ -82,6 +83,7 @@ export default function Roleplay() {
 }
 
 function RoleplayChat({ scenario, onExit }: { scenario: Scenario; onExit: () => void }) {
+  const { t } = useTranslation();
   const { profile } = useAuth();
   const learningLanguage = profile?.learning_language || "en";
   const voicePrefs = useVoicePrefs();
@@ -326,7 +328,7 @@ Reply with only the hint text.`,
             <p className="eyebrow mb-1">{learningLanguage === "ca" ? "Reporte de sessió" : "Session report"} · {scenario.title}</p>
             <h1 className="font-display text-2xl font-extrabold">{learningLanguage === "ca" ? "Com ha anat" : "How it went"}</h1>
           </div>
-          <button onClick={onExit} className="text-paper-muted hover:text-paper">
+          <button onClick={onExit} aria-label={t("common.close")} className="text-paper-muted hover:text-paper">
             <X size={20} />
           </button>
         </div>

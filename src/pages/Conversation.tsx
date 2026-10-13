@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { useEffect, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { Mic, Send, Volume2, Square, Pause, Play, Loader2, X, ChevronDown, ChevronUp } from "lucide-react";
@@ -638,6 +639,7 @@ function ReportPanel({
   error?: string;
   learningLanguage?: string;
 }) {
+  const { t } = useTranslation();
   return (
     <div className="animate-fade-up max-w-xl mx-auto">
       <div className="flex items-center justify-between mb-6">
@@ -649,7 +651,7 @@ function ReportPanel({
             {learningLanguage === "ca" ? "Com va anar" : "How it went"}
           </h1>
         </div>
-        <button onClick={onClose} className="text-paper-muted hover:text-paper">
+        <button onClick={onClose} aria-label={t("common.close")} className="text-paper-muted hover:text-paper">
           <X size={20} />
         </button>
       </div>

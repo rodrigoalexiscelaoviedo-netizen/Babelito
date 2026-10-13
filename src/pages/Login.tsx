@@ -93,7 +93,7 @@ export default function Login() {
             {mode === "signup" && (
               <input
                 className="input"
-                placeholder="Your name"
+                placeholder="Your name" aria-label="Your name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
               />
@@ -102,6 +102,7 @@ export default function Login() {
               className="input"
               type="email"
               placeholder="Email"
+              aria-label="Email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
             />
@@ -109,6 +110,7 @@ export default function Login() {
               className="input"
               type="password"
               placeholder="Password"
+              aria-label="Password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && submit()}

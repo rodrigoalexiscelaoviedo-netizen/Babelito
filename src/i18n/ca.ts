@@ -6,6 +6,11 @@ type Shape<T> = { [K in keyof T]: T[K] extends object ? Shape<T[K]> : string };
 // Textos de interfaz en català. Mismas claves que en.ts (`satisfies` obliga a
 // que falte o sobre alguna clave y TypeScript lo marca en el build).
 export const ca: Shape<typeof en> = {
+  common: {
+    close: "Tanca",
+    back: "Enrere",
+    signingOut: "Tancant sessió…",
+  },
   nav: {
     home: "Inici",
     talk: "Parla",

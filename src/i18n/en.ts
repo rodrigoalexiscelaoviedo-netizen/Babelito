@@ -1,6 +1,11 @@
 // Textos de interfaz en inglés. Es la referencia de claves: ca.ts debe tener
 // exactamente las mismas (lo verifica TypeScript vía `satisfies` en ca.ts).
 export const en = {
+  common: {
+    close: "Close",
+    back: "Back",
+    signingOut: "Signing out…",
+  },
   nav: {
     home: "Home",
     talk: "Talk",

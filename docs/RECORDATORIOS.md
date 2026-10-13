@@ -11,7 +11,7 @@ Funciona en Android (Chrome), escritorio, y en iPhone/iPad **solo si la app est�
 | Hora local del usuario | columna `profiles.timezone` (se guarda al guardar el perfil) |
 | Envío | Edge Function `supabase/functions/send-reminders` |
 | Disparo cada 15 min | `pg_cron` (abajo) |
-| Mostrar la notificación | `public/service-worker.js` (evento `push`) |
+| Mostrar la notificación | `public/sw.js` (evento `push`) |
 
 Reglas del envío: se manda dentro de los 15 minutos posteriores a la hora elegida, una vez por día (`notification_last_sent_on`), y **no** se manda si la práctica del día ya está completa.
 

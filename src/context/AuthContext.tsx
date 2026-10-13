@@ -40,7 +40,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
     setProfileError(data ? null : "profile-missing");
-    setProfile((data as Profile) ?? null);
+    // Conserva la referencia si nada cambió: Supabase refresca el token cada hora
+    // y al volver a la pestaña; sin esto, cada pantalla con [profile] en sus
+    // efectos volvía a pedir todos sus datos sin motivo.
+    setProfile((prev) => {
+      const next = (data as Profile) ?? null;
+      if (prev && next && prev.id === next.id && prev.updated_at === next.updated_at) return prev;
+      return next;
+    });
   }, []);
 
   const refreshProfile = useCallback(async () => {

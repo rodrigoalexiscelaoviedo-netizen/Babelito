@@ -597,7 +597,7 @@ export default function Diagnostic() {
                     <textarea
                       value={openTranscript}
                       onChange={(e) => setOpenTranscript(e.target.value)}
-                      placeholder="Type your answer here…"
+                      placeholder="Type your answer here…" aria-label="Type your answer"
                       className="w-full bg-ink-700 rounded-lg p-2 text-sm text-paper resize-none min-h-[64px] focus:outline-none focus:ring-1 focus:ring-coral"
                       rows={3}
                     />
@@ -616,7 +616,7 @@ export default function Diagnostic() {
                 <textarea
                   value={openTranscript}
                   onChange={(e) => setOpenTranscript(e.target.value)}
-                  placeholder="Or type your answer here…"
+                  placeholder="Or type your answer here…" aria-label="Type your answer"
                   className="w-full bg-ink-700/60 border border-ink-600 rounded-xl p-3 text-sm text-paper resize-none mb-4 focus:outline-none focus:ring-1 focus:ring-coral"
                   rows={3}
                 />
@@ -736,7 +736,7 @@ export default function Diagnostic() {
                 <textarea
                   value={currentTranscript}
                   onChange={(e) => setCurrentTranscript(e.target.value)}
-                  placeholder="Type what you said…"
+                  placeholder="Type what you said…" aria-label="Type what you said"
                   className="w-full bg-ink-700 rounded-lg p-2 text-sm text-paper resize-none min-h-[48px] focus:outline-none focus:ring-1 focus:ring-coral"
                   rows={2}
                 />
@@ -755,7 +755,7 @@ export default function Diagnostic() {
             <textarea
               value={currentTranscript}
               onChange={(e) => setCurrentTranscript(e.target.value)}
-              placeholder="Or type what you said…"
+              placeholder="Or type what you said…" aria-label="Type what you said"
               className="w-full bg-ink-700/60 border border-ink-600 rounded-xl p-3 text-sm text-paper resize-none mb-4 focus:outline-none focus:ring-1 focus:ring-coral"
               rows={2}
             />

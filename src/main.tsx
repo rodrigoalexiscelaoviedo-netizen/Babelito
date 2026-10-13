@@ -22,7 +22,7 @@ initMonitoring();
 
 // El service worker atiende los push de recordatorio y los clicks en notificaciones.
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("/service-worker.js").catch((err) => {
+  navigator.serviceWorker.register("/sw.js").catch((err) => {
     console.warn("[SW] Registration failed:", err);
   });
 }

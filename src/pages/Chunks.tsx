@@ -296,7 +296,7 @@ function DrillMode({ chunks, onExit }: { chunks: Chunk[]; onExit: () => void }) 
 
       <textarea
         className="input min-h-[80px] resize-none mb-3"
-        placeholder="Type the English chunk…"
+        placeholder="Type the English chunk…" aria-label="Type the English chunk…"
         value={guess}
         onChange={(e) => setGuess(e.target.value)}
         disabled={reveal}

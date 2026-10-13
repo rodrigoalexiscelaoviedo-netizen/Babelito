@@ -1,8 +1,20 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
+import { VitePWA } from "vite-plugin-pwa";
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [
+    react(),
+    // Service worker propio (src/sw.ts): precache offline + push de recordatorios.
+    VitePWA({
+      strategies: "injectManifest",
+      srcDir: "src",
+      filename: "sw.ts",
+      injectManifest: { globPatterns: ["**/*.{js,css,html,svg,png,woff2}"] },
+      manifest: false, // se usa public/manifest.json
+      devOptions: { enabled: false },
+    }),
+  ],
   server: {
     port: 5173,
   },

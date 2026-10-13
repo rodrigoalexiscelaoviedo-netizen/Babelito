@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { LogOut, RefreshCw, Volume2, Bell, BellOff, Download } from "lucide-react";
@@ -20,6 +21,8 @@ export default function Profile() {
   const [busy, setBusy] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
+  const { t } = useTranslation();
   const [exportMsg, setExportMsg] = useState("");
 
   // Notification settings
@@ -386,12 +389,19 @@ export default function Profile() {
 
         <button
           className="btn w-full bg-transparent border border-ink-600 text-paper-muted hover:text-coral hover:border-coral/40"
+          disabled={signingOut}
           onClick={async () => {
-            await signOut();
-            navigate("/login");
+            if (signingOut) return;
+            setSigningOut(true);
+            try {
+              await signOut();
+              navigate("/login");
+            } finally {
+              setSigningOut(false);
+            }
           }}
         >
-          <LogOut size={16} /> {learningLanguage === "ca" ? "Tancar sessió" : "Sign out"}
+          <LogOut size={16} /> {signingOut ? t("common.signingOut") : learningLanguage === "ca" ? "Tancar sessió" : "Sign out"}
         </button>
       </div>
     </div>
