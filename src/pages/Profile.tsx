@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { LogOut, RefreshCw, Volume2, Bell, BellOff } from "lucide-react";
+import { LogOut, RefreshCw, Volume2, Bell, BellOff, Download } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabaseClient";
+import { buildAnkiText, downloadAnki, ankiFileName } from "../lib/anki";
+import { localDateISO } from "../lib/dates";
 import { getVoices, speak } from "../lib/speech";
 import { subscribeToPush, unsubscribeFromPush, getNotificationPermission } from "../lib/notifications";
 
@@ -17,6 +19,8 @@ export default function Profile() {
   const [saved, setSaved] = useState(false);
   const [busy, setBusy] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [exportMsg, setExportMsg] = useState("");
 
   // Notification settings
   const profileRaw = profile as unknown as Record<string, unknown>;
@@ -111,6 +115,42 @@ export default function Profile() {
       setNotifEnabled(false);
       await unsubscribeFromPush().catch(() => {});
     }
+  }
+
+  // Exporta las tarjetas de repaso (frase a decir → pista) para importar en Anki.
+  async function exportAnki() {
+    if (!session) return;
+    setExporting(true);
+    setExportMsg("");
+    const { data, error } = await supabase
+      .from("review_items")
+      .select("content, prompt, item_type")
+      .eq("user_id", session.user.id)
+      .limit(2000);
+    setExporting(false);
+    if (error) {
+      setExportMsg(learningLanguage === "ca" ? "No s'han pogut carregar les targetes." : "Couldn't load your cards.");
+      return;
+    }
+    const rows = (data ?? []) as Array<{ content: string; prompt: string; item_type: string }>;
+    if (rows.length === 0) {
+      setExportMsg(learningLanguage === "ca" ? "Encara no tens targetes de repàs." : "You don't have review cards yet.");
+      return;
+    }
+    const text = buildAnkiText(
+      rows.map((r) => ({
+        front: r.content,
+        back: r.prompt,
+        tags: `babelito ${learningLanguage} ${r.item_type}`,
+      })),
+      { deck: `Babelito ${learningLanguage === "ca" ? "Català" : "English"}` }
+    );
+    downloadAnki(text, ankiFileName(learningLanguage, localDateISO()));
+    setExportMsg(
+      learningLanguage === "ca"
+        ? `${rows.length} targetes exportades. Importa el fitxer a Anki (Fitxer → Importa).`
+        : `${rows.length} cards exported. Import the file in Anki (File → Import).`
+    );
   }
 
   async function retest() {
@@ -304,6 +344,14 @@ export default function Profile() {
       </div>
 
       <div className="mt-10 pt-6 border-t border-ink-600 space-y-3">
+        <button className="btn-ghost w-full" onClick={exportAnki} disabled={exporting}>
+          <Download size={16} />{" "}
+          {exporting
+            ? (learningLanguage === "ca" ? "Preparant…" : "Preparing…")
+            : (learningLanguage === "ca" ? "Exporta les targetes a Anki" : "Export my cards to Anki")}
+        </button>
+        {exportMsg && <p className="text-xs text-paper-muted text-center">{exportMsg}</p>}
+
         <button className="btn-ghost w-full" onClick={retest}>
           <RefreshCw size={16} /> {learningLanguage === "ca" ? "Repetir la prova de nivell" : "Retake the level test"}
         </button>
