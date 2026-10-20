@@ -36,14 +36,14 @@ const COPY = {
       "One conversation. Some XP. A better accent. Let's go.",
       "Your coach has a new question for you. 🎙️",
     ],
-    streak: (n: number) => `Your -day streak is waiting. Five minutes keeps it alive. 🔥`,
+    streak: (n: number) => `Your ${n}-day streak is waiting. Five minutes keeps it alive. 🔥`,
   },
   ca: {
     title: "Babelito",
     lines: [
       "La teva pràctica d'avui t'espera. Cinc minuts són suficients. 💪",
     ],
-    streak: (n: number) => `La teva ratxa de  dies t'espera. 🔥`,
+    streak: (n: number) => `La teva ratxa de ${n} dies t'espera. 🔥`,
   },
 } as const;
 
