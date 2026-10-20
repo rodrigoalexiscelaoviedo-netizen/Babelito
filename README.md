@@ -1,134 +1,80 @@
 # Babelito 🗣️
 
-Un coach de inglés con IA, **multi-usuario**, que se adapta al nivel, los errores y los objetivos de cada persona.
+Coach de idiomas con IA que se adapta a tu nivel, tus errores y tus objetivos. Hoy aprende **inglés** y **catalán**.
 
-Cualquiera se registra → hace una ficha previa → un autodiagnóstico estima su nivel → y desde ahí cada conversación se calibra a esa persona y sube la vara a medida que progresa.
+Registro → ficha previa → diagnóstico (escrito, lectura en voz alta y conversación) → desde ahí cada práctica se calibra a vos.
 
 ## Stack
 
-- **Frontend:** React 18 + TypeScript + Vite + Tailwind CSS + React Router
-- **Backend:** Supabase (Postgres + Auth + Edge Functions)
-- **IA:** Claude (Anthropic) vía Edge Function proxy — la API key nunca toca el navegador
-- **Voz:** Web Speech API nativa (STT + TTS), sin dependencias externas
-- **Deploy:** Vercel
+- **Frontend:** React 18 + TypeScript + Vite + Tailwind CSS + React Router + i18next
+- **Backend:** Supabase (Postgres + Auth + Edge Functions + pg_cron)
+- **IA:** Gemini vía Edge Function (`claude-proxy`). La clave nunca llega al navegador.
+- **Voz:** Web Speech API (reconocimiento y lectura), nativa del navegador
+- **Recordatorios:** Web Push con service worker y envío desde el servidor
+- **Monitoreo:** Sentry (opcional, activo si hay `VITE_SENTRY_DSN`)
+- **Tests:** Vitest (unitarios) · Playwright (end-to-end de idioma) · ESLint
+- **Deploy:** Vercel (frontend) · Supabase (base, funciones)
+
+## Desarrollo
+
+```bash
+npm install
+cp .env.local.example .env.local   # completar VITE_SUPABASE_URL y VITE_SUPABASE_ANON_KEY
+npm run dev
+```
+
+| Comando | Qué hace |
+|---|---|
+| `npm run typecheck` | TypeScript estricto |
+| `npm run lint` | ESLint |
+| `npm test` | Vitest |
+| `npm run e2e` | Playwright (requiere cuenta de prueba, ver `docs/DESPLIEGUE.md`) |
+| `npm run build` | Typecheck + build de producción |
+| `npm run seed:catalan` | Carga el contenido catalán inicial (service role, ver `scripts/seed/`) |
+
+## Despliegue
+
+Ver [`docs/DESPLIEGUE.md`](docs/DESPLIEGUE.md) y [`docs/RECORDATORIOS.md`](docs/RECORDATORIOS.md).
+Las migraciones SQL y las Edge Functions **no** se despliegan con el push: se ejecutan a mano.
 
 ## Módulos
 
 | Ruta | Qué hace |
-|------|----------|
-| `/login` | Registro / ingreso (Supabase Auth) |
-| `/onboarding` | Ficha previa: objetivo, nivel auto-percibido, acento, intereses |
-| `/diagnostic` | Autodiagnóstico de 16 preguntas graduadas A1→C1 |
-| `/` | Dashboard: racha, nivel, sesiones, sugerencia del coach |
-| `/conversation` | **Core:** chat de voz/texto con feedback estructurado |
-| `/chunks` | Biblioteca de expresiones (flip cards) + modo drill |
-| `/correct` | Corrector de texto libre (emails, mensajes) |
-| `/roleplay` | 6 escenarios donde el coach actúa un personaje |
-| `/progress` | Estadísticas: actividad, errores frecuentes, tiempo |
-| `/profile` | Editar perfil, re-test, logout |
+|---|---|
+| `/login` | Registro e ingreso |
+| `/onboarding` | Idioma, objetivo, nivel auto-percibido, intereses |
+| `/diagnostic` | Diagnóstico A1→C1: 16 preguntas, lectura en voz alta y respuesta hablada (en inglés o catalán) |
+| `/` | Inicio: práctica del día, racha, sugerencia del coach |
+| `/conversation` | Conversación con el coach: voz o texto, con feedback estructurado |
+| `/roleplay` | Escenas de rol (negocios en inglés; vida cotidiana en catalán) |
+| `/chunks` | Biblioteca de expresiones con modo repaso |
+| `/review` | Repaso espaciado (SRS) |
+| `/reading` | Lectura con diccionario al tocar palabras |
+| `/stories` | Historias generadas por IA, con lectura y vocabulario |
+| `/sounds` · `/listening` | Sonidos y patrones de habla conectada |
+| `/correct` | Corrector de textos libres (correos, mensajes) |
+| `/progress` | Actividad, errores frecuentes, informes de sesión, logros |
+| `/profile` | Voz, notificaciones, idioma, reinicio de diagnóstico |
 
-## Cómo funciona la adaptación
+## Idiomas
 
-El coach **no tiene un prompt fijo**. En cada sesión, `buildConversationPrompt()` arma el system prompt en vivo combinando:
-
-1. El **perfil** del usuario (nivel actual, objetivo, intereses, acento).
-2. Los **errores reales** que viene cometiendo (últimos 20, leídos de la tabla `errors`).
-3. El **registro** de complejidad acorde al nivel (A2 habla simple, C1 exige matiz).
-
-Cada respuesta del coach incluye una línea oculta `<<ERRORS: ...>>` que el front parsea, oculta y guarda. Así el mapa de errores se construye solo y alimenta tanto el dashboard como el siguiente prompt. Es un loop.
-
----
-
-## Setup local
-
-### 1. Dependencias
-
-```bash
-npm install
-```
-
-### 2. Variables de entorno
-
-```bash
-cp .env.local.example .env.local
-```
-
-Completá en `.env.local`:
-
-```
-VITE_SUPABASE_URL=https://TU-PROYECTO.supabase.co
-VITE_SUPABASE_ANON_KEY=tu-anon-key
-```
-
-(La anon key está en Supabase → Settings → API → Project API keys → `anon` / `public`.)
-
-### 3. Base de datos
-
-En Supabase → **SQL Editor**, pegá y corré el contenido de:
-
-```
-supabase/migrations/0001_init_schema.sql
-```
-
-Es idempotente: seguro de correr más de una vez. Crea tablas, RLS, triggers y siembra los chunks iniciales.
-
-### 4. Edge Function (el proxy a Claude)
-
-Necesitás el [Supabase CLI](https://supabase.com/docs/guides/cli):
-
-```bash
-supabase login
-supabase link --project-ref TU-PROJECT-REF
-supabase functions deploy claude-proxy --no-verify-jwt
-supabase secrets set ANTHROPIC_API_KEY=sk-ant-tu-key-nueva
-```
-
-> `--no-verify-jwt` porque la función valida el token del usuario a mano (así controla quién gasta tokens sin depender del gateway).
-
-### 5. Auth: desactivar confirmación de email (para testear)
-
-Supabase → Authentication → Providers → Email → desactivá **"Confirm email"**.
-Si no, el signup queda esperando que el usuario confirme por mail antes de entrar.
-
-### 6. Correr
-
-```bash
-npm run dev
-```
-
----
-
-## Deploy a Vercel
-
-1. Importá el repo en Vercel.
-2. Framework preset: **Vite**.
-3. Environment Variables: cargá `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY`.
-4. Deploy.
-
-El archivo `vercel.json` (opcional) para que el routing SPA funcione:
-
-```json
-{ "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }] }
-```
-
----
+- La interfaz sigue al idioma que se aprende (`src/i18n/`). Textos en `en.ts` y `ca.ts` con las mismas claves; TypeScript y un test verifican la paridad.
+- Las **ayudas de comprensión** (pistas, glosas, explicaciones de errores) van en **español neutro**.
+- El TTS siempre usa una voz del idioma del contenido (`ca-ES` para catalán), nunca la voz inglesa por defecto.
 
 ## Estructura
 
 ```
 src/
-├── lib/            # lógica pura: tipos, prompts, preguntas, speech, cliente
-├── context/        # AuthContext (sesión + perfil)
-├── components/     # Nav, Layout, VoiceOrb, ProtectedRoute, Loader
-└── pages/          # una por módulo
+  components/   UI compartida (Nav, Charts, ShadowingBlock, ...)
+  context/      AuthContext (sesión y perfil, con error visible)
+  i18n/         Textos de interfaz (en, ca)
+  lib/          Lógica: SRS, racha, diagnóstico, coach, voz, notificaciones, fechas locales
+  pages/        Una pantalla por módulo
 supabase/
-├── migrations/     # schema SQL
-└── functions/      # claude-proxy (Edge Function)
+  functions/    claude-proxy · send-reminders
+  migrations/   0001…0004 (0004 = push, cuota del coach, caché de diccionario)
+scripts/seed/   Carga de contenido catalán
+e2e/            Playwright
+docs/           Despliegue y recordatorios
 ```
-
-## Seguridad
-
-- La API key de Anthropic vive **solo** como secret de la Edge Function.
-- La `service_role` de Supabase **nunca** va al frontend ni al repo.
-- Todas las tablas tienen Row Level Security: cada usuario ve únicamente lo suyo.
-- El `.env.local` está en `.gitignore`.

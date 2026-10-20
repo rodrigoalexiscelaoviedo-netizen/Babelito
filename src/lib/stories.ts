@@ -99,7 +99,7 @@ export async function generateStory(
     });
   } catch (e) {
     if (e instanceof RetryableError) {
-      throw new Error("El coach está ocupado, probá de nuevo en unos segundos.");
+      throw new Error("El coach está ocupado, prueba de nuevo en unos segundos.");
     }
     throw e;
   }
@@ -110,7 +110,7 @@ export async function generateStory(
   const end = cleaned.lastIndexOf("}");
   if (start === -1 || end === -1) {
     console.error("generateStory: response truncated or no JSON found:", raw);
-    throw new Error("La historia salió muy larga. Probá con un tema más simple o con menos palabras.");
+    throw new Error("La historia salió muy larga. Prueba con un tema más simple o con menos palabras.");
   }
 
   let parsed: { title: string; content: string; questions: StoryQuestion[] };
@@ -118,7 +118,7 @@ export async function generateStory(
     parsed = JSON.parse(cleaned.slice(start, end + 1));
   } catch {
     console.error("generateStory: JSON parse failed (likely truncated). Raw:", raw);
-    throw new Error("La historia salió muy larga. Probá con un tema más simple o con menos palabras.");
+    throw new Error("La historia salió muy larga. Prueba con un tema más simple o con menos palabras.");
   }
 
   const { data, error } = await supabase

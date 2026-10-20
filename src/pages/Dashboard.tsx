@@ -1,3 +1,7 @@
+import XpCard from "../components/XpCard";
+import { awardXp, storyXp, reviewXp, DAILY_LESSON_XP, dailyLessonRefKey } from "../lib/xp";
+import { consolidateLevel } from "../lib/leveling";
+import { localDateISO, addLocalDays, timestampToLocalDate } from "../lib/dates";
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
@@ -28,7 +32,7 @@ import {
   type DailyLesson,
   type LessonItem,
 } from "../lib/dailyLesson";
-import { lookupWord, type WordDefinition } from "../lib/dictionary";
+import { lookupWord, dictLang, type WordDefinition } from "../lib/dictionary";
 import { speak } from "../lib/speech";
 import { useVoicePrefs } from "../lib/useVoicePrefs";
 import { countDue } from "../lib/srs";
@@ -44,7 +48,15 @@ interface Stats {
 }
 
 export default function Dashboard() {
-  const { profile } = useAuth();
+  const { profile, refreshProfile } = useAuth();
+
+  // Re-leveling: una consolidación por día al entrar a Inicio (ver lib/leveling.ts).
+  useEffect(() => {
+    if (!profile?.diagnostic_complete || profile.level_updated_on === localDateISO()) return;
+    consolidateLevel(profile)
+      .then((r) => { if (r.changed) void refreshProfile(); })
+      .catch((err) => console.warn("[leveling]", err));
+  }, [profile?.id, profile?.diagnostic_complete, profile?.level_updated_on]);
   const navigate = useNavigate();
   const voicePrefs = useVoicePrefs();
   const [stats, setStats] = useState<Stats | null>(null);
@@ -102,15 +114,15 @@ export default function Dashboard() {
         setStreak(streakInfo.streak);
         setFreezesLeft(streakInfo.freezesLeft);
 
-        const todayStr = new Date().toISOString().slice(0, 10);
-        const yesterdayStr = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+        const todayStr = localDateISO();
+        const yesterdayStr = addLocalDays(-1);
         type SessionRow = { created_at: string; completed: boolean };
         const rows = (sessions as SessionRow[]) ?? [];
         setActiveLast2Days(
           rows.some(
             (s) =>
               s.completed &&
-              (s.created_at.slice(0, 10) === todayStr || s.created_at.slice(0, 10) === yesterdayStr)
+              (timestampToLocalDate(s.created_at) === todayStr || timestampToLocalDate(s.created_at) === yesterdayStr)
           )
         );
 
@@ -118,7 +130,7 @@ export default function Dashboard() {
         // registrada; si es así se persiste el tilde (sin toggle optimista).
         let lessonToShow = todayLesson;
         const todayConvoDone = rows.some(
-          (s) => s.completed && s.created_at.slice(0, 10) === todayStr
+          (s) => s.completed && timestampToLocalDate(s.created_at) === todayStr
         );
         if (todayConvoDone && !todayLesson.convo_done) {
           try {
@@ -136,7 +148,7 @@ export default function Dashboard() {
         setReviewsDue(due);
 
         if (lessonToShow.word) {
-          lookupWord(lessonToShow.word).then(setWordDef).catch(() => null);
+          lookupWord(lessonToShow.word, dictLang(profile.learning_language)).then(setWordDef).catch(() => null);
         }
       } catch (e) {
         setLoadError(e instanceof Error ? e.message : "No se pudo cargar tu práctica de hoy.");
@@ -174,6 +186,7 @@ export default function Dashboard() {
     setItemError("");
     try {
       const updated = await completeLesson(profile.id, learningLanguage);
+      void awardXp(profile.id, { source: "daily_lesson", refKey: dailyLessonRefKey(), amount: DAILY_LESSON_XP });
       setLesson({ ...updated, chunk: lesson.chunk });
 
       // Único punto donde se consumen los freezes, y se relee la racha real
@@ -243,6 +256,7 @@ export default function Dashboard() {
 
   return (
     <div className="animate-fade-up">
+      {profile?.learning_language !== "ca" && <div className="mb-6"><XpCard compact /></div>}
       {/* ── Celebration overlay ── */}
       {showCelebration && (
         <>
@@ -511,12 +525,12 @@ export default function Dashboard() {
                   <BookOpen size={16} className="text-mint shrink-0" />
                   <div className="min-w-0">
                     <p className="text-sm font-medium text-mint">
-                      {learningLanguage === "ca" ? "Aprèn una paraula nova" : "Aprendé una palabra nueva"}
+                      {learningLanguage === "ca" ? "Aprèn una paraula nova" : "Aprende una palabra nueva"}
                     </p>
                     <p className="text-xs text-paper-faint">
                       {learningLanguage === "ca"
                         ? "Toca qualsevol paraula al llegir per seguir-la — demà apareix aquí"
-                        : "Tocá cualquier palabra al leer para seguirla — mañana aparece acá"}
+                        : "Toca cualquier palabra al leer para seguirla — mañana aparece aquí"}
                     </p>
                   </div>
                 </div>
@@ -564,7 +578,7 @@ export default function Dashboard() {
               <p className="text-xs text-paper-faint text-center">
                 {learningLanguage === "ca"
                   ? `${doneCount}/${items.length} — completa ${items.length === 1 ? "la tasca" : "les tasques"} de dalt`
-                  : `${doneCount}/${items.length} — completá ${items.length === 1 ? "la tarea" : "las tareas"} de arriba`}
+                  : `${doneCount}/${items.length} — completa ${items.length === 1 ? "la tarea" : "las tareas"} de arriba`}
                 {!lesson.word && (learningLanguage === "ca"
                   ? " (la paraula del dia no compta avui)"
                   : " (la palabra del día no cuenta hoy)")}

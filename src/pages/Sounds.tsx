@@ -1,3 +1,4 @@
+import { useHistoryBack } from "../lib/useHistoryBack";
 import { useEffect, useState } from "react";
 import { ArrowLeft, Volume2, CheckCircle2, XCircle } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
@@ -37,6 +38,7 @@ export default function Sounds() {
   const isCatalan = (profile?.learning_language || "en") === "ca";
   const allSounds = isCatalan ? CATALAN_SOUNDS : SOUNDS;
   const [selected, setSelected] = useState<SoundLike | null>(null);
+  useHistoryBack(selected !== null, () => setSelected(null));
   const [needsPractice, setNeedsPractice] = useState<Set<string>>(new Set());
   const [sorted, setSorted] = useState<SoundLike[]>(allSounds);
 
@@ -103,7 +105,7 @@ export default function Sounds() {
       <p className="text-paper-muted mb-8">
         {isCatalan
           ? "Els sons del català que costen més als castellanoparlants. Toca'n un per practicar."
-          : "Los sonidos del inglés más difíciles para hispanohablantes. Tocá uno para practicar."}
+          : "Los sonidos del inglés más difíciles para hispanohablantes. Toca uno para practicar."}
       </p>
 
       <div className="grid sm:grid-cols-2 gap-3">
@@ -252,7 +254,7 @@ function ExamplesSection({
 
   return (
     <div className="card p-5 mb-4">
-      <p className="eyebrow mb-3">Escuchá</p>
+      <p className="eyebrow mb-3">Escucha</p>
       <div className="flex flex-wrap gap-3">
         {sound.examples.map((word) => (
           <button
@@ -357,7 +359,7 @@ function MinimalPairsSection({
   return (
     <div className="card p-5 mb-4">
       <div className="flex items-center justify-between mb-3">
-        <p className="eyebrow">Entrenás tu oído</p>
+        <p className="eyebrow">Entrenas tu oído</p>
         {totalPlayed > 0 && (
           <span className="text-xs font-mono text-paper-muted">
             {totalCorrect}/{totalPlayed} correctas
@@ -365,7 +367,7 @@ function MinimalPairsSection({
         )}
       </div>
       <p className="text-xs text-paper-muted mb-4">
-        Escuchá la palabra y tocá cuál creés que sonó.
+        Escucha la palabra y toca cuál crees que sonó.
       </p>
 
       <div className="space-y-4">

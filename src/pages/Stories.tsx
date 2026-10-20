@@ -1,3 +1,6 @@
+import { useHistoryBack } from "../lib/useHistoryBack";
+import { awardXp, storyXp } from "../lib/xp";
+import { useTranslation } from "react-i18next";
 import { useEffect, useRef, useState } from "react";
 import { ArrowLeft, BookText, Pause, Play, Volume2 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
@@ -39,6 +42,7 @@ export default function Stories() {
   const [progress, setProgress] = useState<StoryProgress[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeStory, setActiveStory] = useState<Story | null>(null);
+  useHistoryBack(view !== "library", () => setView("library"));
 
   // Generate form state
   const [genTopic, setGenTopic] = useState("");
@@ -108,6 +112,7 @@ export default function Stories() {
         onDone={async (score) => {
           if (profile) {
             await saveStoryProgress(profile.id, activeStory.id, score);
+            void awardXp(profile.id, { source: "story", refKey: `story:${activeStory.id}`, amount: storyXp(score), meta: { score } });
             checkAchievements(profile.id).then((newly) => {
               if (newly.length > 0) setNewAchievements(newly);
             });
@@ -165,7 +170,7 @@ export default function Stories() {
           <div className="flex gap-3 mb-3">
             <input
               className="input flex-1"
-              placeholder="Topic (e.g. a musician who starts a business)"
+              placeholder="Topic (e.g. a musician who starts a business)" aria-label="Topic (e.g. a musician who starts a business)"
               value={genTopic}
               onChange={(e) => setGenTopic(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleGenerate()}
@@ -247,6 +252,7 @@ function StoryReader({
   onStartQuiz: () => void;
 }) {
   const { profile } = useAuth();
+  const { t } = useTranslation();
   const voicePrefs = useVoicePrefs();
   const [vocabMap, setVocabMap] = useState<VocabMap>({});
   const [loadingVocab, setLoadingVocab] = useState(true);
@@ -320,7 +326,7 @@ function StoryReader({
     <div className="flex flex-col h-[calc(100vh-7rem)] md:h-[calc(100vh-5rem)] max-w-2xl mx-auto">
       {/* Header */}
       <div className="flex items-center gap-3 mb-3">
-        <button onClick={onBack} className="text-paper-muted hover:text-paper transition">
+        <button onClick={onBack} aria-label={t("common.back")} className="text-paper-muted hover:text-paper transition">
           <ArrowLeft size={18} />
         </button>
         <div className="flex-1 min-w-0">

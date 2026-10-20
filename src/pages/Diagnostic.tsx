@@ -3,13 +3,15 @@ import { useNavigate } from "react-router-dom";
 import { Mic, Square, Volume2, X } from "lucide-react";
 import { supabase } from "../lib/supabaseClient";
 import { useAuth } from "../context/AuthContext";
-import { DIAGNOSTIC, estimateLevel } from "../lib/diagnosticQuestions";
+import { diagnosticFor, estimateLevel } from "../lib/diagnosticQuestions";
 import type { Level, DiagnosticAnswer } from "../lib/types";
 import { speechSupported, speak } from "../lib/speech";
 import { useSpeechCapture } from "../lib/useSpeechCapture";
+import { TARGET_TTS_LANG } from "../lib/useVoicePrefs";
 import { BrandDots } from "../components/Loader";
 import {
-  READING_SENTENCES,
+  readingSentencesFor,
+  type DiagLang,
   generateOpenQuestion,
   evaluateReading,
   evaluateOpenResponse,
@@ -135,10 +137,11 @@ export default function Diagnostic() {
   // ── Manual level pick (escape / Catalan sin banco de preguntas) ──────────────
   const [pickingLevel, setPickingLevel] = useState(false);
 
-  // DIAGNOSTIC/READING_SENTENCES are English-only content — there's no Catalan
-  // question bank yet, so Catalan learners pick a level by hand instead of
-  // taking a mislabelled English test.
   const isCatalan = (profile?.learning_language || "en") === "ca";
+  const diagLang: DiagLang = isCatalan ? "ca" : "en";
+  const DIAG = diagnosticFor(diagLang);
+  const READING = readingSentencesFor(diagLang);
+  const ttsLang = isCatalan ? TARGET_TTS_LANG.ca : TARGET_TTS_LANG.en;
 
   // Cierra el diagnóstico con un nivel elegido a mano. Sirve tanto para el
   // arranque catalán como de escape para quien no quiere hacer el test inglés,
@@ -167,15 +170,15 @@ export default function Diagnostic() {
     }
   }
 
-  const q      = DIAGNOSTIC[idx];
-  const isLast = idx === DIAGNOSTIC.length - 1;
+  const q      = DIAG[idx];
+  const isLast = idx === DIAG.length - 1;
 
   // Load open question when entering Part C
   useEffect(() => {
     if (phase !== "oral_open") return;
     setLoadingQuestion(true);
     const interests = (profile?.profile_json?.interests as string) ?? "";
-    generateOpenQuestion(interests)
+    generateOpenQuestion(interests, diagLang)
       .then((qText) => { setOpenQuestion(qText); setLoadingQuestion(false); })
       .catch(() => {
         setOpenQuestion(isCatalan
@@ -274,7 +277,7 @@ export default function Diagnostic() {
     setHasRecorded(false);
     setVoiceErrorB(null);
 
-    if (readingIdx + 1 >= READING_SENTENCES.length) {
+    if (readingIdx + 1 >= READING.length) {
       setPhase("oral_open");
     } else {
       setReadingIdx((i) => i + 1);
@@ -319,13 +322,13 @@ export default function Diagnostic() {
     let pronunciationErrors: Array<{ sound: string; word: string }> = [];
 
     if (!skip && rTranscripts.some((t) => t.trim())) {
-      const result = await evaluateReading(READING_SENTENCES, rTranscripts);
+      const result = await evaluateReading(READING, rTranscripts, diagLang);
       oralReadLvl = result.level;
       pronunciationErrors = result.errors;
     }
 
     if (!skip && oTranscript.trim()) {
-      oralOpenLvl = await evaluateOpenResponse(openQuestion, oTranscript);
+      oralOpenLvl = await evaluateOpenResponse(openQuestion, oTranscript, diagLang);
     }
 
     const oralLvl: Level  = skip ? tLevel : minCefr(oralReadLvl, oralOpenLvl);
@@ -396,7 +399,7 @@ export default function Diagnostic() {
       <div className="card w-full max-w-sm p-6 text-center animate-fade-up">
         <p className="font-display font-bold text-lg mb-2">¿Salir del test?</p>
         <p className="text-sm text-paper-muted mb-6">
-          Perdés el progreso de esta sesión. Podés volver a hacerlo cuando quieras.
+          Pierdes el progreso de esta sesión. Puedes volver a hacerlo cuando quieras.
         </p>
         <div className="flex gap-3">
           <button
@@ -432,33 +435,13 @@ export default function Diagnostic() {
               : "It'll adjust as you practise — you can retake the test anytime in Settings."}
           </p>
           <LevelPicker onPick={finishWithLevel} busy={busy} isCatalan={isCatalan} />
-          {!isCatalan && (
-            <button
-              onClick={() => setPickingLevel(false)}
-              className="w-full mt-4 text-xs text-paper-faint hover:text-paper transition text-center"
-              disabled={busy}
-            >
-              ← Back to the test
-            </button>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  // ── Render: Catalan (no question bank yet — pick a level by hand) ─────────────
-
-  if (isCatalan && phase === "text" && answers.length === 0) {
-    return (
-      <div className="min-h-screen flex items-center justify-center p-6">
-        <div className="w-full max-w-md text-center animate-fade-up">
-          <p className="eyebrow mb-3">Benvingut/da</p>
-          <h1 className="font-display text-3xl font-bold mb-3">Comencem amb el català</h1>
-          <p className="text-paper-muted mb-8">
-            El test de nivell encara només existeix en anglès. Tria amb quin nivell comences i
-            s'anirà ajustant a mesura que practiquis.
-          </p>
-          <LevelPicker onPick={finishWithLevel} busy={busy} isCatalan={isCatalan} />
+          <button
+            onClick={() => setPickingLevel(false)}
+            className="w-full mt-4 text-xs text-paper-faint hover:text-paper transition text-center"
+            disabled={busy}
+          >
+            {isCatalan ? "← Tornar al test" : "← Back to the test"}
+          </button>
         </div>
       </div>
     );
@@ -576,7 +559,7 @@ export default function Diagnostic() {
                 </p>
                 <p className="font-display text-xl font-bold leading-snug">{openQuestion}</p>
                 <button
-                  onClick={() => speak(openQuestion, "en-GB")}
+                  onClick={() => speak(openQuestion, ttsLang)}
                   className="mt-3 text-paper-faint hover:text-coral transition"
                   aria-label="Hear question"
                 >
@@ -614,7 +597,7 @@ export default function Diagnostic() {
                     <textarea
                       value={openTranscript}
                       onChange={(e) => setOpenTranscript(e.target.value)}
-                      placeholder="Type your answer here…"
+                      placeholder="Type your answer here…" aria-label="Type your answer"
                       className="w-full bg-ink-700 rounded-lg p-2 text-sm text-paper resize-none min-h-[64px] focus:outline-none focus:ring-1 focus:ring-coral"
                       rows={3}
                     />
@@ -633,7 +616,7 @@ export default function Diagnostic() {
                 <textarea
                   value={openTranscript}
                   onChange={(e) => setOpenTranscript(e.target.value)}
-                  placeholder="Or type your answer here…"
+                  placeholder="Or type your answer here…" aria-label="Type your answer"
                   className="w-full bg-ink-700/60 border border-ink-600 rounded-xl p-3 text-sm text-paper resize-none mb-4 focus:outline-none focus:ring-1 focus:ring-coral"
                   rows={3}
                 />
@@ -682,7 +665,7 @@ export default function Diagnostic() {
   // ── Render: oral reading (Part B) ───────────────────────────────────────────
 
   if (phase === "oral_reading") {
-    const sentence   = READING_SENTENCES[readingIdx];
+    const sentence   = READING[readingIdx];
     const canAdvance = currentTranscript.trim() !== "";
 
     return (
@@ -691,7 +674,7 @@ export default function Diagnostic() {
         {exitOverlay}
         <div className="w-full max-w-lg animate-fade-up">
           <div className="flex gap-1 mb-6">
-            {READING_SENTENCES.map((_, i) => (
+            {READING.map((_, i) => (
               <div
                 key={i}
                 className={`h-1 flex-1 rounded-full ${
@@ -707,15 +690,15 @@ export default function Diagnostic() {
             </p>
             <p className="text-sm text-paper-muted">
               {isCatalan
-                ? `Frase ${readingIdx + 1} de ${READING_SENTENCES.length} — llegeix-la clarament en anglès.`
-                : `Sentence ${readingIdx + 1} of ${READING_SENTENCES.length} — read it clearly in English.`}
+                ? `Frase ${readingIdx + 1} de ${READING.length} — llegeix-la clarament en català.`
+                : `Sentence ${readingIdx + 1} of ${READING.length} — read it clearly in English.`}
             </p>
           </div>
 
           <div className="card p-6 mb-6">
             <p className="font-display text-xl font-bold leading-snug">{sentence.text}</p>
             <button
-              onClick={() => speak(sentence.text, "en-GB")}
+              onClick={() => speak(sentence.text, ttsLang)}
               className="mt-3 text-paper-faint hover:text-coral transition"
               aria-label="Hear example"
             >
@@ -753,7 +736,7 @@ export default function Diagnostic() {
                 <textarea
                   value={currentTranscript}
                   onChange={(e) => setCurrentTranscript(e.target.value)}
-                  placeholder="Type what you said…"
+                  placeholder="Type what you said…" aria-label="Type what you said"
                   className="w-full bg-ink-700 rounded-lg p-2 text-sm text-paper resize-none min-h-[48px] focus:outline-none focus:ring-1 focus:ring-coral"
                   rows={2}
                 />
@@ -772,7 +755,7 @@ export default function Diagnostic() {
             <textarea
               value={currentTranscript}
               onChange={(e) => setCurrentTranscript(e.target.value)}
-              placeholder="Or type what you said…"
+              placeholder="Or type what you said…" aria-label="Type what you said"
               className="w-full bg-ink-700/60 border border-ink-600 rounded-xl p-3 text-sm text-paper resize-none mb-4 focus:outline-none focus:ring-1 focus:ring-coral"
               rows={2}
             />
@@ -801,7 +784,7 @@ export default function Diagnostic() {
 
           {canAdvance && (
             <button onClick={handleNextSentence} className="btn-coral w-full mt-4">
-              {readingIdx + 1 >= READING_SENTENCES.length
+              {readingIdx + 1 >= READING.length
                 ? "Continue to Part C →"
                 : "Next sentence →"}
             </button>
@@ -828,7 +811,7 @@ export default function Diagnostic() {
       {exitOverlay}
       <div className="w-full max-w-lg animate-fade-up">
         <div className="flex gap-1 mb-8">
-          {DIAGNOSTIC.map((_, i) => (
+          {DIAG.map((_, i) => (
             <div
               key={i}
               className={`h-1 flex-1 rounded-full ${i <= idx ? "bg-coral" : "bg-ink-600"}`}
@@ -838,7 +821,7 @@ export default function Diagnostic() {
 
         <div className="flex items-center justify-between mb-6">
           <p className="eyebrow">
-            {isCatalan ? "Pregunta" : "Question"} {idx + 1} / {DIAGNOSTIC.length}
+            {isCatalan ? "Pregunta" : "Question"} {idx + 1} / {DIAG.length}
           </p>
           <span className="font-mono text-xs text-paper-faint">{q.skill}</span>
         </div>

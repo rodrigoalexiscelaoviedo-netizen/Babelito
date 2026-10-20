@@ -14,13 +14,25 @@ export default function ProtectedRoute({
   children: JSX.Element;
   allowIncomplete?: boolean;
 }) {
-  const { session, profile, loading } = useAuth();
+  const { session, profile, loading, profileError, refreshProfile } = useAuth();
 
   if (loading) return <Loader />;
   if (!session) return <Navigate to="/login" replace />;
 
-  // Mientras el trigger crea el profile puede tardar un instante.
-  if (!profile) return <Loader label="Preparing your space…" />;
+  if (!profile) {
+    // Antes: loader infinito. Ahora: mensaje claro con reintento.
+    if (profileError) {
+      return (
+        <div className="min-h-screen flex flex-col items-center justify-center gap-4 p-6 text-center">
+          <p className="text-paper-muted">No pudimos cargar tu perfil.</p>
+          <button className="btn-coral" onClick={() => refreshProfile()}>
+            Reintentar
+          </button>
+        </div>
+      );
+    }
+    return <Loader label="Preparing your space…" />;
+  }
 
   if (!allowIncomplete) {
     if (!profile.onboarding_complete) return <Navigate to="/onboarding" replace />;

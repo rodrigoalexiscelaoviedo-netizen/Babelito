@@ -1,5 +1,6 @@
 import { NavLink, useLocation } from "react-router-dom";
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   LayoutDashboard,
   MessageCircle,
@@ -18,67 +19,78 @@ import {
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { countDue } from "../lib/srs";
+import i18n, { uiLang } from "../i18n";
+
+type NavKey =
+  | "home" | "talk" | "chunks" | "correct" | "roleplay" | "reading"
+  | "stories" | "sounds" | "review" | "listening" | "progress" | "profile";
 
 const LINKS = [
-  { to: "/",             label: "Home",      icon: LayoutDashboard, end: true  },
-  { to: "/conversation", label: "Talk",       icon: MessageCircle               },
-  { to: "/chunks",       label: "Chunks",     icon: Library                     },
-  { to: "/correct",      label: "Correct",    icon: PencilLine                  },
-  { to: "/roleplay",     label: "Roleplay",   icon: Drama                       },
-  { to: "/reading",      label: "Reading",    icon: BookOpen                    },
-  { to: "/stories",      label: "Stories",    icon: BookText                    },
-  { to: "/sounds",       label: "Sounds",     icon: Mic                         },
-  { to: "/review",       label: "Review",     icon: Layers                      },
-  { to: "/listening",    label: "Listening",  icon: Headphones                  },
-  { to: "/progress",     label: "Progress",   icon: BarChart3                   },
-  { to: "/profile",      label: "Profile",    icon: User                        },
-];
+  { to: "/",             key: "home",      icon: LayoutDashboard, end: true },
+  { to: "/conversation", key: "talk",      icon: MessageCircle },
+  { to: "/chunks",       key: "chunks",    icon: Library },
+  { to: "/correct",      key: "correct",   icon: PencilLine },
+  { to: "/roleplay",     key: "roleplay",  icon: Drama },
+  { to: "/reading",      key: "reading",   icon: BookOpen },
+  { to: "/stories",      key: "stories",   icon: BookText },
+  { to: "/sounds",       key: "sounds",    icon: Mic },
+  { to: "/review",       key: "review",    icon: Layers },
+  { to: "/listening",    key: "listening", icon: Headphones },
+  { to: "/progress",     key: "progress",  icon: BarChart3 },
+  { to: "/profile",      key: "profile",   icon: User },
+] as const satisfies ReadonlyArray<{ to: string; key: NavKey; icon: unknown; end?: boolean }>;
 
-// Mobile bottom nav: 4 fixed tabs + "Más" overflow button
+// Barra inferior móvil: 4 pestañas fijas + "Más"
 const BOTTOM_FIXED = ["/", "/conversation", "/sounds", "/progress"];
 const BOTTOM_LINKS = LINKS.filter((l) => BOTTOM_FIXED.includes(l.to));
-const MORE_LINKS   = LINKS.filter((l) => !BOTTOM_FIXED.includes(l.to));
+const MORE_LINKS = LINKS.filter((l) => !BOTTOM_FIXED.includes(l.to));
 
 const MORE_GROUPS = [
-  { label: "Práctica",  routes: ["/roleplay", "/review", "/listening"] },
-  { label: "Contenido", routes: ["/chunks", "/reading", "/stories", "/correct"] },
-  { label: "Cuenta",    routes: ["/profile"] },
-];
+  { groupKey: "groupPractice", routes: ["/roleplay", "/review", "/listening"] },
+  { groupKey: "groupContent", routes: ["/chunks", "/reading", "/stories", "/correct"] },
+  { groupKey: "groupAccount", routes: ["/profile"] },
+] as const;
 
 export default function Nav() {
-  const { profile }  = useAuth();
-  const location     = useLocation();
+  const { profile } = useAuth();
+  const { t } = useTranslation();
+  const location = useLocation();
   const [reviewCount, setReviewCount] = useState(0);
-  const [moreOpen,    setMoreOpen]    = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
+
+  // La interfaz sigue al idioma que se aprende (ver src/i18n/index.ts).
+  useEffect(() => {
+    void i18n.changeLanguage(uiLang(profile?.learning_language));
+  }, [profile?.learning_language]);
 
   useEffect(() => {
     if (!profile) return;
     countDue(profile.id, profile.learning_language || "en").then(setReviewCount);
   }, [profile]);
 
-  // Close sheet when the user navigates
+  // Cierra la hoja al navegar
   useEffect(() => { setMoreOpen(false); }, [location.pathname]);
 
   const moreIsActive = MORE_LINKS.some((l) =>
-    l.end ? location.pathname === l.to : location.pathname.startsWith(l.to)
+    "end" in l && l.end ? location.pathname === l.to : location.pathname.startsWith(l.to)
   );
 
   return (
     <>
-      {/* ── Sidebar desktop (unchanged) ──────────────────────────────── */}
+      {/* ── Sidebar desktop ──────────────────────────────────────────── */}
       <aside className="hidden md:flex md:w-60 md:flex-col md:fixed md:inset-y-0 md:border-r md:border-ink-600 md:bg-ink-800 md:px-4 md:py-6">
         <div className="flex items-center gap-2 px-2 mb-8">
           <div className="grid h-9 w-9 place-items-center rounded-xl bg-coral text-ink-900 font-display font-extrabold">
             B
           </div>
-          <span className="font-display text-xl font-bold tracking-tight">Babelito</span>
+          <span className="font-display text-xl font-bold tracking-tight">{t("nav.brand")}</span>
         </div>
         <nav className="flex flex-col gap-1">
-          {LINKS.map(({ to, label, icon: Icon, end }) => (
+          {LINKS.map(({ to, key, icon: Icon, ...rest }) => (
             <NavLink
               key={to}
               to={to}
-              end={end}
+              end={"end" in rest ? rest.end : undefined}
               className={({ isActive }) =>
                 `flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition ${
                   isActive
@@ -88,7 +100,7 @@ export default function Nav() {
               }
             >
               <Icon size={18} />
-              <span className="flex-1">{label}</span>
+              <span className="flex-1">{t(`nav.${key}`)}</span>
               {to === "/review" && reviewCount > 0 && (
                 <span className="ml-auto text-[10px] font-bold bg-gold text-ink-900 rounded-full px-1.5 py-0.5 leading-none">
                   {reviewCount}
@@ -99,14 +111,14 @@ export default function Nav() {
         </nav>
       </aside>
 
-      {/* ── Bottom nav mobile — 4 fixed + "Más" ─────────────────────── */}
+      {/* ── Barra inferior móvil: 4 fijas + "Más" ────────────────────── */}
       <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 border-t border-ink-600 bg-ink-800/95 backdrop-blur pb-[env(safe-area-inset-bottom)]">
         <div className="flex h-14">
-          {BOTTOM_LINKS.map(({ to, label, icon: Icon, end }) => (
+          {BOTTOM_LINKS.map(({ to, key, icon: Icon, ...rest }) => (
             <NavLink
               key={to}
               to={to}
-              end={end}
+              end={"end" in rest ? rest.end : undefined}
               className={({ isActive }) =>
                 `flex flex-1 flex-col items-center justify-center gap-0.5 text-[10px] font-medium transition ${
                   isActive ? "text-coral" : "text-paper-muted"
@@ -121,65 +133,60 @@ export default function Nav() {
                   </span>
                 )}
               </div>
-              {label}
+              {t(`nav.${key}`)}
             </NavLink>
           ))}
 
-          {/* "Más" overflow button */}
           <button
             onClick={() => setMoreOpen((o) => !o)}
             className={`flex flex-1 flex-col items-center justify-center gap-0.5 text-[10px] font-medium transition ${
               moreIsActive || moreOpen ? "text-coral" : "text-paper-muted"
             }`}
-            aria-label="Más módulos"
+            aria-label={t("nav.moreModules")}
           >
             <MoreHorizontal size={20} />
-            Más
+            {t("nav.more")}
           </button>
         </div>
       </nav>
 
-      {/* ── "Más" bottom sheet ───────────────────────────────────────── */}
+      {/* ── Hoja "Más" ───────────────────────────────────────────────── */}
       {moreOpen && (
         <>
-          {/* Backdrop */}
           <div
             className="md:hidden fixed inset-0 z-40 bg-ink-900/70"
             onClick={() => setMoreOpen(false)}
           />
 
-          {/* Sheet */}
           <div
             className="md:hidden fixed bottom-14 inset-x-0 z-50 bg-ink-800 border-t border-ink-600 rounded-t-2xl shadow-2xl overflow-y-auto"
             style={{ maxHeight: "65vh", paddingBottom: "env(safe-area-inset-bottom)" }}
           >
-            {/* Handle + header */}
             <div className="flex justify-center pt-3 pb-1">
               <div className="w-9 h-1 bg-ink-500 rounded-full" />
             </div>
             <div className="flex items-center justify-between px-5 py-3 border-b border-ink-700">
-              <p className="font-display font-bold text-sm">Más módulos</p>
+              <p className="font-display font-bold text-sm">{t("nav.moreModules")}</p>
               <button
                 onClick={() => setMoreOpen(false)}
                 className="text-paper-muted hover:text-paper transition p-1"
-                aria-label="Cerrar"
+                aria-label={t("nav.close")}
               >
                 <X size={17} />
               </button>
             </div>
 
-            {/* Groups */}
             <div className="p-4 space-y-5">
               {MORE_GROUPS.map((group) => {
-                const groupLinks = MORE_LINKS.filter((l) => group.routes.includes(l.to));
+                const groupLinks = MORE_LINKS.filter((l) => (group.routes as readonly string[]).includes(l.to));
                 if (groupLinks.length === 0) return null;
                 return (
-                  <div key={group.label}>
+                  <div key={group.groupKey}>
                     <p className="text-[10px] uppercase tracking-widest text-paper-faint font-mono mb-2 px-1">
-                      {group.label}
+                      {t(`nav.${group.groupKey}`)}
                     </p>
                     <div className="grid grid-cols-2 gap-2">
-                      {groupLinks.map(({ to, label, icon: Icon }) => (
+                      {groupLinks.map(({ to, key, icon: Icon }) => (
                         <NavLink
                           key={to}
                           to={to}
@@ -193,7 +200,7 @@ export default function Nav() {
                           }
                         >
                           <Icon size={17} className="shrink-0" />
-                          {label}
+                          {t(`nav.${key}`)}
                           {to === "/review" && reviewCount > 0 && (
                             <span className="ml-auto text-[9px] font-bold bg-gold text-ink-900 rounded-full px-1 py-0.5 leading-none">
                               {reviewCount}

@@ -1,3 +1,4 @@
+import { localDateISO, timestampToLocalDate } from "./dates";
 import { supabase } from "./supabaseClient";
 import { scopeByLanguage } from "./language";
 
@@ -66,7 +67,7 @@ function getConversationTopics(language: string): string[] {
 }
 
 function todayISO(): string {
-  return new Date().toISOString().slice(0, 10);
+  return localDateISO();
 }
 
 /** Devuelve una palabra al azar del vocabulario en 'learning', o null. */
@@ -308,20 +309,20 @@ export async function getStreakInfo(userId: string, consume = true): Promise<Str
 
   const activeDates = new Set<string>();
   (dlData ?? []).forEach((r: { lesson_date: string }) => activeDates.add(r.lesson_date));
-  (sessData ?? []).forEach((r: { created_at: string }) => activeDates.add(r.created_at.slice(0, 10)));
-  (storyData ?? []).forEach((r: { created_at: string }) => activeDates.add(r.created_at.slice(0, 10)));
+  (sessData ?? []).forEach((r: { created_at: string }) => activeDates.add(timestampToLocalDate(r.created_at)));
+  (storyData ?? []).forEach((r: { created_at: string }) => activeDates.add(timestampToLocalDate(r.created_at)));
 
   if (activeDates.size === 0) return { streak: 0, freezesLeft: initialFreezes };
 
   const cursor = new Date();
-  let cursorStr = cursor.toISOString().slice(0, 10);
+  let cursorStr = localDateISO(cursor);
   let streak = 0;
   let freezesUsed = 0;
 
   // Grace period: if today not done yet, start from yesterday
   if (!activeDates.has(cursorStr)) {
     cursor.setDate(cursor.getDate() - 1);
-    cursorStr = cursor.toISOString().slice(0, 10);
+    cursorStr = localDateISO(cursor);
   }
 
   for (let i = 0; i < 400; i++) {
@@ -334,7 +335,7 @@ export async function getStreakInfo(userId: string, consume = true): Promise<Str
       break;
     }
     cursor.setDate(cursor.getDate() - 1);
-    cursorStr = cursor.toISOString().slice(0, 10);
+    cursorStr = localDateISO(cursor);
   }
 
   const freezesLeft = Math.max(0, initialFreezes - freezesUsed);

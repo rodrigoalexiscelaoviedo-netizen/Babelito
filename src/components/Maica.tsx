@@ -6,7 +6,6 @@ const SIZE: Record<"sm" | "md" | "lg", number> = { sm: 64, md: 96, lg: 128 };
 const FUR_BASE  = "#9C9284"; // warm grey-taupe (marrón/beige, sin tinte azul)
 const FUR_DARK  = "#4A413A"; // marrón-carbón oscuro — rayas, contornos
 const FUR_LIGHT = "#E3D5B8"; // crema-beige cálido — panza, patas, hocico
-const FUR_MID   = "#7A6E62"; // tono medio para borde de orejas
 const EYE_COL   = "#A3A66B"; // verde-oliva amarillento / ámbar
 const NOSE_COL  = "#2B211E"; // marrón casi-negro (nariz real de gato)
 const EAR_PINK  = "#F9A8D4"; // rosa pálido — interior orejas

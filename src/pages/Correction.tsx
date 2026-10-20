@@ -4,7 +4,6 @@ import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabaseClient";
 import { askCoach } from "../lib/claude";
 import { buildCorrectionPrompt, parseErrors } from "../lib/buildSystemPrompt";
-import type { ReadingText } from "../lib/readingTexts";
 
 export default function Correction() {
   const { profile } = useAuth();

@@ -1,5 +1,5 @@
 // Catálogo de tipos de error. El coach los devuelve por su `key`;
-// acá mapeamos a etiqueta legible + pista de drill.
+// aquí mapeamos a etiqueta legible + pista de drill.
 
 export interface ErrorTypeMeta {
   key: string;

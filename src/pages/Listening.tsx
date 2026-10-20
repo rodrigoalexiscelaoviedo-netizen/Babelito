@@ -1,3 +1,4 @@
+import { useHistoryBack } from "../lib/useHistoryBack";
 import { useState, useCallback, useEffect } from "react";
 import { Volume2, RotateCcw, ArrowLeft, Headphones } from "lucide-react";
 import {
@@ -81,6 +82,7 @@ export default function Listening() {
   const patterns = isCatalan ? CATALAN_PATTERNS : PATTERNS;
   const [view, setView] = useState<View>("list");
   const [detail, setDetail] = useState<LinkingLike | null>(null);
+  useHistoryBack(view !== "list", () => setView("list"));
 
   function playSpoken(pattern: LinkingLike, e?: React.MouseEvent) {
     e?.stopPropagation();
@@ -163,7 +165,7 @@ function ListView({
           <p className="text-paper-muted mt-1">
             {isCatalan
               ? "Entrena la teva orella per al català parlat ràpid."
-              : "Entrenás tu oído para el habla conectada de los nativos."}
+              : "Entrenas tu oído para el habla conectada de los nativos."}
           </p>
         </div>
         <button className="btn-coral shrink-0" onClick={onTrain}>
