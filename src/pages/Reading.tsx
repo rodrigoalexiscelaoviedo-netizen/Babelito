@@ -16,7 +16,7 @@ import Loader from "../components/Loader";
 
 const LEVEL_BADGE: Record<string, string> = {
   A2: "bg-mint/20 text-mint",
-  B1: "bg-gold/20 text-[#F4C431]",
+  B1: "bg-gold/20 text-gold",
   B2: "bg-coral/20 text-coral",
 };
 
@@ -58,17 +58,17 @@ export default function Reading() {
   return (
     <div className="animate-fade-up">
       <p className="eyebrow mb-2">{learningLanguage === "ca" ? "Lectura" : "Reading"}</p>
-      <h1 className="font-display text-3xl font-extrabold mb-2">{learningLanguage === "ca" ? "Llegeix i crea vocabulari" : "Read & build vocabulary"}</h1>
+      <h1 className="page-title mb-2">{learningLanguage === "ca" ? "Llegeix i crea vocabulari" : "Read & build vocabulary"}</h1>
       <p className="text-paper-muted mb-8">
         {learningLanguage === "ca" ? "Clica qualsevol paraula per cercar-la i rastreja-la. Les paraules colorejades estan a la teva llista de vocabulari." : "Click any word to look it up and track it. Coloured words are in your vocabulary list."}
       </p>
 
-      <div className="grid sm:grid-cols-2 gap-4 mb-8">
+      <div className="grid sm:grid-cols-2 gap-4 mb-8 stagger">
         {(learningLanguage === "ca" ? READING_TEXTS_CA : READING_TEXTS).map((t) => (
           <button
             key={t.id}
             onClick={() => openText(t)}
-            className="card p-5 text-left hover:border-coral/50 transition"
+            className="card-interactive p-5 text-left"
           >
             <div className="flex items-start justify-between gap-2 mb-2">
               <BookOpen size={18} className="text-coral mt-0.5 shrink-0" />

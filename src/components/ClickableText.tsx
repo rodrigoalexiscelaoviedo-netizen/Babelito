@@ -183,9 +183,9 @@ export default function ClickableText({
     if (!entry || status === "new") {
       base += "text-coral/80 hover:text-coral";
     } else if (status === "learning") {
-      base += "text-[#F4C431]/80 hover:text-[#F4C431]";
+      base += "text-gold/80 hover:text-gold";
       if (highlightLearning) {
-        base += " underline decoration-[#F4C431]/50 underline-offset-2 decoration-wavy";
+        base += " underline decoration-gold/50 underline-offset-2 decoration-wavy";
       }
     } else {
       base += "hover:text-paper-muted";

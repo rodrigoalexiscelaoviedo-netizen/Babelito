@@ -161,7 +161,7 @@ function ListView({
       <header className="flex items-end justify-between mb-6">
         <div>
           <p className="eyebrow mb-2">{learningLanguage === "ca" ? "Escoltar" : "Speaking"}</p>
-          <h1 className="font-display text-3xl font-extrabold">{learningLanguage === "ca" ? "Escoltar" : "Listening"}</h1>
+          <h1 className="page-title">{learningLanguage === "ca" ? "Escoltar" : "Listening"}</h1>
           <p className="text-paper-muted mt-1">
             {isCatalan
               ? "Entrena la teva orella per al català parlat ràpid."
@@ -407,7 +407,7 @@ export function TrainView({
     return (
       <div className="animate-fade-up max-w-md mx-auto text-center pt-16">
         <Headphones size={48} className="mx-auto text-coral mb-4" />
-        <h1 className="font-display text-3xl font-extrabold mb-2">{learningLanguage === "ca" ? "Sessió completada!" : "Session complete!"}</h1>
+        <h1 className="page-title mb-2">{learningLanguage === "ca" ? "Sessió completada!" : "Session complete!"}</h1>
         <p className="font-display text-5xl font-extrabold text-mint mb-1">{correct}</p>
         <p className="text-paper-muted mb-2">{learningLanguage === "ca" ? "de" : "out of"} {queue.length} {learningLanguage === "ca" ? "correctes" : "correct"}</p>
         <p className="text-sm text-paper-faint mb-8">

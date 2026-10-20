@@ -360,7 +360,7 @@ Reply with only the hint text — no explanation, no punctuation around it.`;
         <p className="eyebrow mb-2">
           {learningLanguage === "ca" ? "Conversa en directe" : "Live conversation"}
         </p>
-        <h1 className="font-display text-3xl font-extrabold mb-2">
+        <h1 className="page-title mb-2">
           {learningLanguage === "ca" ? "De quin tema volem parlar?" : "What should we talk about?"}
         </h1>
         <p className="text-paper-muted mb-8">

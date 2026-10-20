@@ -1,3 +1,4 @@
+import { BRAND } from "../lib/theme";
 import XpCard from "../components/XpCard";
 import { awardXp, storyXp, reviewXp, DAILY_LESSON_XP, dailyLessonRefKey } from "../lib/xp";
 import { consolidateLevel } from "../lib/leveling";
@@ -275,23 +276,23 @@ export default function Dashboard() {
               {/* Confetti strip */}
               <svg viewBox="0 0 260 48" className="w-full mb-2" aria-hidden="true">
                 {[
-                  { x: 10,  y: 18, r: 6,  fill: "#FF6B5E" },
-                  { x: 35,  y: 8,  r: 4,  fill: "#36C5A8" },
-                  { x: 60,  y: 28, r: 5,  fill: "#F7C948" },
-                  { x: 90,  y: 12, r: 7,  fill: "#FF6B5E" },
-                  { x: 120, y: 30, r: 4,  fill: "#36C5A8" },
-                  { x: 148, y: 10, r: 6,  fill: "#F7C948" },
-                  { x: 175, y: 24, r: 5,  fill: "#FF6B5E" },
-                  { x: 205, y: 8,  r: 4,  fill: "#36C5A8" },
-                  { x: 235, y: 32, r: 6,  fill: "#F7C948" },
-                  { x: 255, y: 15, r: 3,  fill: "#FF6B5E" },
+                  { x: 10,  y: 18, r: 6,  fill: BRAND.coral },
+                  { x: 35,  y: 8,  r: 4,  fill: BRAND.mint },
+                  { x: 60,  y: 28, r: 5,  fill: BRAND.gold },
+                  { x: 90,  y: 12, r: 7,  fill: BRAND.coral },
+                  { x: 120, y: 30, r: 4,  fill: BRAND.mint },
+                  { x: 148, y: 10, r: 6,  fill: BRAND.gold },
+                  { x: 175, y: 24, r: 5,  fill: BRAND.coral },
+                  { x: 205, y: 8,  r: 4,  fill: BRAND.mint },
+                  { x: 235, y: 32, r: 6,  fill: BRAND.gold },
+                  { x: 255, y: 15, r: 3,  fill: BRAND.coral },
                 ].map((c, i) => (
                   <circle key={i} cx={c.x} cy={c.y} r={c.r} fill={c.fill} opacity={0.85} />
                 ))}
                 {[
-                  { x: 22, y: 36, w: 10, h: 5, fill: "#F7C948", rx: 2 },
-                  { x: 108, y: 38, w: 8,  h: 4, fill: "#36C5A8", rx: 2 },
-                  { x: 190, y: 40, w: 12, h: 5, fill: "#FF6B5E", rx: 2 },
+                  { x: 22, y: 36, w: 10, h: 5, fill: BRAND.gold, rx: 2 },
+                  { x: 108, y: 38, w: 8,  h: 4, fill: BRAND.mint, rx: 2 },
+                  { x: 190, y: 40, w: 12, h: 5, fill: BRAND.coral, rx: 2 },
                 ].map((r, i) => (
                   <rect key={i} x={r.x} y={r.y} width={r.w} height={r.h} fill={r.fill} rx={r.rx} opacity={0.8} />
                 ))}
@@ -342,7 +343,7 @@ export default function Dashboard() {
       <header className="mb-8 flex items-start justify-between gap-4">
         <div className="flex-1 min-w-0">
           <p className="eyebrow mb-2">{greeting}</p>
-          <h1 className="font-display text-3xl md:text-4xl font-extrabold">
+          <h1 className="page-title">
             {greeting}, {firstName}.
           </h1>
           <p className="text-paper-muted mt-1">{maicaText}</p>
@@ -654,13 +655,19 @@ export default function Dashboard() {
       )}
 
       {/* Modules */}
-      <div className="grid sm:grid-cols-2 gap-4">
+      <div className="grid sm:grid-cols-2 gap-4 stagger">
         {modules.map((m) => (
           <Link
             key={m.to}
             to={m.to}
-            className="card card-lift p-6 group relative overflow-hidden"
+            className="card-interactive p-6 group relative overflow-hidden"
           >
+            <span
+              aria-hidden="true"
+              className={`pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full blur-2xl opacity-0 transition-opacity duration-300 group-hover:opacity-30 ${
+                m.accent === "coral" ? "bg-coral" : m.accent === "mint" ? "bg-mint" : "bg-gold"
+              }`}
+            />
             <m.icon
               size={28}
               className={

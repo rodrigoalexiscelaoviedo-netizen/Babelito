@@ -91,7 +91,7 @@ export default function Chunks() {
       <header className="flex items-end justify-between mb-6">
         <div>
           <p className="eyebrow mb-2">Chunks library</p>
-          <h1 className="font-display text-3xl font-extrabold">Ready-made expressions</h1>
+          <h1 className="page-title">Ready-made expressions</h1>
           <p className="text-paper-muted mt-1">
             {learned.size} / {chunks.length} learned
           </p>
@@ -125,7 +125,7 @@ export default function Chunks() {
       </div>
 
       {/* Grid de cards */}
-      <div className="grid sm:grid-cols-2 gap-4">
+      <div className="grid sm:grid-cols-2 gap-4 stagger">
         {filtered.map((c) => (
           <FlipCard
             key={c.id}

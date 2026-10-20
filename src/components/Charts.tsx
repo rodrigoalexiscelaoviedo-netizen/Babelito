@@ -1,3 +1,4 @@
+import { BRAND } from "../lib/theme";
 /**
  * Gráficos SVG propios. Reemplazan a recharts (~106 kB gzip) porque la app solo
  * necesita dos formas simples: área de actividad y barras horizontales.
@@ -29,15 +30,15 @@ export function ActivityArea({ data, height = 160 }: AreaChartProps) {
     <svg viewBox={`0 0 ${W} ${H}`} width="100%" height={H} role="img" aria-label="Sessions per day" preserveAspectRatio="none">
       <defs>
         <linearGradient id="activity-fill" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#FF6B5E" stopOpacity={0.5} />
-          <stop offset="100%" stopColor="#FF6B5E" stopOpacity={0} />
+          <stop offset="0%" stopColor={BRAND.coral} stopOpacity={0.5} />
+          <stop offset="100%" stopColor={BRAND.coral} stopOpacity={0} />
         </linearGradient>
       </defs>
       <line x1={padX} x2={W - padX} y1={H - padBottom} y2={H - padBottom} stroke="#222C44" strokeWidth={1} />
       {area && <path d={area} fill="url(#activity-fill)" />}
-      {area && <path d={line} fill="none" stroke="#FF6B5E" strokeWidth={2} vectorEffect="non-scaling-stroke" />}
+      {area && <path d={line} fill="none" stroke={BRAND.coral} strokeWidth={2} vectorEffect="non-scaling-stroke" />}
       {points.map(([x, y], i) => (
-        <circle key={data[i].day} cx={x} cy={y} r={3} fill="#FF6B5E">
+        <circle key={data[i].day} cx={x} cy={y} r={3} fill={BRAND.coral}>
           <title>{`${data[i].day}: ${data[i].sessions}`}</title>
         </circle>
       ))}
@@ -58,7 +59,7 @@ interface HBarsProps {
 }
 
 /** Barras horizontales (errores más frecuentes). */
-export function HorizontalBars({ data, color = "#36C5A8" }: HBarsProps) {
+export function HorizontalBars({ data, color = BRAND.mint }: HBarsProps) {
   const max = Math.max(1, ...data.map((d) => d.count));
   return (
     <ul className="space-y-2.5" aria-label="Top errors">

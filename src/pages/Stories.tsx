@@ -31,7 +31,7 @@ type View = "library" | "reading" | "quiz";
 
 const LEVEL_BADGE: Record<string, string> = {
   A2: "bg-mint/20 text-mint",
-  B1: "bg-gold/20 text-[#F4C431]",
+  B1: "bg-gold/20 text-gold",
   B2: "bg-coral/20 text-coral",
 };
 
@@ -155,7 +155,7 @@ export default function Stories() {
         }}
       />
       <p className="eyebrow mb-2">Stories</p>
-      <h1 className="font-display text-3xl font-extrabold mb-2">Reading stories</h1>
+      <h1 className="page-title mb-2">Reading stories</h1>
       <p className="text-paper-muted mb-8">
         Read, discover vocabulary, then test your comprehension. Your learning words appear highlighted.
       </p>
@@ -206,14 +206,14 @@ export default function Stories() {
           No stories yet. Run seed_stories.sql in Supabase or generate one above.
         </p>
       ) : (
-        <div className="grid sm:grid-cols-2 gap-4">
+        <div className="grid sm:grid-cols-2 gap-4 stagger">
           {sorted.map((story) => {
             const done = completedProgress(story.id);
             return (
               <button
                 key={story.id}
                 onClick={() => openStory(story)}
-                className="card p-5 text-left hover:border-coral/50 transition"
+                className="card-interactive p-5 text-left"
               >
                 <div className="flex items-start justify-between gap-2 mb-2">
                   <BookText size={18} className="text-coral mt-0.5 shrink-0" />
@@ -360,7 +360,7 @@ function StoryReader({
 
       {/* Hint */}
       <p className="text-xs text-paper-faint mb-3">
-        <span className="text-[#F4C431]/70 underline decoration-wavy underline-offset-2">Underlined gold</span> = words you're learning. Click any word to look it up.
+        <span className="text-gold/70 underline decoration-wavy underline-offset-2">Underlined gold</span> = words you're learning. Click any word to look it up.
       </p>
 
       {/* Text */}

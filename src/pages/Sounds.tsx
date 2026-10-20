@@ -101,7 +101,7 @@ export default function Sounds() {
   return (
     <div className="animate-fade-up">
       <p className="eyebrow mb-2">Speaking</p>
-      <h1 className="font-display text-3xl font-extrabold mb-1">Sounds</h1>
+      <h1 className="page-title mb-1">Sounds</h1>
       <p className="text-paper-muted mb-8">
         {isCatalan
           ? "Els sons del català que costen més als castellanoparlants. Toca'n un per practicar."
@@ -148,7 +148,7 @@ function SoundCard({
   return (
     <button
       onClick={onSelect}
-      className="card p-5 text-left hover:border-coral/50 transition flex items-start gap-4"
+      className="card-interactive p-5 text-left flex items-start gap-4"
     >
       {/* IPA badge */}
       <div className="shrink-0 w-16 h-16 rounded-xl bg-ink-600 flex items-center justify-center">

@@ -189,7 +189,7 @@ NEVER reveal the answer. Reply with only the hint text.`,
         />
         <div className="animate-fade-up max-w-md mx-auto text-center pt-16">
           <CheckCircle2 size={48} className="mx-auto text-mint mb-4" />
-          <h1 className="font-display text-3xl font-extrabold mb-2">Done!</h1>
+          <h1 className="page-title mb-2">Done!</h1>
           <p className="text-paper-muted mb-1">
             <span className="font-display font-bold text-mint text-xl">{reviewedCount}</span> item
             {reviewedCount !== 1 ? "s" : ""} reviewed.

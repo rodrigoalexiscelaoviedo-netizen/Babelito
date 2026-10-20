@@ -1,3 +1,4 @@
+import { BRAND } from "../lib/theme";
 export type MaicaMood = "happy" | "celebrating" | "sleeping" | "curious";
 
 const SIZE: Record<"sm" | "md" | "lg", number> = { sm: 64, md: 96, lg: 128 };
@@ -13,7 +14,7 @@ const WHISKER   = "#F9FAFB"; // blanquísimo — bigotes
 const CHIN      = "#F5EFE0"; // crema cálido — mancha mentón/hocico inferior
 // Colores de proyecto para accesorios y efectos
 const GOLD  = "#C9A227";
-const CORAL = "#FF6B5E";
+const CORAL = BRAND.coral;
 const MINT  = "#2C9E86";
 const PAPER = "#E8E4DC";
 

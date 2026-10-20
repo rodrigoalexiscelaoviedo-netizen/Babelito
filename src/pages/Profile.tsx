@@ -180,7 +180,7 @@ export default function Profile() {
   return (
     <div className="animate-fade-up max-w-xl mx-auto">
       <p className="eyebrow mb-2">{learningLanguage === "ca" ? "Perfil" : "Profile"}</p>
-      <h1 className="font-display text-3xl font-extrabold mb-8">{learningLanguage === "ca" ? "La teva configuració" : "Your settings"}</h1>
+      <h1 className="page-title mb-8">{learningLanguage === "ca" ? "La teva configuració" : "Your settings"}</h1>
 
       <div className="space-y-5">
         <Field label={learningLanguage === "ca" ? "Nom" : "Name"}>

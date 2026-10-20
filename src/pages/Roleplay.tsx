@@ -52,19 +52,19 @@ export default function Roleplay() {
     return (
       <div className="animate-fade-up">
         <p className="eyebrow mb-2">{learningLanguage === "ca" ? "Rol" : "Roleplay"}</p>
-        <h1 className="font-display text-3xl font-extrabold mb-2">{learningLanguage === "ca" ? "Practica una situació real" : "Practise a real situation"}</h1>
+        <h1 className="page-title mb-2">{learningLanguage === "ca" ? "Practica una situació real" : "Practise a real situation"}</h1>
         <p className="text-paper-muted mb-8">
           {learningLanguage === "ca" ? "El teu coach fa l'altra persona. Escriu " : "Your coach plays the other person. Type "}<span className="font-mono text-coral">/end</span>{" "}
           {learningLanguage === "ca" ? "en qualsevol moment per obtenir retroalimentació completa." : "any time to get full feedback."}
         </p>
-        <div className="grid sm:grid-cols-2 gap-4">
+        <div className="grid sm:grid-cols-2 gap-4 stagger">
           {(learningLanguage === "ca" ? SCENARIOS_CA : SCENARIOS).map((s) => {
             const Icon = SCENARIO_ICONS[s.icon] ?? Drama;
             return (
               <button
                 key={s.id}
                 onClick={() => setScenario(s)}
-                className="card card-lift p-5 text-left group"
+                className="card-interactive p-5 text-left group"
               >
                 <div className="flex items-center justify-between">
                   <Icon size={24} className="text-coral" />

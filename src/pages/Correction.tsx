@@ -53,7 +53,7 @@ export default function Correction() {
       <p className="eyebrow mb-2">
         {learningLanguage === "ca" ? "Revisió d'escriptura" : "Writing check"}
       </p>
-      <h1 className="font-display text-3xl font-extrabold mb-2">
+      <h1 className="page-title mb-2">
         {learningLanguage === "ca" ? "Corregeix el meu text" : "Fix my writing"}
       </h1>
       <p className="text-paper-muted mb-6">
