@@ -1,3 +1,5 @@
+import { awardXp, reviewXp } from "../lib/xp";
+import { localDateISO } from "../lib/dates";
 import { useEffect, useRef, useState } from "react";
 import { Mic, Volume2, CheckCircle2, XCircle, ArrowRight, BookOpen, Library } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -132,6 +134,7 @@ NEVER reveal the answer. Reply with only the hint text.`,
     if (!item || !quality || !profile) return;
 
     await applyReview(item.id, item, quality);
+    if (profile) void awardXp(profile.id, { source: "review", refKey: `review:${item.id}:${localDateISO()}`, amount: reviewXp(quality) });
     setReviewedCount((c) => c + 1);
 
     const nextIdx = idx + 1;

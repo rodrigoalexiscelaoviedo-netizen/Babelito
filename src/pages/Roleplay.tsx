@@ -1,3 +1,5 @@
+import { useHistoryBack } from "../lib/useHistoryBack";
+import { awardSessionXp } from "../lib/xp";
 import { useTranslation } from "react-i18next";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -44,6 +46,7 @@ export default function Roleplay() {
   const { profile } = useAuth();
   const learningLanguage = profile?.learning_language || "en";
   const [scenario, setScenario] = useState<Scenario | null>(null);
+  useHistoryBack(scenario !== null, () => setScenario(null));
 
   if (!scenario) {
     return (
@@ -241,6 +244,7 @@ Reply with only the hint text.`,
       const counts = userTurns >= MIN_USER_TURNS;
 
       if (sid && counts) {
+        void awardSessionXp(profile.id, sid, "roleplay", userTurns, Math.round((Date.now() - startedAt) / 1000));
         const { error } = await supabase
           .from("sessions")
           .update({

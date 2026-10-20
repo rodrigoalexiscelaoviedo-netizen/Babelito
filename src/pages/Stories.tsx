@@ -1,3 +1,5 @@
+import { useHistoryBack } from "../lib/useHistoryBack";
+import { awardXp, storyXp } from "../lib/xp";
 import { useTranslation } from "react-i18next";
 import { useEffect, useRef, useState } from "react";
 import { ArrowLeft, BookText, Pause, Play, Volume2 } from "lucide-react";
@@ -40,6 +42,7 @@ export default function Stories() {
   const [progress, setProgress] = useState<StoryProgress[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeStory, setActiveStory] = useState<Story | null>(null);
+  useHistoryBack(view !== "library", () => setView("library"));
 
   // Generate form state
   const [genTopic, setGenTopic] = useState("");
@@ -109,6 +112,7 @@ export default function Stories() {
         onDone={async (score) => {
           if (profile) {
             await saveStoryProgress(profile.id, activeStory.id, score);
+            void awardXp(profile.id, { source: "story", refKey: `story:${activeStory.id}`, amount: storyXp(score), meta: { score } });
             checkAchievements(profile.id).then((newly) => {
               if (newly.length > 0) setNewAchievements(newly);
             });

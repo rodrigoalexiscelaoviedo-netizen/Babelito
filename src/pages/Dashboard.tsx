@@ -1,3 +1,5 @@
+import XpCard from "../components/XpCard";
+import { awardXp, storyXp, reviewXp, DAILY_LESSON_XP, dailyLessonRefKey } from "../lib/xp";
 import { consolidateLevel } from "../lib/leveling";
 import { localDateISO, addLocalDays, timestampToLocalDate } from "../lib/dates";
 import { useEffect, useState } from "react";
@@ -184,6 +186,7 @@ export default function Dashboard() {
     setItemError("");
     try {
       const updated = await completeLesson(profile.id, learningLanguage);
+      void awardXp(profile.id, { source: "daily_lesson", refKey: dailyLessonRefKey(), amount: DAILY_LESSON_XP });
       setLesson({ ...updated, chunk: lesson.chunk });
 
       // Único punto donde se consumen los freezes, y se relee la racha real
@@ -253,6 +256,7 @@ export default function Dashboard() {
 
   return (
     <div className="animate-fade-up">
+      {profile?.learning_language !== "ca" && <div className="mb-6"><XpCard compact /></div>}
       {/* ── Celebration overlay ── */}
       {showCelebration && (
         <>

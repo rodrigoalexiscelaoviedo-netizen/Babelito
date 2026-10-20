@@ -1,3 +1,4 @@
+import { useHistoryBack } from "../lib/useHistoryBack";
 import { useTranslation } from "react-i18next";
 import { useEffect, useRef, useState } from "react";
 import { ArrowLeft, BookOpen, Volume2, Pause, Play } from "lucide-react";
@@ -30,6 +31,7 @@ export default function Reading() {
   const learningLanguage = profile?.learning_language || "en";
   const [view, setView] = useState<"library" | "reader">("library");
   const [activeText, setActiveText] = useState<ReadingText | null>(null);
+  useHistoryBack(view === "reader", () => setView("library"));
   const [customContent, setCustomContent] = useState("");
 
   function openText(text: ReadingText) {

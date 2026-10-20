@@ -1,3 +1,4 @@
+import { awardSessionXp } from "../lib/xp";
 import { useTranslation } from "react-i18next";
 import { useEffect, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
@@ -57,6 +58,37 @@ export default function Conversation() {
   const [report, setReport] = useState<SessionReport | null>(null);
   const [reportCounted, setReportCounted] = useState(true);
   const [reportError, setReportError] = useState("");
+
+  // Conversación abierta que se puede retomar (turnos guardados en sessions.messages).
+  const [resumable, setResumable] = useState<{ id: string; messages: ChatTurn[]; topic: string | null } | null>(null);
+
+  useEffect(() => {
+    if (!profile) return;
+    const since = new Date(Date.now() - 48 * 3600_000).toISOString();
+    supabase
+      .from("sessions")
+      .select("id, messages, topic, created_at")
+      .eq("user_id", profile.id)
+      .eq("session_type", "conversation")
+      .eq("completed", false)
+      .gte("created_at", since)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle()
+      .then(({ data }) => {
+        const msgs = (data?.messages as ChatTurn[] | null) ?? [];
+        if (data && msgs.length > 0) setResumable({ id: data.id as string, messages: msgs, topic: (data.topic as string | null) ?? null });
+      });
+  }, [profile?.id]);
+
+  function resumeSession() {
+    if (!resumable) return;
+    sessionIdRef.current = resumable.id;
+    setSessionId(resumable.id);
+    setTopic(resumable.topic);
+    setTurns(resumable.messages);
+    setResumable(null);
+  }
   const [retryText, setRetryText] = useState<string | null>(null);
   const [newAchievements, setNewAchievements] = useState<AchievementDef[]>([]);
 
@@ -220,6 +252,7 @@ export default function Conversation() {
       // La sesión solo se registra si alcanzó el mínimo. El resultado se
       // informa en pantalla — nunca en silencio.
       if (sid && counts) {
+        void awardSessionXp(profile.id, sid, "conversation", userTurns, Math.round((Date.now() - startedAt) / 1000));
         const { error } = await supabase
           .from("sessions")
           .update({
@@ -312,6 +345,18 @@ Reply with only the hint text — no explanation, no punctuation around it.`;
   if (turns.length === 0) {
     return (
       <div className="animate-fade-up max-w-2xl mx-auto">
+        {resumable && learningLanguage !== "ca" && (
+          <div className="card p-4 mb-6 flex flex-col sm:flex-row sm:items-center gap-3">
+            <div className="flex-1">
+              <p className="font-medium">Continue your last conversation?</p>
+              <p className="text-xs text-paper-muted">{resumable.messages.length} messages saved · not finished yet</p>
+            </div>
+            <div className="flex gap-2">
+              <button className="btn-coral text-sm px-4 py-2" onClick={resumeSession}>Continue</button>
+              <button className="btn-ghost text-sm px-4 py-2" onClick={() => setResumable(null)}>Start new</button>
+            </div>
+          </div>
+        )}
         <p className="eyebrow mb-2">
           {learningLanguage === "ca" ? "Conversa en directe" : "Live conversation"}
         </p>

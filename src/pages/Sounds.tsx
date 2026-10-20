@@ -1,3 +1,4 @@
+import { useHistoryBack } from "../lib/useHistoryBack";
 import { useEffect, useState } from "react";
 import { ArrowLeft, Volume2, CheckCircle2, XCircle } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
@@ -37,6 +38,7 @@ export default function Sounds() {
   const isCatalan = (profile?.learning_language || "en") === "ca";
   const allSounds = isCatalan ? CATALAN_SOUNDS : SOUNDS;
   const [selected, setSelected] = useState<SoundLike | null>(null);
+  useHistoryBack(selected !== null, () => setSelected(null));
   const [needsPractice, setNeedsPractice] = useState<Set<string>>(new Set());
   const [sorted, setSorted] = useState<SoundLike[]>(allSounds);
 

@@ -1,3 +1,4 @@
+import { useHistoryBack } from "../lib/useHistoryBack";
 import { useEffect, useState } from "react";
 import { Check, RotateCcw, Dumbbell, Volume2, Layers, Mic } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
@@ -27,6 +28,7 @@ export default function Chunks() {
   const [cat, setCat] = useState<string>("all");
   const [loading, setLoading] = useState(true);
   const [drill, setDrill] = useState(false);
+  useHistoryBack(drill, () => setDrill(false));
 
   useEffect(() => {
     if (!profile) return;

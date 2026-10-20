@@ -1,3 +1,4 @@
+import XpCard from "../components/XpCard";
 import { addLocalDays } from "../lib/dates";
 import { useEffect, useRef, useState } from "react";
 import { ActivityArea, HorizontalBars } from "../components/Charts";
@@ -268,6 +269,8 @@ export default function Progress() {
     <div className="animate-fade-up">
       <p className="eyebrow mb-2">{learningLanguage === "ca" ? "El teu progrés" : "Your progress"}</p>
       <h1 className="font-display text-3xl font-extrabold mb-6">{learningLanguage === "ca" ? "Com estàs" : "How you're doing"}</h1>
+
+      <div className="mb-8"><XpCard /></div>
 
       {/* ── Ring stats ─────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-3 md:grid-cols-6 gap-3 mb-8">

@@ -30,13 +30,34 @@ const WINDOW_MINUTES = 15;
 const COPY = {
   en: {
     title: "Babelito",
-    body: "Your daily practice is waiting. Five minutes is enough. 💪",
+    lines: [
+      "Your English is waiting. Five minutes is enough.",
+      "A short chat today keeps your progress moving. 💪",
+      "One conversation. Some XP. A better accent. Let's go.",
+      "Your coach has a new question for you. 🎙️",
+    ],
+    streak: (n: number) => `Your -day streak is waiting. Five minutes keeps it alive. 🔥`,
   },
   ca: {
     title: "Babelito",
-    body: "La teva pràctica d'avui t'espera. Cinc minuts són suficients. 💪",
+    lines: [
+      "La teva pràctica d'avui t'espera. Cinc minuts són suficients. 💪",
+    ],
+    streak: (n: number) => `La teva ratxa de  dies t'espera. 🔥`,
   },
 } as const;
+
+/** Días seguidos con práctica completa, contando desde ayer (hoy aún no cuenta). */
+function streakFrom(completedDates: Set<string>, todayLocal: string): number {
+  let n = 0;
+  const cursor = new Date(todayLocal + "T12:00:00Z");
+  cursor.setUTCDate(cursor.getUTCDate() - 1);
+  while (completedDates.has(cursor.toISOString().slice(0, 10))) {
+    n++;
+    cursor.setUTCDate(cursor.getUTCDate() - 1);
+  }
+  return n;
+}
 
 /** Fecha y minutos del día en la zona horaria del usuario. */
 function localParts(now: Date, timeZone: string): { date: string; minutes: number } {
@@ -95,8 +116,23 @@ Deno.serve(async (req) => {
           .select("endpoint, p256dh, auth")
           .eq("user_id", p.id);
 
-        const copy = COPY[p.learning_language === "ca" ? "ca" : "en"];
-        const payload = JSON.stringify({ title: copy.title, body: copy.body, url: "/" });
+        const lang = p.learning_language === "ca" ? "ca" : "en";
+        const copy = COPY[lang];
+        // Racha real: días seguidos con práctica completa hasta ayer.
+        const since = new Date(now.getTime() - 31 * 86_400_000).toISOString().slice(0, 10);
+        const { data: done } = await admin
+          .from("daily_lessons")
+          .select("lesson_date")
+          .eq("user_id", p.id)
+          .eq("completed", true)
+          .gte("lesson_date", since);
+        const streak = streakFrom(new Set((done ?? []).map((r: { lesson_date: string }) => r.lesson_date)), local.date);
+        // Rota el mensaje por día del año para que no sea siempre el mismo.
+        const dayOfYear = Math.floor(now.getTime() / 86_400_000);
+        const body = streak > 0 && lang === "en"
+          ? copy.streak(streak)
+          : copy.lines[dayOfYear % copy.lines.length];
+        const payload = JSON.stringify({ title: copy.title, body, url: "/" });
 
         for (const s of subs ?? []) {
           try {
