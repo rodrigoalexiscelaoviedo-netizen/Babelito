@@ -160,12 +160,12 @@ function ListView({
     <div className="animate-fade-up">
       <header className="flex items-end justify-between mb-6">
         <div>
-          <p className="eyebrow mb-2">{learningLanguage === "ca" ? "Escoltar" : "Speaking"}</p>
+          <p className="eyebrow mb-2">{learningLanguage === "ca" ? "Escoltar" : "Listening"}</p>
           <h1 className="page-title">{learningLanguage === "ca" ? "Escoltar" : "Listening"}</h1>
           <p className="text-paper-muted mt-1">
             {isCatalan
               ? "Entrena la teva orella per al català parlat ràpid."
-              : "Entrenas tu oído para el habla conectada de los nativos."}
+              : "Train your ear for the way natives link words together."}
           </p>
         </div>
         <button className="btn-coral shrink-0" onClick={onTrain}>

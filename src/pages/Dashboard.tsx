@@ -237,11 +237,12 @@ export default function Dashboard() {
     ? "sleeping"
     : "happy";
 
+  const isCa = learningLanguage === "ca";
   const maicaText = lesson?.completed
-    ? "¡Maica está orgullosa! 🐾"
+    ? (isCa ? "La Maica està orgullosa! 🐾" : "Maica is proud of you! 🐾")
     : !activeLast2Days && streak === 0 && (stats?.sessions ?? 0) > 0
-    ? "Maica te extrañó 🐾"
-    : "¡Maica te está esperando! 🐾";
+    ? (isCa ? "La Maica et trobava a faltar 🐾" : "Maica missed you 🐾")
+    : (isCa ? "La Maica t'espera! 🐾" : "Maica is waiting for you! 🐾");
 
   const modules = learningLanguage === "ca" ? [
     { to: "/conversation", label: "Parla amb el coach", desc: "Conversa en directe amb feedback", icon: MessageCircle, accent: "coral" },
@@ -355,7 +356,7 @@ export default function Dashboard() {
       <div className="card p-5 mb-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="font-display font-bold text-lg">
-            {learningLanguage === "ca" ? "La teva pràctica d'avui" : "Tu práctica de hoy"}
+            {learningLanguage === "ca" ? "La teva pràctica d'avui" : "Today's practice"}
           </h2>
           <div className="flex flex-col items-end gap-0.5">
             <span className="flex items-center gap-1.5 text-coral font-display font-bold">
@@ -380,7 +381,7 @@ export default function Dashboard() {
             <p className="text-sm text-coral mb-1">
               {learningLanguage === "ca"
                 ? "No hem pogut carregar la teva pràctica d'avui."
-                : "No pudimos cargar tu práctica de hoy."}
+                : "We couldn't load today's practice."}
             </p>
             {loadError && <p className="text-xs text-paper-faint mb-3">{loadError}</p>}
             <button
@@ -390,7 +391,7 @@ export default function Dashboard() {
                 setReloadKey((k) => k + 1);
               }}
             >
-              {learningLanguage === "ca" ? "Reintenta" : "Reintentar"}
+              {learningLanguage === "ca" ? "Reintenta" : "Try again"}
             </button>
           </div>
         ) : lesson?.completed ? (
@@ -466,10 +467,10 @@ export default function Dashboard() {
                   {lesson.convo_done
                     ? (learningLanguage === "ca"
                       ? "Fet — es va marcar al registrar-se la teva sessió ✓"
-                      : "Hecho — se tildó al registrarse tu sesión ✓")
+                      : "Done — ticked when your session was saved ✓")
                     : (learningLanguage === "ca"
                       ? `Toca per obrir el teu coach → (es marca al completar ${MIN_USER_TURNS} intercanvis)`
-                      : `Tap to open your coach → (se tilda al completar ${MIN_USER_TURNS} intercambios)`)}
+                      : `Tap to open your coach → (ticks after ${MIN_USER_TURNS} exchanges)`)}
                 </p>
               </div>
             </div>
@@ -526,12 +527,12 @@ export default function Dashboard() {
                   <BookOpen size={16} className="text-mint shrink-0" />
                   <div className="min-w-0">
                     <p className="text-sm font-medium text-mint">
-                      {learningLanguage === "ca" ? "Aprèn una paraula nova" : "Aprende una palabra nueva"}
+                      {learningLanguage === "ca" ? "Aprèn una paraula nova" : "Learn a new word"}
                     </p>
                     <p className="text-xs text-paper-faint">
                       {learningLanguage === "ca"
                         ? "Toca qualsevol paraula al llegir per seguir-la — demà apareix aquí"
-                        : "Toca cualquier palabra al leer para seguirla — mañana aparece aquí"}
+                        : "Tap any word while reading to track it — it shows up here tomorrow"}
                     </p>
                   </div>
                 </div>
@@ -579,10 +580,10 @@ export default function Dashboard() {
               <p className="text-xs text-paper-faint text-center">
                 {learningLanguage === "ca"
                   ? `${doneCount}/${items.length} — completa ${items.length === 1 ? "la tasca" : "les tasques"} de dalt`
-                  : `${doneCount}/${items.length} — completa ${items.length === 1 ? "la tarea" : "las tareas"} de arriba`}
+                  : `${doneCount}/${items.length} — finish the ${items.length === 1 ? "task" : "tasks"} above`}
                 {!lesson.word && (learningLanguage === "ca"
                   ? " (la paraula del dia no compta avui)"
-                  : " (la palabra del día no cuenta hoy)")}
+                  : " (the word of the day doesn't count today)")}
               </p>
             )}
           </div>

@@ -188,7 +188,7 @@ function FlipCard({
       </button>
 
       {/* Action row — visible buttons for Listen and Repeat */}
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <button
           onClick={handleListen}
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-ink-600 hover:bg-ink-500 text-xs font-medium text-paper transition"

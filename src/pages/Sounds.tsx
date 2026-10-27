@@ -105,10 +105,10 @@ export default function Sounds() {
       <p className="text-paper-muted mb-8">
         {isCatalan
           ? "Els sons del català que costen més als castellanoparlants. Toca'n un per practicar."
-          : "Los sonidos del inglés más difíciles para hispanohablantes. Toca uno para practicar."}
+          : "The English sounds Spanish speakers find hardest. Tap one to practise."}
       </p>
 
-      <div className="grid sm:grid-cols-2 gap-3">
+      <div className="grid lg:grid-cols-2 gap-3">
         {sorted.map((s) => (
           <SoundCard
             key={s.id}
@@ -160,7 +160,7 @@ function SoundCard({
           <p className="font-display font-bold text-base leading-snug">{sound.name}</p>
           {needsPractice && (
             <span className="shrink-0 text-[10px] font-mono bg-coral/20 text-coral px-2 py-0.5 rounded-full">
-              Practicar
+              Practise
             </span>
           )}
         </div>

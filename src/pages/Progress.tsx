@@ -78,7 +78,7 @@ function Ring({
   }, [pct, circ]);
 
   return (
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="max-w-full h-auto">
       <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#2C3852" strokeWidth={stroke} />
       <circle
         cx={size / 2}
@@ -114,7 +114,7 @@ function RingStat({
   color: string;
 }) {
   return (
-    <div className="card p-4 flex flex-col items-center gap-1.5">
+    <div className="card p-3 flex flex-col items-center gap-1.5 min-w-0">
       <div className="relative">
         <Ring value={value} max={max} color={color} />
         <div className="absolute inset-0 flex flex-col items-center justify-center">
@@ -274,7 +274,7 @@ export default function Progress() {
       <div className="mb-8"><XpCard /></div>
 
       {/* ── Ring stats ─────────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-3 md:grid-cols-6 gap-3 mb-8">
+      <div className="grid grid-cols-3 lg:grid-cols-6 gap-3 mb-8">
         <RingStat
           label={learningLanguage === "ca" ? "Racha" : "Streak"}
           value={streak}
@@ -324,7 +324,7 @@ export default function Progress() {
 
       {/* ── Weekly summary ─────────────────────────────────────────────────── */}
       <div className="card p-5 mb-6">
-        <h3 className="font-display font-bold mb-1">{learningLanguage === "ca" ? "La teva setmana" : "Tu semana"}</h3>
+        <h3 className="font-display font-bold mb-1">{learningLanguage === "ca" ? "La teva setmana" : "Your week"}</h3>
         <p className="text-sm text-paper-muted mb-4">{learningLanguage === "ca" ? "Últims 7 dies d'un cop d'ull." : "Last 7 days at a glance."}</p>
         <div className="space-y-3">
           <WeekBar label={learningLanguage === "ca" ? "Dies actius" : "Active days"} value={weekActiveDays} max={7} color={BRAND.coral} />

@@ -109,7 +109,9 @@ export default function Stories() {
     return (
       <StoryQuiz
         story={activeStory}
-        onDone={async (score) => {
+        onBackToText={() => setView("reading")}
+        onExit={() => setView("library")}
+        onFinish={async (score) => {
           if (profile) {
             await saveStoryProgress(profile.id, activeStory.id, score);
             void awardXp(profile.id, { source: "story", refKey: `story:${activeStory.id}`, amount: storyXp(score), meta: { score } });
@@ -134,7 +136,6 @@ export default function Stories() {
               return [...prev, entry];
             });
           }
-          setView("library");
         }}
       />
     );
@@ -165,7 +166,7 @@ export default function Stories() {
         <div className="card p-5 mb-8">
           <h3 className="font-display font-bold mb-1">Generate a story</h3>
           <p className="text-xs text-paper-muted mb-4">
-            Uses AI — generated with Gemini on Supabase Edge Function.
+            Pick a topic you like and the coach writes a story at your level.
           </p>
           <div className="flex gap-3 mb-3">
             <input
@@ -400,10 +401,15 @@ function StoryReader({
 
 function StoryQuiz({
   story,
-  onDone,
+  onFinish,
+  onExit,
+  onBackToText,
 }: {
   story: Story;
-  onDone: (score: number) => void;
+  /** Se llama UNA vez al terminar: guarda progreso y XP aunque la persona salga por el menú. */
+  onFinish: (score: number) => void | Promise<void>;
+  onExit: () => void;
+  onBackToText: () => void;
 }) {
   const questions: StoryQuestion[] = story.questions ?? [];
   const [current, setCurrent] = useState(0);
@@ -434,11 +440,20 @@ function StoryQuiz({
     ? Math.round((answers.filter(Boolean).length / questions.length) * 100)
     : 0;
 
+  const savedRef = useRef(false);
+  useEffect(() => {
+    if (!finished || savedRef.current) return;
+    savedRef.current = true;
+    void onFinish(score);
+    // onFinish cambia en cada render; solo debe correr al terminar.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [finished]);
+
   if (questions.length === 0) {
     return (
       <div className="animate-fade-up max-w-xl mx-auto text-center py-12">
         <p className="text-paper-muted">No questions available for this story.</p>
-        <button className="btn-coral mt-4" onClick={() => onDone(100)}>
+        <button className="btn-coral mt-4" onClick={onExit}>
           Back to library
         </button>
       </div>
@@ -467,9 +482,17 @@ function StoryQuiz({
             </p>
           </div>
         )}
-        <button className="btn-coral w-full" onClick={() => onDone(score)}>
-          Back to stories
-        </button>
+        <p className="inline-flex items-center gap-1.5 rounded-full status-streak-bg px-3 py-1 text-sm font-semibold mb-6 level-up-pop">
+          +{storyXp(score)} XP
+        </p>
+        <div className="flex flex-col sm:flex-row gap-3">
+          <button className="btn-ghost flex-1" onClick={onBackToText}>
+            Read it again
+          </button>
+          <button className="btn-coral flex-1" onClick={onExit}>
+            Back to stories
+          </button>
+        </div>
       </div>
     );
   }
