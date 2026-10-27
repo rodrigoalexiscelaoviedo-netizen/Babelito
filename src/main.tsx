@@ -23,6 +23,16 @@ initMonitoring();
 // El service worker atiende los push de recordatorio y los clicks en notificaciones.
 // Solo en producción: en desarrollo vite-plugin-pwa no genera /sw.js.
 if (import.meta.env.PROD && "serviceWorker" in navigator) {
+  // Si ya había una versión controlando la página y llega una nueva, recarga
+  // una vez: así cada publicación se ve al abrir la app, no recién a la segunda.
+  const hadController = !!navigator.serviceWorker.controller;
+  let reloaded = false;
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (!hadController || reloaded) return;
+    reloaded = true;
+    window.location.reload();
+  });
+
   navigator.serviceWorker.register("/sw.js").catch((err) => {
     console.warn("[SW] Registration failed:", err);
   });
