@@ -1,4 +1,5 @@
 import { awardSessionXp } from "../lib/xp";
+import { SuggestedChunks, XpEarned } from "../components/ReportExtras";
 import { useTranslation } from "react-i18next";
 import { useEffect, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
@@ -58,6 +59,7 @@ export default function Conversation() {
   const [report, setReport] = useState<SessionReport | null>(null);
   const [reportCounted, setReportCounted] = useState(true);
   const [reportError, setReportError] = useState("");
+  const [xpEarned, setXpEarned] = useState<number | null>(null);
 
   // Conversación abierta que se puede retomar (turnos guardados en sessions.messages).
   const [resumable, setResumable] = useState<{ id: string; messages: ChatTurn[]; topic: string | null } | null>(null);
@@ -252,7 +254,7 @@ export default function Conversation() {
       // La sesión solo se registra si alcanzó el mínimo. El resultado se
       // informa en pantalla — nunca en silencio.
       if (sid && counts) {
-        void awardSessionXp(profile.id, sid, "conversation", userTurns, Math.round((Date.now() - startedAt) / 1000));
+        void awardSessionXp(profile.id, sid, "conversation", userTurns, Math.round((Date.now() - startedAt) / 1000)).then(setXpEarned);
         const { error } = await supabase
           .from("sessions")
           .update({
@@ -325,6 +327,8 @@ Reply with only the hint text — no explanation, no punctuation around it.`;
         error={reportError}
         onClose={() => setReport(null)}
         learningLanguage={learningLanguage}
+        xpEarned={xpEarned}
+        userId={profile?.id}
       />
     );
   }
@@ -442,13 +446,13 @@ Reply with only the hint text — no explanation, no punctuation around it.`;
           <p className="text-[11px] text-paper-faint">
             {learningLanguage === "ca"
               ? `Te ${turnsRemaining(turns) === 1 ? "falta" : "falten"} ${turnsRemaining(turns)} ${turnsRemaining(turns) === 1 ? "intercanvi" : "intercanvis"} perquè aquesta sessió compti`
-              : `Te ${turnsRemaining(turns) === 1 ? "falta" : "faltan"} ${turnsRemaining(turns)} ${turnsRemaining(turns) === 1 ? "intercambio" : "intercambios"} para que esta sesión cuente`}
+              : `${turnsRemaining(turns)} more ${turnsRemaining(turns) === 1 ? "exchange" : "exchanges"} to count this session`}
           </p>
         ) : (
           <p className="text-[11px] text-mint">
             {learningLanguage === "ca"
               ? "✓ Aquesta sessió comptarà per a la teva racha"
-              : "✓ Esta sesión va a contar para tu racha"}
+              : "✓ This session counts towards your streak"}
           </p>
         )}
       </div>
@@ -677,12 +681,16 @@ function ReportPanel({
   counted = true,
   error = "",
   learningLanguage = "en",
+  xpEarned = null,
+  userId,
 }: {
   report: SessionReport;
   onClose: () => void;
   counted?: boolean;
   error?: string;
   learningLanguage?: string;
+  xpEarned?: number | null;
+  userId?: string;
 }) {
   const { t } = useTranslation();
   return (
@@ -695,6 +703,7 @@ function ReportPanel({
           <h1 className="font-display text-2xl font-extrabold">
             {learningLanguage === "ca" ? "Com va anar" : "How it went"}
           </h1>
+          <div className="mt-2"><XpEarned amount={xpEarned} learningLanguage={learningLanguage} /></div>
         </div>
         <button onClick={onClose} aria-label={t("common.close")} className="text-paper-muted hover:text-paper">
           <X size={20} />
@@ -709,7 +718,7 @@ function ReportPanel({
           <p className="text-xs text-paper-muted">
             {learningLanguage === "ca"
               ? `Va ser molt curta: calen almenys ${MIN_USER_TURNS} intercanvis teus perquè compti en la teva racha. El informe de sota segueix sent vàlid.`
-              : `Fue muy corta: hacen falta al menos ${MIN_USER_TURNS} intercambios tuyos para que cuente en tu racha. El reporte de abajo sigue siendo válido.`}
+              : `Too short: you need at least ${MIN_USER_TURNS} exchanges for it to count towards your streak. The report below is still valid.`}
           </p>
         </div>
       )}
@@ -755,20 +764,12 @@ function ReportPanel({
         </div>
       )}
 
-      {report.suggested_chunks.length > 0 && (
-        <div className="card p-5 mb-6">
-          <p className="eyebrow text-gold mb-3">
-            {learningLanguage === "ca" ? "Expressions que podries usar la pròxima vegada" : "Chunks you could use next time"}
-          </p>
-          <ul className="space-y-1.5">
-            {report.suggested_chunks.map((chunk, i) => (
-              <li key={i} className="font-mono text-sm text-paper-muted">
-                "{chunk}"
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
+      <SuggestedChunks
+        chunks={report.suggested_chunks}
+        userId={userId}
+        learningLanguage={learningLanguage}
+        title={learningLanguage === "ca" ? "Expressions que podries usar la pròxima vegada" : "Chunks you could use next time"}
+      />
 
       <p className="text-xs text-paper-faint text-center mb-4">
         Written by your AI coach

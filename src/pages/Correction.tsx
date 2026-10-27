@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Sparkles } from "lucide-react";
+import { Check, Copy, Sparkles } from "lucide-react";
+import { sectionText } from "../lib/correctionText";
 import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabaseClient";
 import { askCoach } from "../lib/claude";
@@ -11,6 +12,17 @@ export default function Correction() {
   const [text, setText] = useState("");
   const [result, setResult] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [copied, setCopied] = useState<string | null>(null);
+
+  async function copy(label: string, value: string) {
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopied(label);
+      window.setTimeout(() => setCopied(null), 1800);
+    } catch {
+      setCopied(null);
+    }
+  }
 
   async function correct() {
     if (!text.trim() || !profile) return;
@@ -94,6 +106,24 @@ export default function Correction() {
               </p>
             ) : null;
           })}
+          {!result.startsWith("⚠️") && (
+            <div className="mt-5 pt-4 border-t border-ink-600 flex flex-wrap gap-2 whitespace-normal">
+              {[
+                { key: "corrected", re: /correct|correcci/i, en: "Copy corrected", ca: "Copia la correcció" },
+                { key: "natural", re: /natural/i, en: "Copy natural version", ca: "Copia la versió natural" },
+              ].map(({ key, re, en, ca }) => {
+                const value = sectionText(result, re);
+                if (!value) return null;
+                const done = copied === key;
+                return (
+                  <button key={key} className="btn-ghost text-sm px-3 py-2" onClick={() => copy(key, value)}>
+                    {done ? <Check size={15} className="text-mint" /> : <Copy size={15} />}
+                    {done ? (learningLanguage === "ca" ? "Copiat" : "Copied") : learningLanguage === "ca" ? ca : en}
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
     </div>

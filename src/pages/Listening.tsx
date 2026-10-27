@@ -506,7 +506,7 @@ export function TrainView({
             }`}
           >
             <p className={`font-medium mb-1 ${isCorrect ? "text-mint" : "text-coral"}`}>
-              {isCorrect ? "¡Correcto!" : "Incorrecto"}
+              {isCorrect ? "Correct!" : "Not quite"}
             </p>
             <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 mb-2">
               <span className="text-xs text-paper-muted">Written:</span>
