@@ -225,7 +225,7 @@ export default function Onboarding() {
         <p className="eyebrow mb-2">
           {learningLanguage === "ca" ? "Pas" : "Step"} {step + 1} {learningLanguage === "ca" ? "de" : "of"} {steps.length}
         </p>
-        <h1 className="font-display text-3xl font-bold mb-1">{current.title}</h1>
+        <h1 className="page-title mb-1">{current.title}</h1>
         <p className="text-paper-muted mb-7">{current.sub}</p>
 
         {current.body}

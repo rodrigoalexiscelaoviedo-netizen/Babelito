@@ -24,6 +24,8 @@ export default function Review() {
   const [items, setItems] = useState<ReviewItem[]>([]);
   const [idx, setIdx] = useState(0);
   const [phase, setPhase] = useState<SessionState>("loading");
+  // Ver la respuesta sin hablar (sin micrófono o sin ganas de hablar): autoevaluación.
+  const [revealed, setRevealed] = useState(false);
   const [spoken, setSpoken] = useState("");
   const [quality, setQuality] = useState<ReviewQuality | null>(null);
   const [reviewedCount, setReviewedCount] = useState(0);
@@ -116,6 +118,14 @@ NEVER reveal the answer. Reply with only the hint text.`,
     });
   }
 
+  function handleReveal() {
+    voiceRec.stop();
+    setSpoken("");
+    setQuality(null);
+    setRevealed(true);
+    setPhase("result");
+  }
+
   function handleDone() {
     // Detiene la captura — onend del hook dispara el callback con el texto acumulado
     voiceRec.stop();
@@ -147,6 +157,7 @@ NEVER reveal the answer. Reply with only the hint text.`,
       setIdx(nextIdx);
       setSpoken("");
       setQuality(null);
+      setRevealed(false);
       setPhase("prompt");
     }
   }
@@ -189,7 +200,7 @@ NEVER reveal the answer. Reply with only the hint text.`,
         />
         <div className="animate-fade-up max-w-md mx-auto text-center pt-16">
           <CheckCircle2 size={48} className="mx-auto text-mint mb-4" />
-          <h1 className="font-display text-3xl font-extrabold mb-2">Done!</h1>
+          <h1 className="page-title mb-2">Done!</h1>
           <p className="text-paper-muted mb-1">
             <span className="font-display font-bold text-mint text-xl">{reviewedCount}</span> item
             {reviewedCount !== 1 ? "s" : ""} reviewed.
@@ -244,6 +255,9 @@ NEVER reveal the answer. Reply with only the hint text.`,
           >
             <Mic size={20} /> Say it
           </button>
+          <button onClick={handleReveal} className="btn-ghost w-full">
+            Show the answer
+          </button>
 
           {/* ── Hint pasivo ── */}
           {showHint && (
@@ -292,7 +306,7 @@ NEVER reveal the answer. Reply with only the hint text.`,
       )}
 
       {/* Result */}
-      {phase === "result" && quality && (
+      {phase === "result" && (quality || revealed) && (
         <div className="animate-fade-up space-y-4">
           {/* What you said */}
           {spoken && (
@@ -300,7 +314,7 @@ NEVER reveal the answer. Reply with only the hint text.`,
               You said: "{spoken}"
             </p>
           )}
-          {!spoken && (
+          {!spoken && !revealed && (
             <p className="text-xs text-coral text-center">Nothing detected — mic issue or timeout.</p>
           )}
 
@@ -326,7 +340,16 @@ NEVER reveal the answer. Reply with only the hint text.`,
             <p className="text-xs text-paper-muted mt-2 italic">{item.prompt}</p>
           </div>
 
+          {/* Autoevaluación cuando se vio la respuesta sin hablar */}
+          {revealed && !quality && (
+            <div className="grid grid-cols-2 gap-3">
+              <button className="btn-ghost py-3" onClick={() => setQuality("again")}>Not yet</button>
+              <button className="btn-mint py-3" onClick={() => setQuality("good")}>I knew it</button>
+            </div>
+          )}
+
           {/* Quality badge */}
+          {quality && (<>
           <div
             className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium ${
               quality === "good"
@@ -347,6 +370,7 @@ NEVER reveal the answer. Reply with only the hint text.`,
           >
             {idx + 1 < total ? "Next →" : "Finish session ✓"}
           </button>
+          </>)}
         </div>
       )}
     </div>

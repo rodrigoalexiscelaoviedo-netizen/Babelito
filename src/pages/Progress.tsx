@@ -1,3 +1,4 @@
+import { BRAND } from "../lib/theme";
 import XpCard from "../components/XpCard";
 import { addLocalDays } from "../lib/dates";
 import { useEffect, useRef, useState } from "react";
@@ -77,7 +78,7 @@ function Ring({
   }, [pct, circ]);
 
   return (
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="max-w-full h-auto">
       <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#2C3852" strokeWidth={stroke} />
       <circle
         cx={size / 2}
@@ -113,7 +114,7 @@ function RingStat({
   color: string;
 }) {
   return (
-    <div className="card p-4 flex flex-col items-center gap-1.5">
+    <div className="card p-3 flex flex-col items-center gap-1.5 min-w-0">
       <div className="relative">
         <Ring value={value} max={max} color={color} />
         <div className="absolute inset-0 flex flex-col items-center justify-center">
@@ -268,33 +269,33 @@ export default function Progress() {
   return (
     <div className="animate-fade-up">
       <p className="eyebrow mb-2">{learningLanguage === "ca" ? "El teu progrés" : "Your progress"}</p>
-      <h1 className="font-display text-3xl font-extrabold mb-6">{learningLanguage === "ca" ? "Com estàs" : "How you're doing"}</h1>
+      <h1 className="page-title mb-6">{learningLanguage === "ca" ? "Com estàs" : "How you're doing"}</h1>
 
       <div className="mb-8"><XpCard /></div>
 
       {/* ── Ring stats ─────────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-3 md:grid-cols-6 gap-3 mb-8">
+      <div className="grid grid-cols-3 lg:grid-cols-6 gap-3 mb-8">
         <RingStat
           label={learningLanguage === "ca" ? "Racha" : "Streak"}
           value={streak}
           max={streakMilestone}
           unit={learningLanguage === "ca" ? "dies" : "days"}
           sub={freezes > 0 ? `❄️ ${freezes}` : streakSub}
-          color="#FF6B5E"
+          color={BRAND.coral}
         />
         <RingStat
           label={learningLanguage === "ca" ? "Sessions" : "Sessions"}
           value={sessions.length}
           max={Math.max(50, sessions.length)}
           unit={learningLanguage === "ca" ? "total" : "total"}
-          color="#36C5A8"
+          color={BRAND.mint}
         />
         <RingStat
           label={learningLanguage === "ca" ? "Minuts" : "Minutes"}
           value={totalMinutes}
           max={Math.max(120, totalMinutes)}
           unit={learningLanguage === "ca" ? "min" : "min"}
-          color="#F7C948"
+          color={BRAND.gold}
         />
         <RingStat
           label={learningLanguage === "ca" ? "Baralla de revisió" : "Review deck"}
@@ -302,7 +303,7 @@ export default function Progress() {
           max={50}
           unit={learningLanguage === "ca" ? "cartes" : "cards"}
           sub={deck >= 50 ? (learningLanguage === "ca" ? "Objectiu aconseguit!" : "Goal reached!") : `${50 - deck} ${learningLanguage === "ca" ? "a 50" : "to 50"}`}
-          color="#FF6B5E"
+          color={BRAND.coral}
         />
         <RingStat
           label={learningLanguage === "ca" ? "Vocabulari" : "Vocabulary"}
@@ -310,26 +311,26 @@ export default function Progress() {
           max={Math.max(100, vocabTotal)}
           unit={learningLanguage === "ca" ? "paraules" : "words"}
           sub={`${vocabKnown} ${learningLanguage === "ca" ? "sabudes" : "known"}`}
-          color="#36C5A8"
+          color={BRAND.mint}
         />
         <RingStat
           label={learningLanguage === "ca" ? "Històries" : "Stories"}
           value={storyProg.length}
           max={Math.max(10, storyProg.length)}
           unit={learningLanguage === "ca" ? "fetes" : "done"}
-          color="#F7C948"
+          color={BRAND.gold}
         />
       </div>
 
       {/* ── Weekly summary ─────────────────────────────────────────────────── */}
       <div className="card p-5 mb-6">
-        <h3 className="font-display font-bold mb-1">{learningLanguage === "ca" ? "La teva setmana" : "Tu semana"}</h3>
+        <h3 className="font-display font-bold mb-1">{learningLanguage === "ca" ? "La teva setmana" : "Your week"}</h3>
         <p className="text-sm text-paper-muted mb-4">{learningLanguage === "ca" ? "Últims 7 dies d'un cop d'ull." : "Last 7 days at a glance."}</p>
         <div className="space-y-3">
-          <WeekBar label={learningLanguage === "ca" ? "Dies actius" : "Active days"} value={weekActiveDays} max={7} color="#FF6B5E" />
-          <WeekBar label={learningLanguage === "ca" ? "Sessions" : "Sessions"} value={weekSessions} max={7} color="#36C5A8" />
-          <WeekBar label={learningLanguage === "ca" ? "Minuts" : "Minutes"} value={weekMinutes} max={60} color="#F7C948" />
-          <WeekBar label={learningLanguage === "ca" ? "Paraules noves" : "New words"} value={weekWords} max={20} color="#36C5A8" />
+          <WeekBar label={learningLanguage === "ca" ? "Dies actius" : "Active days"} value={weekActiveDays} max={7} color={BRAND.coral} />
+          <WeekBar label={learningLanguage === "ca" ? "Sessions" : "Sessions"} value={weekSessions} max={7} color={BRAND.mint} />
+          <WeekBar label={learningLanguage === "ca" ? "Minuts" : "Minutes"} value={weekMinutes} max={60} color={BRAND.gold} />
+          <WeekBar label={learningLanguage === "ca" ? "Paraules noves" : "New words"} value={weekWords} max={20} color={BRAND.mint} />
         </div>
         {weekActiveDays === 7 && (
           <p className="text-xs text-mint mt-3 text-center font-medium">{learningLanguage === "ca" ? "🔥 Setmana perfecta — 7/7 dies actius!" : "🔥 Perfect week — 7/7 active days!"}</p>

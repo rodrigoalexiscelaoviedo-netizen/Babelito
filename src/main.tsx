@@ -21,7 +21,8 @@ import "./index.css";
 initMonitoring();
 
 // El service worker atiende los push de recordatorio y los clicks en notificaciones.
-if ("serviceWorker" in navigator) {
+// Solo en producción: en desarrollo vite-plugin-pwa no genera /sw.js.
+if (import.meta.env.PROD && "serviceWorker" in navigator) {
   navigator.serviceWorker.register("/sw.js").catch((err) => {
     console.warn("[SW] Registration failed:", err);
   });

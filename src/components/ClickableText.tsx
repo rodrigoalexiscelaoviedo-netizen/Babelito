@@ -181,11 +181,12 @@ export default function ClickableText({
     const status = entry?.status;
     let base = "cursor-pointer transition ";
     if (!entry || status === "new") {
-      base += "text-coral/80 hover:text-coral";
+      // Texto normal: solo se marca al pasar el cursor (antes todo el texto quedaba rojo).
+      base += "hover:text-coral hover:underline decoration-coral/50 decoration-dotted underline-offset-4";
     } else if (status === "learning") {
-      base += "text-[#F4C431]/80 hover:text-[#F4C431]";
+      base += "text-gold/80 hover:text-gold";
       if (highlightLearning) {
-        base += " underline decoration-[#F4C431]/50 underline-offset-2 decoration-wavy";
+        base += " underline decoration-gold/50 underline-offset-2 decoration-wavy";
       }
     } else {
       base += "hover:text-paper-muted";
@@ -235,7 +236,7 @@ export default function ClickableText({
 
       {/* Text */}
       <div
-        className="leading-8 text-paper text-base"
+        className="leading-8 text-paper text-base whitespace-pre-line"
         onClick={() => clearAll()}
       >
         {tokens.map((token, i) => {

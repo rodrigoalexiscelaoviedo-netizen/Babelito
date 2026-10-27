@@ -1,3 +1,4 @@
+import { BRAND } from "../lib/theme";
 import { useEffect } from "react";
 import type { AchievementDef } from "../lib/achievements";
 import Maica from "./Maica";
@@ -34,14 +35,14 @@ export default function AchievementCelebration({ achievements, onClose }: Props)
           {/* Confetti strip */}
           <svg viewBox="0 0 220 36" className="w-full mb-3" aria-hidden="true">
             {[
-              { cx: 12,  cy: 18, r: 5,  fill: "#F7C948" },
-              { cx: 38,  cy: 8,  r: 4,  fill: "#FF6B5E" },
-              { cx: 66,  cy: 24, r: 6,  fill: "#36C5A8" },
-              { cx: 94,  cy: 10, r: 4,  fill: "#F7C948" },
-              { cx: 120, cy: 26, r: 5,  fill: "#FF6B5E" },
-              { cx: 148, cy: 8,  r: 6,  fill: "#36C5A8" },
-              { cx: 176, cy: 22, r: 4,  fill: "#F7C948" },
-              { cx: 205, cy: 12, r: 5,  fill: "#FF6B5E" },
+              { cx: 12,  cy: 18, r: 5,  fill: BRAND.gold },
+              { cx: 38,  cy: 8,  r: 4,  fill: BRAND.coral },
+              { cx: 66,  cy: 24, r: 6,  fill: BRAND.mint },
+              { cx: 94,  cy: 10, r: 4,  fill: BRAND.gold },
+              { cx: 120, cy: 26, r: 5,  fill: BRAND.coral },
+              { cx: 148, cy: 8,  r: 6,  fill: BRAND.mint },
+              { cx: 176, cy: 22, r: 4,  fill: BRAND.gold },
+              { cx: 205, cy: 12, r: 5,  fill: BRAND.coral },
             ].map((c, i) => (
               <circle key={i} cx={c.cx} cy={c.cy} r={c.r} fill={c.fill} opacity={0.9} />
             ))}

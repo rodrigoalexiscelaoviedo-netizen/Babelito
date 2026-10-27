@@ -160,12 +160,12 @@ function ListView({
     <div className="animate-fade-up">
       <header className="flex items-end justify-between mb-6">
         <div>
-          <p className="eyebrow mb-2">{learningLanguage === "ca" ? "Escoltar" : "Speaking"}</p>
-          <h1 className="font-display text-3xl font-extrabold">{learningLanguage === "ca" ? "Escoltar" : "Listening"}</h1>
+          <p className="eyebrow mb-2">{learningLanguage === "ca" ? "Escoltar" : "Listening"}</p>
+          <h1 className="page-title">{learningLanguage === "ca" ? "Escoltar" : "Listening"}</h1>
           <p className="text-paper-muted mt-1">
             {isCatalan
               ? "Entrena la teva orella per al català parlat ràpid."
-              : "Entrenas tu oído para el habla conectada de los nativos."}
+              : "Train your ear for the way natives link words together."}
           </p>
         </div>
         <button className="btn-coral shrink-0" onClick={onTrain}>
@@ -407,7 +407,7 @@ export function TrainView({
     return (
       <div className="animate-fade-up max-w-md mx-auto text-center pt-16">
         <Headphones size={48} className="mx-auto text-coral mb-4" />
-        <h1 className="font-display text-3xl font-extrabold mb-2">{learningLanguage === "ca" ? "Sessió completada!" : "Session complete!"}</h1>
+        <h1 className="page-title mb-2">{learningLanguage === "ca" ? "Sessió completada!" : "Session complete!"}</h1>
         <p className="font-display text-5xl font-extrabold text-mint mb-1">{correct}</p>
         <p className="text-paper-muted mb-2">{learningLanguage === "ca" ? "de" : "out of"} {queue.length} {learningLanguage === "ca" ? "correctes" : "correct"}</p>
         <p className="text-sm text-paper-faint mb-8">
@@ -506,7 +506,7 @@ export function TrainView({
             }`}
           >
             <p className={`font-medium mb-1 ${isCorrect ? "text-mint" : "text-coral"}`}>
-              {isCorrect ? "¡Correcto!" : "Incorrecto"}
+              {isCorrect ? "Correct!" : "Not quite"}
             </p>
             <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 mb-2">
               <span className="text-xs text-paper-muted">Written:</span>

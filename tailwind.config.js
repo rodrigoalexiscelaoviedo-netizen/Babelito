@@ -23,7 +23,8 @@ export default {
           deep: "#1FA88D",
         },
         gold: {
-          DEFAULT: "#F5B454",
+          DEFAULT: "#F6C445",
+          soft: "#F9D77A",
         },
         paper: {
           DEFAULT: "#EAEEF7",

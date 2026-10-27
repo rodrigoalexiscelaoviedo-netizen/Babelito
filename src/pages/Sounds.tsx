@@ -32,6 +32,13 @@ const CATALAN_SOUNDS: SoundLike[] = catalanSounds.map(catalanToSoundEntry);
 
 // ─── List view ───────────────────────────────────────────────────────────────
 
+/** Etiquetas de interfaz según el idioma que se aprende (las instrucciones de pronunciación siguen en español). */
+function useUi() {
+  const { profile } = useAuth();
+  const ca = profile?.learning_language === "ca";
+  return (en: string, cat: string) => (ca ? cat : en);
+}
+
 export default function Sounds() {
   const { profile } = useAuth();
   const voicePrefs = useVoicePrefs();
@@ -101,14 +108,14 @@ export default function Sounds() {
   return (
     <div className="animate-fade-up">
       <p className="eyebrow mb-2">Speaking</p>
-      <h1 className="font-display text-3xl font-extrabold mb-1">Sounds</h1>
+      <h1 className="page-title mb-1">Sounds</h1>
       <p className="text-paper-muted mb-8">
         {isCatalan
           ? "Els sons del català que costen més als castellanoparlants. Toca'n un per practicar."
-          : "Los sonidos del inglés más difíciles para hispanohablantes. Toca uno para practicar."}
+          : "The English sounds Spanish speakers find hardest. Tap one to practise."}
       </p>
 
-      <div className="grid sm:grid-cols-2 gap-3">
+      <div className="grid lg:grid-cols-2 gap-3">
         {sorted.map((s) => (
           <SoundCard
             key={s.id}
@@ -148,7 +155,7 @@ function SoundCard({
   return (
     <button
       onClick={onSelect}
-      className="card p-5 text-left hover:border-coral/50 transition flex items-start gap-4"
+      className="card-interactive p-5 text-left flex items-start gap-4"
     >
       {/* IPA badge */}
       <div className="shrink-0 w-16 h-16 rounded-xl bg-ink-600 flex items-center justify-center">
@@ -160,7 +167,7 @@ function SoundCard({
           <p className="font-display font-bold text-base leading-snug">{sound.name}</p>
           {needsPractice && (
             <span className="shrink-0 text-[10px] font-mono bg-coral/20 text-coral px-2 py-0.5 rounded-full">
-              Practicar
+              Practise
             </span>
           )}
         </div>
@@ -187,6 +194,7 @@ function SoundDetail({
   voicePrefs: ReturnType<typeof useVoicePrefs>;
   onBack: () => void;
 }) {
+  const ui = useUi();
   return (
     <div className="animate-fade-up max-w-xl mx-auto">
       {/* Back */}
@@ -210,7 +218,7 @@ function SoundDetail({
 
       {/* Articulación */}
       <div className="card p-5 mb-4">
-        <p className="eyebrow mb-2">Cómo producirlo</p>
+        <p className="eyebrow mb-2">{ui("How to make it", "Com es pronuncia")}</p>
         <p className="text-paper leading-relaxed">{sound.articulation}</p>
       </div>
 
@@ -224,7 +232,7 @@ function SoundDetail({
 
       {/* Shadowing */}
       <div className="mb-6">
-        <p className="eyebrow mb-3">Repetí</p>
+        <p className="eyebrow mb-3">{ui("Repeat", "Repeteix")}</p>
         <ShadowingBlock
           text={sound.shadowingPhrase}
           lang={sound.lang ?? voicePrefs.voiceAccent ?? "en-GB"}
@@ -244,6 +252,7 @@ function ExamplesSection({
   sound: SoundLike;
   voicePrefs: ReturnType<typeof useVoicePrefs>;
 }) {
+  const ui = useUi();
   function playWord(word: string) {
     speak(word, {
       voiceName: voicePrefs.voiceName ?? undefined,
@@ -254,7 +263,7 @@ function ExamplesSection({
 
   return (
     <div className="card p-5 mb-4">
-      <p className="eyebrow mb-3">Escucha</p>
+      <p className="eyebrow mb-3">{ui("Listen", "Escolta")}</p>
       <div className="flex flex-wrap gap-3">
         {sound.examples.map((word) => (
           <button
@@ -290,6 +299,7 @@ function MinimalPairsSection({
   sound: SoundEntry;
   voicePrefs: ReturnType<typeof useVoicePrefs>;
 }) {
+  const ui = useUi();
   const init = (): PairState => ({
     playing: null,
     guess: null,
@@ -359,15 +369,15 @@ function MinimalPairsSection({
   return (
     <div className="card p-5 mb-4">
       <div className="flex items-center justify-between mb-3">
-        <p className="eyebrow">Entrenas tu oído</p>
+        <p className="eyebrow">{ui("Train your ear", "Entrena l'oïda")}</p>
         {totalPlayed > 0 && (
           <span className="text-xs font-mono text-paper-muted">
-            {totalCorrect}/{totalPlayed} correctas
+            {totalCorrect}/{totalPlayed} {ui("correct", "correctes")}
           </span>
         )}
       </div>
       <p className="text-xs text-paper-muted mb-4">
-        Escucha la palabra y toca cuál crees que sonó.
+        {ui("Listen to the word and tap the one you heard.", "Escolta la paraula i toca la que has sentit.")}
       </p>
 
       <div className="space-y-4">
@@ -390,7 +400,7 @@ function MinimalPairsSection({
                 className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg bg-ink-600 hover:bg-ink-500 transition text-sm font-medium"
               >
                 <Volume2 size={15} className="text-coral" />
-                {hasPlayed ? "Volver a escuchar" : "Escuchar"}
+                {hasPlayed ? ui("Listen again", "Torna a escoltar") : ui("Listen", "Escolta")}
               </button>
 
               {/* Guess buttons — only after playing */}
@@ -438,13 +448,13 @@ function MinimalPairsSection({
                       s.result === "correct" ? "text-mint" : "text-coral"
                     }`}
                   >
-                    {s.result === "correct" ? "¡Correcto!" : `Era "${played[i] === "a" ? pair.a : pair.b}"`}
+                    {s.result === "correct" ? ui("Correct!", "Correcte!") : `${ui("It was", "Era")} "${played[i] === "a" ? pair.a : pair.b}"`}
                   </span>
                   <button
                     onClick={() => handleNext(i)}
                     className="text-xs text-paper-faint hover:text-paper transition"
                   >
-                    Siguiente →
+                    {ui("Next", "Següent")} →
                   </button>
                 </div>
               )}

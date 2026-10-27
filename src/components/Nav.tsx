@@ -92,9 +92,9 @@ export default function Nav() {
               to={to}
               end={"end" in rest ? rest.end : undefined}
               className={({ isActive }) =>
-                `flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition ${
+                `relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition ${
                   isActive
-                    ? "bg-ink-600 text-paper"
+                    ? "bg-ink-600 text-paper before:absolute before:left-0 before:top-2 before:bottom-2 before:w-1 before:rounded-full before:bg-coral"
                     : "text-paper-muted hover:bg-ink-700 hover:text-paper"
                 }`
               }

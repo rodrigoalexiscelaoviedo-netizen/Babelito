@@ -1,5 +1,6 @@
 import { useHistoryBack } from "../lib/useHistoryBack";
 import { awardSessionXp } from "../lib/xp";
+import { SuggestedChunks, XpEarned } from "../components/ReportExtras";
 import { useTranslation } from "react-i18next";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -52,19 +53,19 @@ export default function Roleplay() {
     return (
       <div className="animate-fade-up">
         <p className="eyebrow mb-2">{learningLanguage === "ca" ? "Rol" : "Roleplay"}</p>
-        <h1 className="font-display text-3xl font-extrabold mb-2">{learningLanguage === "ca" ? "Practica una situació real" : "Practise a real situation"}</h1>
+        <h1 className="page-title mb-2">{learningLanguage === "ca" ? "Practica una situació real" : "Practise a real situation"}</h1>
         <p className="text-paper-muted mb-8">
           {learningLanguage === "ca" ? "El teu coach fa l'altra persona. Escriu " : "Your coach plays the other person. Type "}<span className="font-mono text-coral">/end</span>{" "}
           {learningLanguage === "ca" ? "en qualsevol moment per obtenir retroalimentació completa." : "any time to get full feedback."}
         </p>
-        <div className="grid sm:grid-cols-2 gap-4">
+        <div className="grid sm:grid-cols-2 gap-4 stagger">
           {(learningLanguage === "ca" ? SCENARIOS_CA : SCENARIOS).map((s) => {
             const Icon = SCENARIO_ICONS[s.icon] ?? Drama;
             return (
               <button
                 key={s.id}
                 onClick={() => setScenario(s)}
-                className="card card-lift p-5 text-left group"
+                className="card-interactive p-5 text-left group"
               >
                 <div className="flex items-center justify-between">
                   <Icon size={24} className="text-coral" />
@@ -104,6 +105,7 @@ function RoleplayChat({ scenario, onExit }: { scenario: Scenario; onExit: () => 
   const [report, setReport] = useState<SessionReport | null>(null);
   const [reportCounted, setReportCounted] = useState(true);
   const [reportError, setReportError] = useState("");
+  const [xpEarned, setXpEarned] = useState<number | null>(null);
   const [startedAt] = useState(() => Date.now());
   const scrollRef = useRef<HTMLDivElement>(null);
   const systemRef = useRef(
@@ -244,7 +246,7 @@ Reply with only the hint text.`,
       const counts = userTurns >= MIN_USER_TURNS;
 
       if (sid && counts) {
-        void awardSessionXp(profile.id, sid, "roleplay", userTurns, Math.round((Date.now() - startedAt) / 1000));
+        void awardSessionXp(profile.id, sid, "roleplay", userTurns, Math.round((Date.now() - startedAt) / 1000)).then(setXpEarned);
         const { error } = await supabase
           .from("sessions")
           .update({
@@ -331,6 +333,7 @@ Reply with only the hint text.`,
           <div>
             <p className="eyebrow mb-1">{learningLanguage === "ca" ? "Reporte de sessió" : "Session report"} · {scenario.title}</p>
             <h1 className="font-display text-2xl font-extrabold">{learningLanguage === "ca" ? "Com ha anat" : "How it went"}</h1>
+            <div className="mt-2"><XpEarned amount={xpEarned} learningLanguage={learningLanguage} /></div>
           </div>
           <button onClick={onExit} aria-label={t("common.close")} className="text-paper-muted hover:text-paper">
             <X size={20} />
@@ -339,10 +342,11 @@ Reply with only the hint text.`,
 
         {!reportCounted && (
           <div className="card p-4 mb-4 border-gold/40">
-            <p className="text-sm text-gold font-medium mb-1">Esta sesión no se registró</p>
+            <p className="text-sm text-gold font-medium mb-1">{learningLanguage === "ca" ? "Aquesta sessió no s'ha registrat" : "This session wasn't saved"}</p>
             <p className="text-xs text-paper-muted">
-              Fue muy corta: hacen falta al menos {MIN_USER_TURNS} intercambios tuyos para que
-              cuente en tu racha. El reporte de abajo sigue siendo válido.
+              {learningLanguage === "ca"
+                ? `Ha estat massa curta: calen almenys ${MIN_USER_TURNS} intercanvis perquè compti. L'informe de sota segueix sent vàlid.`
+                : `Too short: you need at least ${MIN_USER_TURNS} exchanges for it to count towards your streak. The report below is still valid.`}
             </p>
           </div>
         )}
@@ -384,21 +388,15 @@ Reply with only the hint text.`,
           </div>
         )}
 
-        {report.suggested_chunks.length > 0 && (
-          <div className="card p-5 mb-6">
-            <p className="eyebrow text-gold mb-3">{learningLanguage === "ca" ? "Fragments que pots usar la pròxima vegada" : "Chunks you could use next time"}</p>
-            <ul className="space-y-1.5">
-              {report.suggested_chunks.map((chunk, i) => (
-                <li key={i} className="font-mono text-sm text-paper-muted">
-                  "{chunk}"
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
+        <SuggestedChunks
+          chunks={report.suggested_chunks}
+          userId={profile?.id}
+          learningLanguage={learningLanguage}
+          title={learningLanguage === "ca" ? "Fragments que pots usar la pròxima vegada" : "Chunks you could use next time"}
+        />
 
         <p className="text-xs text-paper-faint text-center mb-4">
-          {learningLanguage === "ca" ? "Generat per IA · Gemini via Supabase Edge Function" : "Generated by AI · Gemini via Supabase Edge Function"}
+          {learningLanguage === "ca" ? "Escrit pel teu coach d’IA" : "Written by your AI coach"}
         </p>
         <button className="btn-coral w-full" onClick={onExit}>
           {learningLanguage === "ca" ? "Torna als escenaris" : "Back to scenarios"}
@@ -437,11 +435,12 @@ Reply with only the hint text.`,
       <div className="mb-2 text-right">
         {turnsRemaining(turns) > 0 ? (
           <p className="text-[11px] text-paper-faint">
-            Te {turnsRemaining(turns) === 1 ? "falta" : "faltan"} {turnsRemaining(turns)}{" "}
-            {turnsRemaining(turns) === 1 ? "intercambio" : "intercambios"} para que esta sesión cuente
+            {learningLanguage === "ca"
+              ? `Et ${turnsRemaining(turns) === 1 ? "falta" : "falten"} ${turnsRemaining(turns)} ${turnsRemaining(turns) === 1 ? "intercanvi" : "intercanvis"} perquè aquesta sessió compti`
+              : `${turnsRemaining(turns)} more ${turnsRemaining(turns) === 1 ? "exchange" : "exchanges"} to count this session`}
           </p>
         ) : (
-          <p className="text-[11px] text-mint">✓ Esta sesión va a contar para tu racha</p>
+          <p className="text-[11px] text-mint">{learningLanguage === "ca" ? "✓ Aquesta sessió comptarà per a la teva ratxa" : "✓ This session counts towards your streak"}</p>
         )}
       </div>
 
@@ -593,6 +592,7 @@ Reply with only the hint text.`,
           <button
             onClick={() => send(input)}
             disabled={!input.trim() || thinking}
+            aria-label={learningLanguage === "ca" ? "Envia" : "Send"}
             className="grid h-10 w-10 place-items-center rounded-xl bg-coral text-ink-900 hover:bg-coral-soft disabled:opacity-40 transition"
           >
             <Send size={17} />
