@@ -47,3 +47,11 @@ Obras de dominio público que podemos adaptar (versiones propias, no copias): *F
 - Retomar roleplay de la misma forma que la conversación.
 - Desafío semanal y medallas por XP.
 - Replicar XP, banner de retomar y textos de notificación en catalán.
+
+## Revisión global (rama app-review)
+
+- **Formato del coach:** respuesta = charla + `---FEEDBACK---` + secciones `**Título:** …`. `src/lib/coachFormat.ts` las separa; `CoachFeedback` muestra la tarjeta plegable. Sesiones viejas siguen igual.
+- **Apertura del coach:** guion fijo por tema/nivel (`conversationOpeners.ts`), sin llamada a la IA.
+- **Historias:** filtros por nivel y tema, orden `sortForLearner`, A1 (migración `0006_a1_stories.sql`).
+- **Menú:** agrupado por habilidad; `/words` agregado.
+- **Recordatorios:** `send-reminders` acepta `x-dry-run: 1` para probar sin enviar.
