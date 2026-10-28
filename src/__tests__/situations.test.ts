@@ -21,7 +21,7 @@ describe("situations content", () => {
   it("has unique ids and enough material in every pack", () => {
     const ids = SITUATIONS.map((s) => s.id);
     expect(new Set(ids).size).toBe(ids.length);
-    expect(SITUATIONS.length).toBeGreaterThanOrEqual(12);
+    expect(SITUATIONS.length).toBeGreaterThanOrEqual(18);
     for (const s of SITUATIONS) {
       expect(s.phrases.length, s.id).toBeGreaterThanOrEqual(8);
       expect(s.words.length, s.id).toBeGreaterThanOrEqual(6);
