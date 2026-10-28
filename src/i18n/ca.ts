@@ -28,6 +28,7 @@ export const ca: Shape<typeof en> = {
     dictation: "Dictat",
     grammar: "Gramàtica",
     mistakes: "Els meus errors",
+    plan: "El meu pla",
     words: "Les meves paraules",
     groupSpeak: "Parla i escriu",
     groupSounds: "Sons i escolta",

@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Bell, MessageCircle, Target, X } from "lucide-react";
+import { Bell, CalendarCheck, MessageCircle, X } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
-import { SITUATIONS, loadProgress, sortSituations, stepsCount, type Situation, type SituationProgress } from "../lib/situations";
+import { buildPlan, loadPlanInput, type Plan } from "../lib/plan";
 import { useResumableSession } from "../lib/useResumableSession";
 import { pushSupported } from "../lib/notifications";
 
@@ -26,30 +26,28 @@ export default function HomeNudges({ userId, language }: { userId: string; langu
   const { session } = useResumableSession(userId);
   const [pushHidden, setPushHidden] = useState(readDismissed);
   const { profile } = useAuth();
-  const [mission, setMission] = useState<{ pack: Situation; done: number } | null>(null);
+  const [plan, setPlan] = useState<Plan | null>(null);
 
-  // Misión de Situaciones: la que está a medias, o una sugerida a tu nivel. Solo inglés por ahora.
+  // Plan de hoy (qué conviene hacer ahora). Solo inglés por ahora.
   useEffect(() => {
-    if (ca) return;
+    if (ca || !profile) return;
     let cancelled = false;
-    void loadProgress(userId).then((progress: Record<string, SituationProgress>) => {
-      if (cancelled) return;
-      const started = SITUATIONS.filter((s) => {
-        const n = stepsCount(progress[s.id]?.steps);
-        return n > 0 && n < 4;
-      }).sort((a, b) => (progress[b.id]?.updated_at ?? "").localeCompare(progress[a.id]?.updated_at ?? ""));
-      const pack = started[0] ?? sortSituations(SITUATIONS, profile?.current_level, progress)[0];
-      if (pack) setMission({ pack, done: stepsCount(progress[pack.id]?.steps) });
-    });
+    void loadPlanInput(profile)
+      .then((input) => {
+        if (!cancelled) setPlan(buildPlan(input));
+      })
+      .catch(() => {
+        /* sin plan: la tarjeta simplemente no aparece */
+      });
     return () => {
       cancelled = true;
     };
-  }, [ca, userId, profile?.current_level]);
+  }, [ca, profile]);
 
   const canAskPush =
     !pushHidden && pushSupported() && typeof Notification !== "undefined" && Notification.permission === "default";
 
-  if (!session && !canAskPush && !mission) return null;
+  if (!session && !canAskPush && !plan) return null;
 
   function hidePush() {
     try {
@@ -84,22 +82,25 @@ export default function HomeNudges({ userId, language }: { userId: string; langu
         </Link>
       )}
 
-      {mission && !ca && (
-        <Link to={`/situations/${mission.pack.id}`} className="card-interactive flex items-center gap-3 p-4">
-          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-mint/15 text-mint">
-            <Target size={18} />
-          </span>
-          <span className="min-w-0 flex-1">
-            <span className="block font-medium">
-              {mission.done > 0 ? "Continue your mission" : "Try a situation"}: {mission.pack.title}
+      {plan && !ca && (() => {
+        const next = plan.tasks.find((t) => !t.done);
+        return (
+          <Link to={next ? "/plan" : "/plan"} className="card-interactive flex items-center gap-3 p-4">
+            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-mint/15 text-mint">
+              <CalendarCheck size={18} />
             </span>
-            <span className="block truncate text-xs text-paper-muted">
-              {mission.done > 0 ? `${mission.done}/4 steps done` : mission.pack.blurb}
+            <span className="min-w-0 flex-1">
+              <span className="block font-medium">
+                {next ? `Today's plan · ${plan.doneToday}/${plan.tasks.length} done` : "Today's plan complete 🎉"}
+              </span>
+              <span className="block truncate text-xs text-paper-muted">
+                {next ? `Next: ${next.title}` : "See your week and level progress"}
+              </span>
             </span>
-          </span>
-          <span className="text-mint">→</span>
-        </Link>
-      )}
+            <span className="text-mint">→</span>
+          </Link>
+        );
+      })()}
 
       {canAskPush && (
         <div className="card flex items-center gap-3 p-4">

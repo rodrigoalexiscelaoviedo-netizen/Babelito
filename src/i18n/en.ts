@@ -23,6 +23,7 @@ export const en = {
     dictation: "Dictation",
     grammar: "Grammar",
     mistakes: "My mistakes",
+    plan: "My plan",
     words: "My words",
     groupSpeak: "Speak & write",
     groupSounds: "Sounds & listening",

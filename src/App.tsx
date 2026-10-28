@@ -19,6 +19,7 @@ const Review = lazy(() => import("./pages/Review"));
 const Listening = lazy(() => import("./pages/Listening"));
 const Progress = lazy(() => import("./pages/Progress"));
 const Words = lazy(() => import("./pages/Words"));
+const Plan = lazy(() => import("./pages/Plan"));
 const Grammar = lazy(() => import("./pages/Grammar"));
 const GrammarLesson = lazy(() => import("./pages/GrammarLesson"));
 const Mistakes = lazy(() => import("./pages/Mistakes"));
@@ -71,6 +72,7 @@ export default function App() {
         <Route path="/review" element={<Shell><Review /></Shell>} />
         <Route path="/listening" element={<Shell><Listening /></Shell>} />
         <Route path="/words" element={<Shell><Words /></Shell>} />
+        <Route path="/plan" element={<Shell><Plan /></Shell>} />
         <Route path="/grammar" element={<Shell><Grammar /></Shell>} />
         <Route path="/grammar/:id" element={<Shell><GrammarLesson /></Shell>} />
         <Route path="/mistakes" element={<Shell><Mistakes /></Shell>} />

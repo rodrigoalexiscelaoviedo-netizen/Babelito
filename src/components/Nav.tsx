@@ -19,6 +19,7 @@ import {
   Target,
   Keyboard,
   GraduationCap,
+  CalendarCheck,
   TrendingDown,
   X,
   type LucideIcon,
@@ -30,7 +31,7 @@ import i18n, { uiLang } from "../i18n";
 
 type NavKey =
   | "home" | "talk" | "chunks" | "correct" | "roleplay" | "reading" | "stories"
-  | "sounds" | "review" | "listening" | "progress" | "profile" | "words" | "situations" | "dictation" | "grammar" | "mistakes";
+  | "sounds" | "review" | "listening" | "progress" | "profile" | "words" | "situations" | "dictation" | "grammar" | "mistakes" | "plan";
 
 interface NavItem {
   to: string;
@@ -42,6 +43,7 @@ interface NavItem {
 const ITEMS: Record<string, NavItem> = {
   "/": { to: "/", key: "home", icon: LayoutDashboard, end: true },
   "/situations": { to: "/situations", key: "situations", icon: Target },
+  "/plan": { to: "/plan", key: "plan", icon: CalendarCheck },
   "/conversation": { to: "/conversation", key: "talk", icon: MessageCircle },
   "/roleplay": { to: "/roleplay", key: "roleplay", icon: Drama },
   "/correct": { to: "/correct", key: "correct", icon: PencilLine },
@@ -65,7 +67,7 @@ const ITEMS: Record<string, NavItem> = {
  * leer, recordar) y el celular muestra primero lo que se usa a diario.
  */
 const GROUPS: Array<{ labelKey: string | null; routes: string[] }> = [
-  { labelKey: null, routes: ["/"] },
+  { labelKey: null, routes: ["/", "/plan"] },
   { labelKey: "groupSpeak", routes: ["/situations", "/conversation", "/roleplay", "/correct"] },
   { labelKey: "groupSounds", routes: ["/sounds", "/listening", "/dictation"] },
   { labelKey: "groupRead", routes: ["/stories", "/reading"] },
@@ -105,7 +107,7 @@ export default function Nav() {
     item.end ? location.pathname === item.to : location.pathname.startsWith(item.to);
 
   // Situaciones aún no existe en catalán (se replica cuando cierre la versión inglesa).
-  const hidden = new Set<string>(profile?.learning_language === "ca" ? ["/situations", "/dictation", "/grammar", "/mistakes"] : []);
+  const hidden = new Set<string>(profile?.learning_language === "ca" ? ["/situations", "/dictation", "/grammar", "/mistakes", "/plan"] : []);
   const moreRoutes = Object.keys(ITEMS).filter((r) => !BOTTOM_FIXED.includes(r) && !hidden.has(r));
   const moreIsActive = moreRoutes.some((r) => isActive(ITEMS[r]));
 
