@@ -18,6 +18,8 @@ import {
   MoreHorizontal,
   Target,
   Keyboard,
+  GraduationCap,
+  TrendingDown,
   X,
   type LucideIcon,
 } from "lucide-react";
@@ -28,7 +30,7 @@ import i18n, { uiLang } from "../i18n";
 
 type NavKey =
   | "home" | "talk" | "chunks" | "correct" | "roleplay" | "reading" | "stories"
-  | "sounds" | "review" | "listening" | "progress" | "profile" | "words" | "situations" | "dictation";
+  | "sounds" | "review" | "listening" | "progress" | "profile" | "words" | "situations" | "dictation" | "grammar" | "mistakes";
 
 interface NavItem {
   to: string;
@@ -51,6 +53,8 @@ const ITEMS: Record<string, NavItem> = {
   "/review": { to: "/review", key: "review", icon: Layers },
   "/chunks": { to: "/chunks", key: "chunks", icon: Library },
   "/words": { to: "/words", key: "words", icon: BookMarked },
+  "/mistakes": { to: "/mistakes", key: "mistakes", icon: TrendingDown },
+  "/grammar": { to: "/grammar", key: "grammar", icon: GraduationCap },
   "/progress": { to: "/progress", key: "progress", icon: BarChart3 },
   "/profile": { to: "/profile", key: "profile", icon: User },
 };
@@ -65,7 +69,7 @@ const GROUPS: Array<{ labelKey: string | null; routes: string[] }> = [
   { labelKey: "groupSpeak", routes: ["/situations", "/conversation", "/roleplay", "/correct"] },
   { labelKey: "groupSounds", routes: ["/sounds", "/listening", "/dictation"] },
   { labelKey: "groupRead", routes: ["/stories", "/reading"] },
-  { labelKey: "groupRemember", routes: ["/review", "/chunks", "/words"] },
+  { labelKey: "groupRemember", routes: ["/review", "/chunks", "/words", "/mistakes", "/grammar"] },
   { labelKey: "groupYou", routes: ["/progress", "/profile"] },
 ];
 
@@ -101,7 +105,7 @@ export default function Nav() {
     item.end ? location.pathname === item.to : location.pathname.startsWith(item.to);
 
   // Situaciones aún no existe en catalán (se replica cuando cierre la versión inglesa).
-  const hidden = new Set<string>(profile?.learning_language === "ca" ? ["/situations", "/dictation"] : []);
+  const hidden = new Set<string>(profile?.learning_language === "ca" ? ["/situations", "/dictation", "/grammar", "/mistakes"] : []);
   const moreRoutes = Object.keys(ITEMS).filter((r) => !BOTTOM_FIXED.includes(r) && !hidden.has(r));
   const moreIsActive = moreRoutes.some((r) => isActive(ITEMS[r]));
 
