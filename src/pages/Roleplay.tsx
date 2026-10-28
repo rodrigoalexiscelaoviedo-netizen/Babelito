@@ -34,6 +34,7 @@ import { generateReport, type SessionReport } from "../lib/sessionReport";
 import { MIN_USER_TURNS, countUserTurns, turnsRemaining } from "../lib/practice";
 import ShadowingBlock from "../components/ShadowingBlock";
 import { requestHint } from "../lib/hints";
+import { useResumableSession, type ResumableSession } from "../lib/useResumableSession";
 
 const SCENARIO_ICONS: Record<string, LucideIcon> = {
   Briefcase,
@@ -48,11 +49,37 @@ export default function Roleplay() {
   const { profile } = useAuth();
   const learningLanguage = profile?.learning_language || "en";
   const [scenario, setScenario] = useState<Scenario | null>(null);
+  const [resumeFrom, setResumeFrom] = useState<ResumableSession | null>(null);
   useHistoryBack(scenario !== null, () => setScenario(null));
+
+  // Roleplay a medias (turnos guardados en sessions.messages). Se identifica el escenario por su título.
+  const { session: resumable, dismiss: dismissResumable } = useResumableSession(profile?.id, 48, "roleplay");
+  const scenarios = learningLanguage === "ca" ? SCENARIOS_CA : SCENARIOS;
+  const resumableScenario = resumable ? scenarios.find((x) => x.title === resumable.topic) : undefined;
 
   if (!scenario) {
     return (
       <div className="animate-fade-up">
+        {resumable && resumableScenario && learningLanguage !== "ca" && (
+          <div className="card p-4 mb-6 flex flex-col sm:flex-row sm:items-center gap-3">
+            <div className="flex-1">
+              <p className="font-medium">Continue “{resumableScenario.title}”?</p>
+              <p className="text-xs text-paper-muted">{resumable.messages.length} messages saved · not finished yet</p>
+            </div>
+            <div className="flex gap-2">
+              <button
+                className="btn-coral text-sm px-4 py-2"
+                onClick={() => {
+                  setResumeFrom(resumable);
+                  setScenario(resumableScenario);
+                }}
+              >
+                Continue
+              </button>
+              <button className="btn-ghost text-sm px-4 py-2" onClick={() => dismissResumable()}>Start new</button>
+            </div>
+          </div>
+        )}
         <p className="eyebrow mb-2">{learningLanguage === "ca" ? "Rol" : "Roleplay"}</p>
         <h1 className="page-title mb-2">{learningLanguage === "ca" ? "Practica una situació real" : "Practise a real situation"}</h1>
         <p className="text-paper-muted mb-8">
@@ -65,7 +92,10 @@ export default function Roleplay() {
             return (
               <button
                 key={s.id}
-                onClick={() => setScenario(s)}
+                onClick={() => {
+                  setResumeFrom(null);
+                  setScenario(s);
+                }}
                 className="card-interactive p-5 text-left group"
               >
                 <div className="flex items-center justify-between">
@@ -84,20 +114,38 @@ export default function Roleplay() {
     );
   }
 
-  return <RoleplayChat scenario={scenario} onExit={() => setScenario(null)} key={scenario.id} />;
+  return (
+    <RoleplayChat
+      scenario={scenario}
+      resume={resumeFrom}
+      onExit={() => {
+        setResumeFrom(null);
+        setScenario(null);
+      }}
+      key={scenario.id}
+    />
+  );
 }
 
-function RoleplayChat({ scenario, onExit }: { scenario: Scenario; onExit: () => void }) {
+function RoleplayChat({
+  scenario,
+  resume,
+  onExit,
+}: {
+  scenario: Scenario;
+  resume?: ResumableSession | null;
+  onExit: () => void;
+}) {
   const { t } = useTranslation();
   const { profile } = useAuth();
   const learningLanguage = profile?.learning_language || "en";
   const voicePrefs = useVoicePrefs();
-  const [turns, setTurns] = useState<ChatTurn[]>([
-    { role: "assistant", content: scenario.opening },
-  ]);
+  const [turns, setTurns] = useState<ChatTurn[]>(
+    resume?.messages.length ? resume.messages : [{ role: "assistant", content: scenario.opening }]
+  );
   const [input, setInput] = useState("");
   const [thinking, setThinking] = useState(false);
-  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [sessionId, setSessionId] = useState<string | null>(resume?.id ?? null);
   const [activeSpeakIdx, setActiveSpeakIdx] = useState<number | null>(null);
   const [paused, setPaused] = useState(false);
   const [retryText, setRetryText] = useState<string | null>(null);
@@ -112,7 +160,7 @@ function RoleplayChat({ scenario, onExit }: { scenario: Scenario; onExit: () => 
   const systemRef = useRef(
     profile ? buildRoleplayPrompt(profile, scenario, profile?.learning_language || "en") : ""
   );
-  const sessionIdRef = useRef<string | null>(null);
+  const sessionIdRef = useRef<string | null>(resume?.id ?? null);
   const creatingSessionRef = useRef<Promise<string | null> | null>(null);
 
   // Guard en ref, no en estado: dos envíos rápidos insertaban dos sesiones.
