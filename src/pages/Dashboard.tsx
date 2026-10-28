@@ -1,7 +1,7 @@
 import { BRAND } from "../lib/theme";
 import XpCard from "../components/XpCard";
 import HomeNudges from "../components/HomeNudges";
-import { awardXp, storyXp, reviewXp, DAILY_LESSON_XP, dailyLessonRefKey } from "../lib/xp";
+import { awardXp, DAILY_LESSON_XP, dailyLessonRefKey } from "../lib/xp";
 import { consolidateLevel } from "../lib/leveling";
 import { localDateISO, addLocalDays, timestampToLocalDate } from "../lib/dates";
 import { useEffect, useState } from "react";

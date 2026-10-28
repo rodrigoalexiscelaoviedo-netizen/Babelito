@@ -137,7 +137,6 @@ export default function Conversation() {
       hintTimerRef.current = setTimeout(() => setShowHint(true), 11000);
     }
     return () => { if (hintTimerRef.current) clearTimeout(hintTimerRef.current); };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [thinking, lastRole, turns.length]);
 
   // Ocultar hint cuando el usuario empieza a escribir o a grabar

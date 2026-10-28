@@ -192,7 +192,6 @@ function RoleplayChat({ scenario, onExit }: { scenario: Scenario; onExit: () => 
       hintTimerRef.current = setTimeout(() => setShowHint(true), 11000);
     }
     return () => { if (hintTimerRef.current) clearTimeout(hintTimerRef.current); };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [thinking, lastRole, turns.length]);
 
   function handleSpeak(text: string, index: number) {
