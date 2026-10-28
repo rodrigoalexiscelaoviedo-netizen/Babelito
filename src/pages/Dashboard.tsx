@@ -1,5 +1,6 @@
 import { BRAND } from "../lib/theme";
 import XpCard from "../components/XpCard";
+import HomeNudges from "../components/HomeNudges";
 import { awardXp, storyXp, reviewXp, DAILY_LESSON_XP, dailyLessonRefKey } from "../lib/xp";
 import { consolidateLevel } from "../lib/leveling";
 import { localDateISO, addLocalDays, timestampToLocalDate } from "../lib/dates";
@@ -258,7 +259,6 @@ export default function Dashboard() {
 
   return (
     <div className="animate-fade-up">
-      {profile?.learning_language !== "ca" && <div className="mb-6"><XpCard compact /></div>}
       {/* ── Celebration overlay ── */}
       {showCelebration && (
         <>
@@ -351,6 +351,8 @@ export default function Dashboard() {
         </div>
         <Maica mood={maicaMood} size="md" className="shrink-0 mt-1" />
       </header>
+
+      {profile && <HomeNudges userId={profile.id} language={learningLanguage} />}
 
       {/* Daily practice card */}
       <div className="card p-5 mb-6">
@@ -646,14 +648,18 @@ export default function Dashboard() {
               {learningLanguage === "ca" ? "El coach ha notat" : "Coach noticed"}
             </p>
             <p className="font-medium">
-              {learningLanguage === "ca"
-                ? `Segueixes cometent errors en <strong>${errorLabel(stats.topError)}</strong>. Vols practicar-ho en un xat ràpid?`
-                : `You keep slipping on <strong>${errorLabel(stats.topError)}</strong>. Want to drill it in a quick chat?`}
+              {learningLanguage === "ca" ? (
+                <>Segueixes cometent errors en <strong>{errorLabel(stats.topError)}</strong>. Vols practicar-ho en un xat ràpid?</>
+              ) : (
+                <>You keep slipping on <strong>{errorLabel(stats.topError)}</strong>. Want to drill it in a quick chat?</>
+              )}
             </p>
           </div>
           <span className="text-coral group-hover:translate-x-1 transition">→</span>
         </Link>
       )}
+
+      {learningLanguage !== "ca" && <div className="mb-6"><XpCard compact /></div>}
 
       {/* Modules */}
       <div className="grid sm:grid-cols-2 gap-4 stagger">

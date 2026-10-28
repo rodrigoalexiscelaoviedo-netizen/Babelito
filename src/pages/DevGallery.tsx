@@ -1,6 +1,8 @@
 import { BookOpen, Drama, Library, MessageCircle, Sparkles } from "lucide-react";
 import { BRAND } from "../lib/theme";
 import { ActivityArea, HorizontalBars } from "../components/Charts";
+import CoachFeedback from "../components/CoachFeedback";
+import { splitCoachReply } from "../lib/coachFormat";
 
 /**
  * Galería visual SOLO para desarrollo (ruta /dev/ui, no existe en producción).
@@ -117,6 +119,22 @@ export default function DevGallery() {
         <div className="card p-5">
           <p className="eyebrow mb-3">Top errors</p>
           <HorizontalBars data={[{ label: "Missing 'to'", count: 7 }, { label: "Verb tense", count: 5 }, { label: "Articles", count: 3 }]} />
+        </div>
+      </section>
+
+
+      <section className="space-y-3">
+        <p className="eyebrow">Conversation (coach says + feedback card)</p>
+        <div className="max-w-xl space-y-4">
+          {["That sounds like fun! What happened in the football game?\n---FEEDBACK---\n**Correction:** I played football with my friends and after we ate pizza.\n**Key tip:** Usa el pasado simple (\"played\", \"ate\") para acciones terminadas en el pasado.\n**Pronunciation:** football /ˈfʊtbɔːl/ — I love football\n**Pronunciation:** pizza /ˈpiːtsə/ — we ate pizza","Nice! Did you win?\n---FEEDBACK---\n**Correction:** Perfect — nothing to correct.\n**Key tip:** Muy bien, sigue así."].map((raw, i) => {
+            const r = splitCoachReply(raw);
+            return (
+              <div key={i} className="flex flex-col items-start">
+                <div className="card max-w-[85%] rounded-xl2 px-4 py-3 leading-relaxed">{r.talk}</div>
+                <CoachFeedback sections={r.feedback} defaultOpen={i === 0} language="en" />
+              </div>
+            );
+          })}
         </div>
       </section>
 

@@ -7,6 +7,7 @@ import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabaseClient";
 import ShadowingBlock from "../components/ShadowingBlock";
 import type { Level } from "../lib/types";
+import { LEVELS, categoryLabel, presentCategories, readingMinutes, sortForLearner, storyCategory, type StoryCategory } from "../lib/storyLibrary";
 import {
   getStories,
   getStoryProgress,
@@ -30,6 +31,8 @@ import { BrandDots } from "../components/Loader";
 type View = "library" | "reading" | "quiz";
 
 const LEVEL_BADGE: Record<string, string> = {
+  A1: "bg-mint/20 text-mint",
+  C1: "bg-coral/20 text-coral",
   A2: "bg-mint/20 text-mint",
   B1: "bg-gold/20 text-gold",
   B2: "bg-coral/20 text-coral",
@@ -50,6 +53,8 @@ export default function Stories() {
   const [generating, setGenerating] = useState(false);
   const [newAchievements, setNewAchievements] = useState<AchievementDef[]>([]);
   const [genError, setGenError] = useState("");
+  const [levelFilter, setLevelFilter] = useState<string>("all");
+  const [categoryFilter, setCategoryFilter] = useState<string>("all");
 
   useEffect(() => {
     if (!profile) return;
@@ -143,8 +148,16 @@ export default function Stories() {
 
   // ─── Library view ─────────────────────────────────────────────────────────
 
-  const levelOrder: Record<string, number> = { A2: 0, B1: 1, B2: 2 };
-  const sorted = [...stories].sort((a, b) => (levelOrder[a.level] ?? 9) - (levelOrder[b.level] ?? 9));
+  const isCa = (profile?.learning_language || "en") === "ca";
+  const ui = (en: string, ca: string) => (isCa ? ca : en);
+  const completedIds = new Set(progress.filter((p) => p.completed).map((p) => p.story_id));
+  const levelsPresent = LEVELS.filter((l) => stories.some((st) => st.level === l));
+  const categories = presentCategories(stories.map((st) => st.topic));
+  const visible = sortForLearner(stories, profile?.current_level, completedIds).filter(
+    (st) =>
+      (levelFilter === "all" || st.level === levelFilter) &&
+      (categoryFilter === "all" || storyCategory(st.topic) === categoryFilter)
+  );
 
   return (
     <div className="animate-fade-up">
@@ -181,7 +194,7 @@ export default function Stories() {
               value={genLevel}
               onChange={(e) => setGenLevel(e.target.value as Level)}
             >
-              {["A2", "B1", "B2"].map((l) => (
+              {LEVELS.map((l) => (
                 <option key={l} value={l}>{l}</option>
               ))}
             </select>
@@ -201,14 +214,63 @@ export default function Stories() {
         </div>
       )}
 
+      {/* Filters */}
+      {stories.length > 0 && (
+        <div className="mb-5 space-y-2.5">
+          <div className="flex flex-wrap items-center gap-2" role="group" aria-label={ui("Filter by level", "Filtra per nivell")}>
+            <span className="eyebrow mr-1">{ui("Level", "Nivell")}</span>
+            {["all", ...levelsPresent].map((l) => (
+              <button
+                key={l}
+                onClick={() => setLevelFilter(l)}
+                aria-pressed={levelFilter === l}
+                className={`rounded-full px-3 py-1 text-xs font-medium transition ${
+                  levelFilter === l ? "bg-coral text-ink-900" : "bg-ink-700 text-paper-muted hover:text-paper"
+                }`}
+              >
+                {l === "all" ? ui("All", "Tots") : l}
+              </button>
+            ))}
+          </div>
+          {categories.length > 1 && (
+            <div className="flex flex-wrap items-center gap-2" role="group" aria-label={ui("Filter by topic", "Filtra per tema")}>
+              <span className="eyebrow mr-1">{ui("Topic", "Tema")}</span>
+              {["all", ...categories].map((c) => (
+                <button
+                  key={c}
+                  onClick={() => setCategoryFilter(c)}
+                  aria-pressed={categoryFilter === c}
+                  className={`rounded-full px-3 py-1 text-xs font-medium transition ${
+                    categoryFilter === c ? "bg-mint text-ink-900" : "bg-ink-700 text-paper-muted hover:text-paper"
+                  }`}
+                >
+                  {c === "all" ? ui("All", "Tots") : categoryLabel(c as StoryCategory, isCa ? "ca" : "en")}
+                </button>
+              ))}
+            </div>
+          )}
+          <p className="text-xs text-paper-faint">
+            {visible.length} {isCa ? (visible.length === 1 ? "història" : "històries") : visible.length === 1 ? "story" : "stories"}
+            {completedIds.size > 0 && ` · ${completedIds.size} ${ui("read", "llegides")}`}
+          </p>
+        </div>
+      )}
+
       {/* Story cards */}
-      {sorted.length === 0 ? (
+      {stories.length === 0 ? (
         <p className="text-paper-muted text-center py-12">
-          No stories yet. Run seed_stories.sql in Supabase or generate one above.
+          {ui("No stories yet. Write one with the generator above and it will show up here.", "Encara no hi ha històries.")}
         </p>
+      ) : visible.length === 0 ? (
+        <div className="text-center py-12">
+          <p className="text-paper-muted mb-3">{ui("No stories match these filters.", "Cap història coincideix amb aquests filtres.")}</p>
+          <button className="btn-ghost" onClick={() => { setLevelFilter("all"); setCategoryFilter("all"); }}>
+            {ui("Clear filters", "Treu els filtres")}
+          </button>
+        </div>
       ) : (
         <div className="grid sm:grid-cols-2 gap-4 stagger">
-          {sorted.map((story) => {
+          {visible.map((story) => {
             const done = completedProgress(story.id);
             return (
               <button
@@ -230,7 +292,9 @@ export default function Stories() {
                   </div>
                 </div>
                 <h3 className="font-display font-bold text-base leading-snug">{story.title}</h3>
-                <p className="text-xs text-paper-muted mt-0.5">{story.topic}</p>
+                <p className="text-xs text-paper-muted mt-0.5">
+                  {story.topic} · {readingMinutes(story.content)} {ui("min", "min")}
+                </p>
                 <p className="text-xs text-paper-faint mt-2 line-clamp-2">{story.content.slice(0, 100)}…</p>
               </button>
             );

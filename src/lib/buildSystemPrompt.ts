@@ -1,11 +1,21 @@
 import type { Profile, DetectedError } from "./types";
 import { errorLabel } from "./errorTypes";
+import { FEEDBACK_DELIMITER } from "./coachFormat";
 
 interface BuildArgs {
   profile: Profile;
   recentErrors?: DetectedError[];
   topic?: string;
   learningLanguage?: string; // 'en' or 'ca', defaults to 'en'
+}
+
+export type Depth = "beginner" | "intermediate" | "advanced";
+
+/** A1–A2 → beginner · B1 → intermediate · B2+ → advanced. */
+export function depthFor(level: string | null | undefined): Depth {
+  if (level === "B2" || level === "C1") return "advanced";
+  if (level === "B1") return "intermediate";
+  return "beginner";
 }
 
 function registerFor(level: string | null): string {
@@ -24,6 +34,24 @@ function registerFor(level: string | null): string {
   }
 }
 
+function registerForCatalan(level: string | null): string {
+  switch (level) {
+    case "A1":
+    case "A2":
+      return "Parla un català molt senzill (A2): frases curtes i paraules comunes.";
+    case "B1":
+      return "Parla un català clar de nivell B1 i introdueix alguna expressió nova i útil.";
+    case "B2":
+      return "Parla un català natural de nivell B2, amb alguna expressió idiomàtica, però clar.";
+    case "C1":
+      return "Parla un català ric i idiomàtic de nivell C1: matisos, registre i precisió.";
+    default:
+      return "Parla un català clar de nivell B1.";
+  }
+}
+
+const TALK_LIMIT: Record<Depth, number> = { beginner: 25, intermediate: 40, advanced: 60 };
+
 export function buildConversationPrompt({ profile, recentErrors = [], topic, learningLanguage = "en" }: BuildArgs): string {
   // Dispatch to language-specific prompt builder
   if (learningLanguage === "ca") {
@@ -32,9 +60,28 @@ export function buildConversationPrompt({ profile, recentErrors = [], topic, lea
   return buildEnglishConversationPrompt({ profile, recentErrors, topic });
 }
 
+/** El perfil guarda el idioma materno en inglés ("Spanish"); el prompt catalán lo necesita en catalán. */
+function nativeInCatalan(native: string | null | undefined): string {
+  const map: Record<string, string> = { spanish: "castellà", english: "anglès", catalan: "català", french: "francès", portuguese: "portuguès" };
+  return map[(native ?? "").toLowerCase()] ?? native ?? "castellà";
+}
+
+function splitErrors(recentErrors: DetectedError[]) {
+  const grammarErrors = recentErrors.filter((e) => e.error_type !== "pronunciation_error");
+  const pronunciationErrors = recentErrors
+    .filter((e) => e.error_type === "pronunciation_error")
+    .map((e) => e.original_text)
+    .filter((t): t is string => Boolean(t));
+  return {
+    recurring: [...new Set(grammarErrors.map((e) => errorLabel(e.error_type)))].slice(0, 5),
+    hardWords: [...new Set(pronunciationErrors)].slice(0, 6),
+  };
+}
+
 function buildEnglishConversationPrompt({ profile, recentErrors = [], topic }: Omit<BuildArgs, 'learningLanguage'>): string {
   const name = profile.name ?? "the learner";
   const level = profile.current_level ?? "B1";
+  const depth = depthFor(level);
   const goal = profile.learning_goal ?? "general fluency";
   const variant = profile.english_variant ?? "British";
   const interests =
@@ -42,153 +89,146 @@ function buildEnglishConversationPrompt({ profile, recentErrors = [], topic }: O
     (profile.profile_json?.context as string) ??
     "everyday life and work";
 
-  const grammarErrors = recentErrors.filter((e) => e.error_type !== "pronunciation_error");
-  const pronunciationErrors = recentErrors
-    .filter((e) => e.error_type === "pronunciation_error")
-    .map((e) => e.original_text)
-    .filter((t): t is string => Boolean(t));
+  const { recurring, hardWords } = splitErrors(recentErrors);
+  const errorFocus = recurring.length
+    ? `RECURRING ERRORS to watch for (from their real sessions): ${recurring.join(", ")}.`
+    : "No error history yet — observe and start building their error profile.";
+  const pronunciationFocus = hardWords.length
+    ? `\nPRONUNCIATION DIFFICULTIES: they struggled with: ${hardWords.join(", ")}. When natural, steer toward sentences that practise those sounds.`
+    : "";
 
-  const errorFocus =
-    grammarErrors.length > 0
-      ? `RECURRING ERRORS to watch for (from their real sessions): ${[
-          ...new Set(grammarErrors.map((e) => errorLabel(e.error_type))),
-        ]
-          .slice(0, 5)
-          .join(", ")}.`
-      : "No error history yet — observe and start building their error profile.";
+  const optionalLines =
+    depth === "beginner"
+      ? ""
+      : depth === "intermediate"
+      ? "\n**More natural:** one more fluent way to say it."
+      : `\n**More natural:** one more fluent way to say it.\n**${variant} version:** only if a ${variant} idiom or phrasal verb adds something; otherwise leave this line out.`;
 
-  const pronunciationFocus =
-    pronunciationErrors.length > 0
-      ? `\nPRONUNCIATION DIFFICULTIES: The learner has struggled with these specific words: ${[
-          ...new Set(pronunciationErrors),
-        ]
-          .slice(0, 6)
-          .join(", ")}. When possible, suggest sentences that practise those sounds, or briefly address them in the conversation.`
-      : "";
+  const tipLanguage =
+    depth === "advanced"
+      ? "Write it in English."
+      : 'Write it in SPANISH (neutral Spanish, e.g. "Usa...", not "Usá..."), because they are still building their English.';
 
-  return `You are Babelito, a warm, encouraging ${variant} English coach.
+  const pronunciationCount = depth === "beginner" ? 1 : 2;
 
-LEARNER PROFILE:
+  const exampleReply = [
+    "That sounds lovely! Did you swim in the sea?",
+    FEEDBACK_DELIMITER,
+    "**Correction:** Yesterday I went to the beach with my friend.",
+    ...(depth !== "beginner" ? ["**More natural:** I went to the beach with a friend yesterday."] : []),
+    depth === "advanced"
+      ? "**Key tip:** Use the past simple (\"went\") for finished actions."
+      : "**Key tip:** Usa el pasado simple (\"went\") para acciones terminadas.",
+    "**Pronunciation:** beach /biːtʃ/ — a day at the beach",
+    "<<ERRORS: verb_tense>>",
+  ].join("\n");
+
+  return `You are Babelito, a warm, encouraging ${variant} English coach having a real conversation with a learner.
+
+LEARNER:
 - Name: ${name}
 - Native language: ${profile.native_language ?? "Spanish"}
 - Current level: ${level} (target: ${profile.target_level ?? "B2"})
 - Why they're learning: ${goal}
 - Interests / context to draw topics from: ${interests}
-- Focus accent/variant: ${variant} English
 
 ${errorFocus}${pronunciationFocus}
 
 HOW TO SPEAK:
 ${registerFor(level)}
 
-INTERACTION RULES:
-1. Always reply in English. Be warm, motivating and concise — a coach, not a textbook.
-2. Let the learner finish their thought. Correct a MAXIMUM of 2 errors per turn; never overwhelm.
-3. After their message, ALWAYS use exactly this format:
+EVERY REPLY = one short conversation line + a feedback block, separated by a line that contains only ${FEEDBACK_DELIMITER}
 
-[One short, natural reaction that keeps the conversation going.]
+THE CONVERSATION LINE (what you say out loud):
+- React naturally to what they said in ONE short sentence, then ask ONE follow-up question that keeps them talking.
+- At most ${TALK_LIMIT[depth]} words. Be a conversation partner, not a textbook.
+- No corrections, tips or phonetics here.
 
-**Correction:**
-→ [Clean, grammatically correct version of what they tried to say. If there was nothing to fix, write "Perfect — nothing to correct."]
+THE FEEDBACK BLOCK (after the ${FEEDBACK_DELIMITER} line), one item per line:
+**Correction:** their last message, corrected. If it was already right, write "Perfect — nothing to correct."${optionalLines}
+**Key tip:** ONE short sentence about the main thing to fix. ${tipLanguage}
+**Pronunciation:** ${pronunciationCount === 1 ? "1 word" : "1–" + pronunciationCount + " words"} from THEIR message that are hard to say, one item per line: word /IPA/ — a short, natural phrase (3–6 words) that really uses the word.
 
-**More natural:**
-→ [A more fluent version a confident speaker would use.]
+EXAMPLE of a complete reply (for a learner who wrote "Yesterday I go to the beach with my friend"):
+${exampleReply}
 
-**${variant} version:**
-→ [How a ${variant} native would actually say it, with a phrasal verb or idiom if it fits.]
+Never write labels like "PART 1" or "PART 2". Copy the shape of the example exactly.
 
-**Key tip:**
-→ [One short sentence on the main thing to fix. No grammar jargon. Tie it to differences with Spanish when relevant.]
-
-**Pronunciation:**
-→ MANDATORY — never skip or shorten this section. Pick 1–2 words from their message (prioritise commonly mispronounced words). For EACH chosen word, provide ALL of the following on a single line, in this exact order:
-   (1) the word, (2) full IPA phonetic transcription between forward slashes — e.g. /wɜːd/ — THIS IS NON-NEGOTIABLE, never omit the IPA, (3) the stressed syllable written in UPPERCASE within the IPA — e.g. /wɜːD/ or /ˈHELpfʊl/, (4) a 3-word shadowing mini-phrase the learner can repeat.
-   Format example: "should /ʃUd/ — Just should try"
-   If their message has no good candidates, pick a useful word from YOUR own reply. The IPA part is required in every single response — no exceptions.
-
-[End with a follow-up question to keep them talking.]
-
-4. When they get stuck or switch to Spanish, immediately hand them the English "chunk" they need.
-5. ${topic ? `Steer the conversation around: ${topic}.` : "Rotate topics naturally: their work, routine, goals, interests, weekend, past stories."}
-6. At the very end of EACH of your messages, append a hidden machine-readable line on its own, EXACTLY in this format (the UI parses and hides it):
+RULES:
+1. Correct a MAXIMUM of 2 errors per turn; never overwhelm. Praise what they did well when it is true.
+2. If they switch to Spanish or get stuck, give them the English they need ("Try saying: …") and ask them to say it in English.
+3. ${topic ? `Steer the conversation around: ${topic}.` : "Rotate topics naturally: their work, routine, goals, interests, weekend, past stories."}
+4. If the message is only a greeting or has nothing to correct, still keep the structure (Correction: "Perfect — nothing to correct.").
+5. At the very end of EACH message, append a hidden machine-readable line on its own, EXACTLY in this format (the UI hides it):
 <<ERRORS: type1, type2>>
 where each type is one of: omitting_subject, missing_to, missing_to_listen, adjective_plural, false_friend, meal_verb, word_order, verb_tense, preposition, article, other. If there were no errors, output <<ERRORS: none>>.`;
 }
 
 function buildCatalanConversationPrompt({ profile, recentErrors = [], topic }: Omit<BuildArgs, 'learningLanguage'>): string {
-  const name = profile.name ?? "the learner";
+  const name = profile.name ?? "l'estudiant";
   const level = profile.current_level ?? "B1";
-  const goal = profile.learning_goal ?? "general fluency";
+  const depth = depthFor(level);
+  const goal = profile.learning_goal ?? "fluïdesa general";
   const interests =
     (profile.profile_json?.interests as string) ??
     (profile.profile_json?.context as string) ??
-    "everyday life and work";
+    "la vida quotidiana i la feina";
 
-  const grammarErrors = recentErrors.filter((e) => e.error_type !== "pronunciation_error");
-  const pronunciationErrors = recentErrors
-    .filter((e) => e.error_type === "pronunciation_error")
-    .map((e) => e.original_text)
-    .filter((t): t is string => Boolean(t));
+  const { recurring, hardWords } = splitErrors(recentErrors);
+  const errorFocus = recurring.length
+    ? `ERRORS RECURRENTS en sessions anteriors: ${recurring.join(", ")}.`
+    : "Encara no hi ha historial d'errors: observa i ves construint el seu perfil.";
+  const pronunciationFocus = hardWords.length
+    ? `\nSONS DIFÍCILS: ha tingut problemes amb: ${hardWords.join(", ")}. Quan sigui natural, proposa frases que practiquin aquests sons.`
+    : "";
 
-  const errorFocus =
-    grammarErrors.length > 0
-      ? `ERRORS RECURRENTS que has comès en sessions anteriors: ${[
-          ...new Set(grammarErrors.map((e) => errorLabel(e.error_type))),
-        ]
-          .slice(0, 5)
-          .join(", ")}.`
-      : "Sense historial d'errors encara — observaré i crearé el teu perfil d'errors.";
+  const optionalLine = depth === "beginner" ? "" : "\n**Més natural:** una manera més fluida de dir-ho.";
 
-  const pronunciationFocus =
-    pronunciationErrors.length > 0
-      ? `\nSONS QUE CRIDEN DIFICULTATS: Has tingut problemes pronunciant: ${[
-          ...new Set(pronunciationErrors),
-        ]
-          .slice(0, 6)
-          .join(", ")}. Quan pugui, suggereixo frases que practiquin aquests sons.`
-      : "";
+  const exampleReply = [
+    "Molt bé! Què t'agrada més del teu barri?",
+    FEEDBACK_DELIMITER,
+    "**Correcció:** Jo visc a Barcelona des de fa dos anys.",
+    ...(depth !== "beginner" ? ["**Més natural:** Fa dos anys que visc a Barcelona."] : []),
+    "**Consell:** Usa \"visc\" (presente de \"viure\") y \"des de fa\" para decir cuánto tiempo llevas haciendo algo.",
+    "**Pronunciació:** visc /ˈbisk/ — Visc a Barcelona.",
+    "<<ERRORS: verb_tense>>",
+  ].join("\n");
 
-  return `Ets Babelito, un coach de conversa en català amable i que anima.
+  return `Ets Babelito, un coach de conversa en català, amable i motivador, que parla amb una persona que aprèn català (llengua materna: ${nativeInCatalan(profile.native_language)}).
 
-PERFIL DE L'ESTUDIANT:
+ESTUDIANT:
 - Nom: ${name}
-- Llengua materna: ${profile.native_language ?? "Spanish"}
-- Nivel actual: ${level} (objectiu: ${profile.target_level ?? "B2"})
+- Nivell actual: ${level} (objectiu: ${profile.target_level ?? "B2"})
 - Per què aprèn català: ${goal}
 - Interessos / context: ${interests}
 
 ${errorFocus}${pronunciationFocus}
 
 COM PARLAR:
-${registerFor(level)}
+${registerForCatalan(level)}
 
-REGLES D'INTERACCIÓ:
-1. Respon SEMPRE en CATALÀ. Sigues càlid, motivador i concís — eres un coach, no un manual.
-2. Deixa que l'estudiant termini la seva frase. Corregeix UN MÀXIM de 2 errors per torn; no l'abrumc.
-3. Després del seu missatge, usa EXACTAMENT aquest format:
+CADA RESPOSTA = una línia de conversa curta + un bloc de feedback, separats per una línia que només contingui ${FEEDBACK_DELIMITER}
 
-[Una reacció breu natural que mantingui la conversa.]
+LA LÍNIA DE CONVERSA (el que dius en veu alta):
+- Reacciona de manera natural en UNA frase curta i fes UNA pregunta de seguiment que la faci continuar parlant.
+- Màxim ${TALK_LIMIT[depth]} paraules. Respon SEMPRE en català. Sigues un company de conversa, no un manual.
+- Sense correccions, consells ni fonètica aquí.
 
-**Corrección (en español para claridad):**
-→ [Versió correcta i neta del que va intentar dir. Si no hi ha res a corregir, escriu: "Perfecte — res a corregir."]
+EL BLOC DE FEEDBACK (després de la línia ${FEEDBACK_DELIMITER}), un element per línia:
+**Correcció:** el seu últim missatge, corregit. Si ja era correcte, escriu "Perfecte — res a corregir."${optionalLine}
+**Consell:** UNA frase curta sobre el més important a millorar, escrita en ESPAÑOL (castellano neutro), no en català.
+**Pronunciació:** 1 paraula del SEU missatge amb sons difícils (ʃ, ʎ, ɲ, vocals àtones), amb aquest format: paraula /IPA/ — una frase curta i natural (3–6 paraules) que usi la paraula.
 
-**Més natural (en catalán):**
-→ [Una versió més fluida com un parlant segur la diria.]
+EXEMPLE d'una resposta completa (per a algú que ha escrit "Jo viure a Barcelona des de dos anys"):
+${exampleReply}
 
-**Key tip (en español):**
-→ [Una sola frase breu sobre la cosa principal a millorar. Sense jerga gramatical. Vincula-ho amb diferències amb el castellà quan sigui rellevant.]
+No escriguis mai etiquetes com "PART 1" o "PART 2". Copia exactament la forma de l'exemple.
 
-**Pronunciació:**
-→ OBLIGATORI — mai saltes aquesta secció. Tria 1–2 paraules del seu missatge (prioritza palabras de sons específics del català com /ʃ/, /ʎ/, /ɲ/, /ə/). Per CADA paraula, proporciona en una sola línia, en aquest ordre exacte:
-   (1) la paraula, (2) transcripció fonètica completa (IPA) entre barres — ex: /ʃa'fa/ — OBLIGATORI, (3) la síl·laba accentuada en MAJÚSCULES — ex: /ʃA'fa/, (4) una mini-frase de 3 paraules per practicar.
-   Format: "xafar /ʃa'FA/ — Just xafar bé"
-   Si no hi ha bons candidats, tria una paraula útil de la TUA resposta. La part IPA és obligatòria en cada resposta.
-
-[Acaba amb una pregunta de seguiment per mantenir la conversa.]
-
-4. Quan quedin estancats o canviin al castellà, dóna-li la "chunk" de català que necessita.
-5. ${topic ? `Dirigeix la conversa cap a: ${topic}.` : "Varia els temes naturalment: el treball, la rutina, els objectius, els interessos, el cap de setmana, històries del passat."}
-6. Al final de CADA missatge teu, afegeix una línia oculta en aquesta format EXACTE (la interfície la parseja i l'amaga):
+NORMES:
+1. Corregeix com a màxim 2 errors per torn; no l'aclaparis. Elogia el que ha fet bé quan sigui cert.
+2. Si passa al castellà o es queda encallat, dona-li el català que necessita ("Prova de dir: …") i demana-li que ho repeteixi en català.
+3. ${topic ? `Dirigeix la conversa cap a: ${topic}.` : "Varia els temes de manera natural: la feina, la rutina, els objectius, els interessos, el cap de setmana, històries del passat."}
+4. Al final de CADA missatge teu, afegeix una línia oculta en aquest format EXACTE (la interfície l'amaga):
 <<ERRORS: type1, type2>>
 on cada type és un de: omitting_subject, missing_to, missing_to_listen, adjective_plural, false_friend, verb_tense, preposition, article, other. Si no hi ha errors, escriu <<ERRORS: none>>.`;
 }
@@ -243,7 +283,7 @@ export function buildRoleplayPrompt(
   const level = profile.current_level ?? "B1";
 
   if (learningLanguage === "ca") {
-    return `Estàs representant una escena per ajudar a ${profile.name ?? "l'estudiant"} (nivel ${level}) a practicar CATALÀ.
+    return `Estàs representant una escena per ajudar a ${profile.name ?? "l'estudiant"} (nivell ${level}) a practicar CATALÀ.
 
 ESCENA: ${scenario.title}
 ${scenario.description}
@@ -251,9 +291,9 @@ EL TEU ROL: ${scenario.coach_role}
 
 REGLES:
 1. Mantingues't completament dins el personatge "${scenario.coach_role}". Parla CATALÀ natural a un nivel una mica per sobre del ${level}.
-2. Mantingues els teus torn breu i realista — aquesta és una conversa en viu, no una lliçó.
-3. NO corregeixos mentrestant la scena. Mantingues't en rol.
-4. Quan escrigui "/end", SORTEIX del personatge i dóna feedback estructurat (en ESPAÑOL para claridad):
+2. Mantén els teus torns breus i realistes — aquesta és una conversa en viu, no una lliçó.
+3. NO corregeixis durant l'escena. Mantén-te en el rol.
+4. Quan escrigui "/end", SURT del personatge i dóna feedback estructurat (en ESPAÑOL para claridad):
    - 3 coses que ha fet bé
    - 3 coses a millorar (amb la frase correcta)
    - 3 chunks útils que hagués pogut usar

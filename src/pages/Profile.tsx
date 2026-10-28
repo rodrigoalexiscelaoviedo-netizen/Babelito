@@ -282,6 +282,28 @@ export default function Profile() {
           </Field>
 
           <Field label={`${learningLanguage === "ca" ? "Velocitat" : "Speed"}: ${voiceRate.toFixed(2)}×`}>
+            {/* Atajos: 0.5× es demasiado lento para escuchar con naturalidad; el rango útil es 0.6–1.3. */}
+            <div className="mb-2 flex flex-wrap gap-2" role="group" aria-label={learningLanguage === "ca" ? "Velocitat" : "Speed presets"}>
+              {[
+                { v: 0.75, en: "Slow", ca: "Lenta" },
+                { v: 0.95, en: "Normal", ca: "Normal" },
+                { v: 1.15, en: "Fast", ca: "Ràpida" },
+              ].map((p) => (
+                <button
+                  key={p.v}
+                  type="button"
+                  onClick={() => setVoiceRate(p.v)}
+                  aria-pressed={Math.abs(voiceRate - p.v) < 0.03}
+                  className={`rounded-full px-3 py-1 text-xs font-medium transition ${
+                    Math.abs(voiceRate - p.v) < 0.03
+                      ? "bg-coral text-ink-900"
+                      : "bg-ink-700 text-paper-muted hover:text-paper"
+                  }`}
+                >
+                  {learningLanguage === "ca" ? p.ca : p.en}
+                </button>
+              ))}
+            </div>
             <input
               type="range"
               min={0.5}
@@ -290,11 +312,19 @@ export default function Profile() {
               value={voiceRate}
               onChange={(e) => setVoiceRate(parseFloat(e.target.value))}
               className="w-full accent-coral"
+              aria-label={learningLanguage === "ca" ? "Velocitat de la veu" : "Voice speed"}
             />
             <div className="flex justify-between text-xs text-paper-faint mt-0.5">
               <span>{learningLanguage === "ca" ? "0.5× lent" : "0.5× slow"}</span>
               <span>{learningLanguage === "ca" ? "1.5× ràpid" : "1.5× fast"}</span>
             </div>
+            {voiceRate < 0.6 && (
+              <p className="mt-2 text-xs text-gold">
+                {learningLanguage === "ca"
+                  ? "Aquesta velocitat és molt lenta; prova «Lenta» per a una veu més natural."
+                  : "This is very slow. Try “Slow” for a more natural voice."}
+              </p>
+            )}
           </Field>
         </div>
 

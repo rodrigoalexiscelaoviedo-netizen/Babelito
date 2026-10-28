@@ -1,4 +1,8 @@
 import { awardSessionXp } from "../lib/xp";
+import { PICKER_TOPICS } from "../lib/topics";
+import CoachFeedback from "../components/CoachFeedback";
+import { splitCoachReply, spokenPart } from "../lib/coachFormat";
+import { openingLine } from "../lib/conversationOpeners";
 import { SuggestedChunks, XpEarned } from "../components/ReportExtras";
 import { useTranslation } from "react-i18next";
 import { useEffect, useRef, useState } from "react";
@@ -23,6 +27,8 @@ import { MIN_USER_TURNS, countUserTurns, turnsRemaining } from "../lib/practice"
 import { checkAchievements, markSeen, type AchievementDef } from "../lib/achievements";
 import AchievementCelebration from "../components/AchievementCelebration";
 import { BrandDots } from "../components/Loader";
+import { requestHint } from "../lib/hints";
+import { useResumableSession } from "../lib/useResumableSession";
 
 export default function Conversation() {
   const { profile } = useAuth();
@@ -31,19 +37,7 @@ export default function Conversation() {
 
   const learningLanguage = profile?.learning_language || "en";
 
-  const TOPICS = learningLanguage === "ca" ? [
-    "El teu treball",
-    "El teu cap de setmana",
-    "Un objectiu que tens",
-    "Quelcom que gaudixis",
-    "Xat lliure"
-  ] : [
-    "Your work",
-    "Your weekend",
-    "A goal you have",
-    "Something you enjoy",
-    "Free chat"
-  ];
+  const TOPICS = PICKER_TOPICS[learningLanguage === "ca" ? "ca" : "en"];
 
   // Support pre-seeded topic from Dashboard daily lesson
   const locationTopic = (location.state as { topic?: string } | null)?.topic ?? null;
@@ -62,26 +56,7 @@ export default function Conversation() {
   const [xpEarned, setXpEarned] = useState<number | null>(null);
 
   // Conversación abierta que se puede retomar (turnos guardados en sessions.messages).
-  const [resumable, setResumable] = useState<{ id: string; messages: ChatTurn[]; topic: string | null } | null>(null);
-
-  useEffect(() => {
-    if (!profile) return;
-    const since = new Date(Date.now() - 48 * 3600_000).toISOString();
-    supabase
-      .from("sessions")
-      .select("id, messages, topic, created_at")
-      .eq("user_id", profile.id)
-      .eq("session_type", "conversation")
-      .eq("completed", false)
-      .gte("created_at", since)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle()
-      .then(({ data }) => {
-        const msgs = (data?.messages as ChatTurn[] | null) ?? [];
-        if (data && msgs.length > 0) setResumable({ id: data.id as string, messages: msgs, topic: (data.topic as string | null) ?? null });
-      });
-  }, [profile?.id]);
+  const { session: resumable, dismiss: dismissResumable } = useResumableSession(profile?.id);
 
   function resumeSession() {
     if (!resumable) return;
@@ -89,13 +64,23 @@ export default function Conversation() {
     setSessionId(resumable.id);
     setTopic(resumable.topic);
     setTurns(resumable.messages);
-    setResumable(null);
+    dismissResumable();
   }
+
+  // Si se llegó desde la tarjeta de Inicio ("Continue your conversation"), se retoma sola.
+  const wantsResume = (location.state as { resume?: boolean } | null)?.resume === true;
+  useEffect(() => {
+    if (wantsResume && resumable && turns.length === 0) resumeSession();
+    // resumeSession depende de estado que cambia en cada render; solo debe correr al cargar la sesión.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wantsResume, resumable]);
   const [retryText, setRetryText] = useState<string | null>(null);
   const [newAchievements, setNewAchievements] = useState<AchievementDef[]>([]);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const systemRef = useRef<string>("");
+  // El prompt se arma de forma asíncrona (espera el historial de errores): al enviar se espera.
+  const promptReadyRef = useRef<Promise<void>>(Promise.resolve());
   const sessionIdRef = useRef<string | null>(null);
   const creatingSessionRef = useRef<Promise<string | null> | null>(null);
 
@@ -121,7 +106,7 @@ export default function Conversation() {
 
   useEffect(() => {
     if (!profile) return;
-    (async () => {
+    promptReadyRef.current = (async () => {
       const { data } = await supabase
         .from("errors")
         .select("*")
@@ -143,6 +128,7 @@ export default function Conversation() {
 
   // Arrancar timer de hint cuando el coach termina de responder
   const lastRole = turns[turns.length - 1]?.role;
+  const lastCoachIndex = turns.map((t) => t.role).lastIndexOf("assistant");
   useEffect(() => {
     if (hintTimerRef.current) clearTimeout(hintTimerRef.current);
     setShowHint(false);
@@ -198,6 +184,7 @@ export default function Conversation() {
     setThinking(true);
 
     try {
+      if (!systemRef.current) await promptReadyRef.current;
       const raw = await askCoach({ system: systemRef.current, messages: recentTurns(nextTurns) });
       const { clean, errorTypes } = parseErrors(raw);
       const coachTurn: ChatTurn = { role: "assistant", content: clean };
@@ -241,13 +228,30 @@ export default function Conversation() {
     }
   }
 
+  // El coach abre la conversación: pregunta concreta sobre el tema, sin llamar a la IA
+  // (instantáneo) y sin fingir un primer mensaje del usuario.
+  function startConversation() {
+    if (!profile || turns.length > 0) return;
+    setTurns([
+      {
+        role: "assistant",
+        content: openingLine({
+          lang: learningLanguage === "ca" ? "ca" : "en",
+          name: profile.name,
+          topic,
+          level: profile.current_level,
+        }),
+      },
+    ]);
+  }
+
   async function handleEndSession() {
-    if (!profile || turns.length === 0) return;
+    if (!profile || countUserTurns(turns) === 0) return;
     setGeneratingReport(true);
     setReportError("");
     try {
       const sid = sessionIdRef.current ?? sessionId;
-      const r = await generateReport(profile.id, sid, "conversation", turns, profile.learning_language || "en");
+      const r = await generateReport(profile.id, sid, "conversation", turns, profile.learning_language || "en", profile.current_level);
       const userTurns = countUserTurns(turns);
       const counts = userTurns >= MIN_USER_TURNS;
 
@@ -282,27 +286,17 @@ export default function Conversation() {
 
   async function getHint() {
     if (!profile || turns.length === 0) return;
-    const lastCoachMsg = [...turns].reverse().find((t) => t.role === "assistant")?.content ?? "";
+    const last = [...turns].reverse().find((t) => t.role === "assistant")?.content ?? "";
     setHintLoading(true);
     try {
-      const hintSystem = profile?.learning_language === "ca"
-        ? `Eres un coach de català amable. L'estudiant té dificultats per respondre.
-Dóna UNA pista molt breu (màx 12 paraules): un inici de frase, una paraula clau, o una frase simple que podria usar.
-NO donarc la resposta completa. Nivel de l'estudiant: ${profile.current_level ?? "B1"}.
-Respon SÓ amb el text de la pista — sense explicació, sense puntuació.`
-        : `You are a friendly English coach. The student is struggling to respond.
-Give ONE very short hint (max 12 words): a sentence starter, a key word, or a simple phrase they could use.
-Do NOT give the full answer. Student level: ${profile.current_level ?? "B1"}.
-Reply with only the hint text — no explanation, no punctuation around it.`;
-
-      const hint = await askCoach({
-        system: hintSystem,
-        messages: [{ role: "user", content: `Coach said: "${lastCoachMsg}"\nGive a hint to help the student respond.` }],
-        maxTokens: 50,
-      });
-      setHintText(hint.trim().replace(/^["']|["']$/g, ""));
-    } catch {
-      setHintText('Try: "I think...", "Actually...", or "In my opinion..."');
+      setHintText(
+        await requestHint({
+          lang: learningLanguage === "ca" ? "ca" : "en",
+          kind: "conversation",
+          level: profile.current_level,
+          lastCoachMessage: last,
+        })
+      );
     } finally {
       setHintLoading(false);
     }
@@ -357,7 +351,7 @@ Reply with only the hint text — no explanation, no punctuation around it.`;
             </div>
             <div className="flex gap-2">
               <button className="btn-coral text-sm px-4 py-2" onClick={resumeSession}>Continue</button>
-              <button className="btn-ghost text-sm px-4 py-2" onClick={() => setResumable(null)}>Start new</button>
+              <button className="btn-ghost text-sm px-4 py-2" onClick={() => dismissResumable()}>Start new</button>
             </div>
           </div>
         )}
@@ -401,15 +395,7 @@ Reply with only the hint text — no explanation, no punctuation around it.`;
         </div>
         <button
           className="btn-coral w-full"
-          onClick={() =>
-            send(learningLanguage === "ca"
-              ? (topic && topic !== (learningLanguage === "ca" ? "Xat lliure" : "Free chat")
-                ? `Hola! Vull parlar sobre: ${topic.toLowerCase()}.`
-                : "Hola! Estic llist per practicar.")
-              : (topic && topic !== "Free chat"
-                ? `Hi! I'd like to talk about: ${topic.toLowerCase()}.`
-                : "Hi! I'm ready to practise."))
-          }
+          onClick={startConversation}
         >
           {learningLanguage === "ca" ? "Comença a parlar →" : "Start talking →"}
         </button>
@@ -426,7 +412,7 @@ Reply with only the hint text — no explanation, no punctuation around it.`;
         </p>
         <button
           onClick={handleEndSession}
-          disabled={generatingReport || turns.length === 0}
+          disabled={generatingReport || countUserTurns(turns) === 0}
           className="flex items-center gap-1.5 text-xs text-paper-muted hover:text-coral transition disabled:opacity-40"
         >
           {generatingReport ? (
@@ -459,28 +445,35 @@ Reply with only the hint text — no explanation, no punctuation around it.`;
       {reportError && <p className="text-coral text-xs mb-2">{reportError}</p>}
 
       <div ref={scrollRef} className="flex-1 overflow-y-auto pr-1 space-y-4">
-        {turns.map((t, i) => (
-          <div key={i} className={`flex ${t.role === "user" ? "justify-end" : "justify-start"}`}>
-            <div
-              data-role={t.role}
-              className={`max-w-[85%] rounded-xl2 px-4 py-3 ${
-                t.role === "user"
-                  ? "bg-coral text-ink-900"
-                  : "card whitespace-pre-wrap leading-relaxed"
-              }`}
-            >
-              {t.role === "assistant" ? (
+        {turns.map((t, i) => {
+          if (t.role === "user") {
+            return (
+              <div key={i} className="flex justify-end">
+                <div data-role="user" className="max-w-[85%] rounded-xl2 bg-coral px-4 py-3 text-ink-900">
+                  {t.content}
+                </div>
+              </div>
+            );
+          }
+          const reply = splitCoachReply(t.content);
+          const isLastCoach = i === lastCoachIndex;
+          return (
+            <div key={i} className="flex flex-col items-start">
+              <div data-role="assistant" className="card max-w-[85%] whitespace-pre-wrap rounded-xl2 px-4 py-3 leading-relaxed">
                 <CoachMessage
                   text={t.content}
                   variant={profile?.english_variant ?? "British"}
                   voicePrefs={voicePrefs}
                 />
-              ) : (
-                t.content
-              )}
+              </div>
+              <CoachFeedback
+                sections={reply.feedback}
+                defaultOpen={isLastCoach}
+                language={learningLanguage}
+              />
             </div>
-          </div>
-        ))}
+          );
+        })}
         {retryText && !thinking && (
           <div className="flex justify-start">
             <div className="card px-4 py-3 border-gold/30 max-w-[85%]">
@@ -608,9 +601,11 @@ function CoachMessage({
 }) {
   const [paused, setPaused] = useState(false);
   const [speaking, setSpeaking] = useState(false);
+  const reply = splitCoachReply(text);
 
   function handleSpeak() {
-    speak(text, {
+    // Solo se lee lo que el coach DICE; el feedback tiene su propia tarjeta.
+    speak(spokenPart(text), {
       voiceName: voicePrefs.voiceName ?? undefined,
       rate: voicePrefs.voiceRate,
       lang: voicePrefs.voiceAccent || (variant === "American" ? "en-US" : "en-GB"),
@@ -649,28 +644,37 @@ function CoachMessage({
           <Volume2 size={15} />
         </button>
       </div>
-      {text.split("\n").map((line, i) => {
-        const bold = line.match(/\*\*(.+?)\*\*/);
-        if (bold) {
-          return (
-            <p key={i} className="mt-2 font-mono text-xs uppercase tracking-wider text-coral">
-              {bold[1]}
-            </p>
-          );
-        }
-        if (line.startsWith("→")) {
-          return (
-            <p key={i} className="text-paper">
-              {line.replace("→", "").trim()}
-            </p>
-          );
-        }
-        return line.trim() ? (
-          <p key={i} className="text-paper">
-            {line}
-          </p>
-        ) : null;
-      })}
+      {reply.legacy
+        ? text.split("\n").map((line, i) => {
+            // Sesiones guardadas con el formato antiguo: encabezados mezclados con la charla.
+            const bold = line.match(/\*\*(.+?)\*\*/);
+            if (bold) {
+              return (
+                <p key={i} className="mt-2 font-mono text-xs uppercase tracking-wider text-coral">
+                  {bold[1]}
+                </p>
+              );
+            }
+            if (line.startsWith("→")) {
+              return (
+                <p key={i} className="text-paper">
+                  {line.replace("→", "").trim()}
+                </p>
+              );
+            }
+            return line.trim() ? (
+              <p key={i} className="text-paper">
+                {line}
+              </p>
+            ) : null;
+          })
+        : reply.talk.split("\n").map((line, i) =>
+            line.trim() ? (
+              <p key={i} className="text-paper">
+                {line}
+              </p>
+            ) : null
+          )}
     </div>
   );
 }

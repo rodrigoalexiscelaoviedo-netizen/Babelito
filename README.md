@@ -48,6 +48,7 @@ Las migraciones SQL y las Edge Functions **no** se despliegan con el push: se ej
 | `/conversation` | Conversación con el coach: voz o texto, con feedback estructurado |
 | `/roleplay` | Escenas de rol (negocios en inglés; vida cotidiana en catalán) |
 | `/chunks` | Biblioteca de expresiones con modo repaso |
+| `/words` | Mis palabras: buscar, escuchar, cambiar estado y borrar |
 | `/review` | Repaso espaciado (SRS) |
 | `/reading` | Lectura con diccionario al tocar palabras |
 | `/stories` | Historias generadas por IA, con lectura y vocabulario |

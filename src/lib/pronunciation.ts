@@ -3,6 +3,7 @@ import { askCoach } from "./claude";
 import { speechSupported } from "./speech";
 import { createSpeechSession } from "./useSpeechCapture";
 import { getPhrasesByLevel, type PronunciationPhrase } from "./pronunciationPhrases";
+import { tryParseAiJson } from "./json";
 
 export { getPhrasesByLevel };
 export type { PronunciationPhrase };
@@ -102,19 +103,13 @@ export async function generatePronunciationFeedback(
     temperature: 0.4,
   });
 
-  const cleaned = raw.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
-  const start = cleaned.indexOf("{");
-  const end = cleaned.lastIndexOf("}");
-  if (start === -1 || end === -1) {
-    return { feedback: cleaned, drillPhrase: targetText.split(" ").slice(0, 4).join(" ") };
-  }
-
-  try {
-    const parsed = JSON.parse(cleaned.slice(start, end + 1)) as PronunciationFeedback;
-    return parsed;
-  } catch {
-    return { feedback: cleaned, drillPhrase: targetText.split(" ").slice(0, 4).join(" ") };
-  }
+  // Si la IA no devuelve JSON usable, se muestra su texto tal cual y una frase corta para repetir.
+  return (
+    tryParseAiJson<PronunciationFeedback>(raw) ?? {
+      feedback: raw.trim(),
+      drillPhrase: targetText.split(" ").slice(0, 4).join(" "),
+    }
+  );
 }
 
 /** Inserts a pronunciation error into the errors table. */

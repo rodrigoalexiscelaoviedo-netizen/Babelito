@@ -1,4 +1,5 @@
 import { localDateISO, timestampToLocalDate } from "./dates";
+import { DAILY_TOPICS } from "./topics";
 import { supabase } from "./supabaseClient";
 import { scopeByLanguage } from "./language";
 
@@ -42,28 +43,7 @@ export function isTriadComplete(lesson: DailyLesson): boolean {
 }
 
 function getConversationTopics(language: string): string[] {
-  if (language === "ca") {
-    return [
-      "La teva rutina del matí",
-      "Un lloc que t'agrada de Barcelona",
-      "El que has fet aquest cap de setmana",
-      "Una afició teva",
-      "El teu barri",
-      "Menjar que t'agrada cuinar",
-      "Un repte que has superat",
-      "La teva família i els teus amics",
-    ];
-  }
-  return [
-    "Your morning routine",
-    "A hobby you enjoy",
-    "Your favourite place to visit",
-    "How technology affects your life",
-    "A book or film you liked recently",
-    "Your goals for this month",
-    "A challenge you overcame",
-    "What you find most interesting about your job",
-  ];
+  return DAILY_TOPICS[language === "ca" ? "ca" : "en"];
 }
 
 function todayISO(): string {
