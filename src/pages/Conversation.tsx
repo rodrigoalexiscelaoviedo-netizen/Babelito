@@ -682,7 +682,7 @@ export default function Conversation() {
 
       {callOn && (
         <div
-          className="fixed inset-0 z-50 flex flex-col items-center justify-between bg-ink-900/95 p-6 backdrop-blur"
+          className="fixed inset-0 z-[100] flex flex-col items-center justify-between bg-ink-900 p-6"
           role="dialog"
           aria-label="Voice call"
         >
@@ -699,7 +699,7 @@ export default function Conversation() {
                 ? "Your coach is speaking…"
                 : listening
                 ? "Your turn — speak now"
-                : touch
+                : touch || voice.error
                 ? "Tap the microphone to answer"
                 : "Listening will start…"}
             </p>
