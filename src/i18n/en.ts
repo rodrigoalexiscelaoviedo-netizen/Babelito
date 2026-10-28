@@ -20,6 +20,7 @@ export const en = {
     progress: "Progress",
     profile: "Profile",
     situations: "Situations",
+    dictation: "Dictation",
     words: "My words",
     groupSpeak: "Speak & write",
     groupSounds: "Sounds & listening",

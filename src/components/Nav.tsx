@@ -17,16 +17,18 @@ import {
   Headphones,
   MoreHorizontal,
   Target,
+  Keyboard,
   X,
   type LucideIcon,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { countDue } from "../lib/srs";
+import { warmNaturalVoice } from "../lib/naturalVoice";
 import i18n, { uiLang } from "../i18n";
 
 type NavKey =
   | "home" | "talk" | "chunks" | "correct" | "roleplay" | "reading" | "stories"
-  | "sounds" | "review" | "listening" | "progress" | "profile" | "words" | "situations";
+  | "sounds" | "review" | "listening" | "progress" | "profile" | "words" | "situations" | "dictation";
 
 interface NavItem {
   to: string;
@@ -43,6 +45,7 @@ const ITEMS: Record<string, NavItem> = {
   "/correct": { to: "/correct", key: "correct", icon: PencilLine },
   "/sounds": { to: "/sounds", key: "sounds", icon: Mic },
   "/listening": { to: "/listening", key: "listening", icon: Headphones },
+  "/dictation": { to: "/dictation", key: "dictation", icon: Keyboard },
   "/stories": { to: "/stories", key: "stories", icon: BookText },
   "/reading": { to: "/reading", key: "reading", icon: BookOpen },
   "/review": { to: "/review", key: "review", icon: Layers },
@@ -60,7 +63,7 @@ const ITEMS: Record<string, NavItem> = {
 const GROUPS: Array<{ labelKey: string | null; routes: string[] }> = [
   { labelKey: null, routes: ["/"] },
   { labelKey: "groupSpeak", routes: ["/situations", "/conversation", "/roleplay", "/correct"] },
-  { labelKey: "groupSounds", routes: ["/sounds", "/listening"] },
+  { labelKey: "groupSounds", routes: ["/sounds", "/listening", "/dictation"] },
   { labelKey: "groupRead", routes: ["/stories", "/reading"] },
   { labelKey: "groupRemember", routes: ["/review", "/chunks", "/words"] },
   { labelKey: "groupYou", routes: ["/progress", "/profile"] },
@@ -86,6 +89,11 @@ export default function Nav() {
     countDue(profile.id, profile.learning_language || "en").then(setReviewCount);
   }, [profile]);
 
+  // Averigua una vez si el servidor ofrece voz natural (Azure) para el inglés.
+  useEffect(() => {
+    if (profile && profile.learning_language !== "ca") void warmNaturalVoice();
+  }, [profile]);
+
   // Cierra la hoja al navegar
   useEffect(() => { setMoreOpen(false); }, [location.pathname]);
 
@@ -93,7 +101,7 @@ export default function Nav() {
     item.end ? location.pathname === item.to : location.pathname.startsWith(item.to);
 
   // Situaciones aún no existe en catalán (se replica cuando cierre la versión inglesa).
-  const hidden = new Set<string>(profile?.learning_language === "ca" ? ["/situations"] : []);
+  const hidden = new Set<string>(profile?.learning_language === "ca" ? ["/situations", "/dictation"] : []);
   const moreRoutes = Object.keys(ITEMS).filter((r) => !BOTTOM_FIXED.includes(r) && !hidden.has(r));
   const moreIsActive = moreRoutes.some((r) => isActive(ITEMS[r]));
 

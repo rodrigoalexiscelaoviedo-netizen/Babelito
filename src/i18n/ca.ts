@@ -25,6 +25,7 @@ export const ca: Shape<typeof en> = {
     progress: "Progrés",
     profile: "Perfil",
     situations: "Situacions",
+    dictation: "Dictat",
     words: "Les meves paraules",
     groupSpeak: "Parla i escriu",
     groupSounds: "Sons i escolta",

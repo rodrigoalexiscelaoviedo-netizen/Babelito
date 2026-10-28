@@ -19,6 +19,7 @@ const Review = lazy(() => import("./pages/Review"));
 const Listening = lazy(() => import("./pages/Listening"));
 const Progress = lazy(() => import("./pages/Progress"));
 const Words = lazy(() => import("./pages/Words"));
+const Dictation = lazy(() => import("./pages/Dictation"));
 const Situations = lazy(() => import("./pages/Situations"));
 const SituationDetail = lazy(() => import("./pages/SituationDetail"));
 const Profile   = lazy(() => import("./pages/Profile"));
@@ -67,6 +68,7 @@ export default function App() {
         <Route path="/review" element={<Shell><Review /></Shell>} />
         <Route path="/listening" element={<Shell><Listening /></Shell>} />
         <Route path="/words" element={<Shell><Words /></Shell>} />
+        <Route path="/dictation" element={<Shell><Dictation /></Shell>} />
         <Route path="/situations" element={<Shell><Situations /></Shell>} />
         <Route path="/situations/:id" element={<Shell><SituationDetail /></Shell>} />
         <Route path="/progress" element={<Shell><Progress /></Shell>} />
