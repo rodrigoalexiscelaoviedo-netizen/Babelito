@@ -7,7 +7,7 @@ import { SuggestedChunks, XpEarned } from "../components/ReportExtras";
 import { useTranslation } from "react-i18next";
 import { useEffect, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
-import { Mic, Send, Volume2, Square, Pause, Play, Loader2, X, ChevronDown, ChevronUp } from "lucide-react";
+import { Mic, Send, Volume2, Square, Pause, Play, Loader2, X, ChevronDown, ChevronUp, Phone, PhoneOff } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabaseClient";
 import { askCoach, recentTurns, RetryableError } from "../lib/claude";
@@ -17,7 +17,9 @@ import {
   speak,
   pauseSpeech,
   resumeSpeech,
+  stopSpeech,
 } from "../lib/speech";
+import { SILENCE_MS, isTouchDevice } from "../lib/callMode";
 import { useSpeechCapture } from "../lib/useSpeechCapture";
 import { useVoicePrefs, type VoicePrefs } from "../lib/useVoicePrefs";
 import type { ChatTurn, DetectedError } from "../lib/types";
@@ -126,9 +128,89 @@ export default function Conversation() {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [turns, thinking]);
 
-  // Arrancar timer de hint cuando el coach termina de responder
   const lastRole = turns[turns.length - 1]?.role;
   const lastCoachIndex = turns.map((t) => t.role).lastIndexOf("assistant");
+
+  // ── Modo llamada ───────────────────────────────────────────────────────────
+  // El coach habla, se te escucha y, al callarte un momento, se envía solo.
+  // En pantallas táctiles el micrófono se activa con un toque (Chrome Android
+  // no permite abrirlo sin un gesto del usuario).
+  const [callOn, setCallOn] = useState(false);
+  const [coachSpeaking, setCoachSpeaking] = useState(false);
+  const callOnRef = useRef(false);
+  const spokenIdxRef = useRef(-1);
+  const sendRef = useRef<(t: string) => Promise<void>>(async () => {});
+  const listenRef = useRef<() => void>(() => {});
+  const touch = isTouchDevice();
+
+  function listenInCall() {
+    voice.start((finalText) => {
+      if (!callOnRef.current) return;
+      const t = finalText.trim();
+      if (t) void sendRef.current(t);
+    });
+  }
+
+  function startCall() {
+    spokenIdxRef.current = -1;
+    callOnRef.current = true;
+    setCallOn(true);
+  }
+
+  function endCall() {
+    callOnRef.current = false;
+    setCallOn(false);
+    setCoachSpeaking(false);
+    stopSpeech();
+    if (voice.isRecording) voice.stop();
+  }
+
+  // Los manejadores asíncronos usan siempre la versión más reciente de send / listenInCall.
+  useEffect(() => {
+    sendRef.current = send;
+    listenRef.current = listenInCall;
+  });
+
+  // Lee en voz alta cada respuesta nueva del coach y después te escucha.
+  useEffect(() => {
+    if (!callOn || thinking || lastRole !== "assistant") return;
+    const idx = turns.length - 1;
+    if (spokenIdxRef.current === idx) return;
+    spokenIdxRef.current = idx;
+    setCoachSpeaking(true);
+    speak(spokenPart(turns[idx].content), {
+      voiceName: voicePrefs.voiceName ?? undefined,
+      rate: voicePrefs.voiceRate,
+      lang: voicePrefs.voiceAccent || (profile?.english_variant === "American" ? "en-US" : "en-GB"),
+      onEnd: () => {
+        setCoachSpeaking(false);
+        if (callOnRef.current && !touch) listenRef.current();
+      },
+    });
+    // Solo debe reaccionar a respuestas nuevas del coach.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [callOn, thinking, lastRole, turns.length]);
+
+  // Al callarte ~1,8 s después de haber hablado, se da el turno por terminado.
+  const heardText = `${voice.finalText} ${voice.interim}`.trim();
+  useEffect(() => {
+    if (!callOn || !listening || !heardText) return;
+    const t = setTimeout(() => voice.stop(), SILENCE_MS);
+    return () => clearTimeout(t);
+    // Interesa reiniciar el temporizador solo cuando cambia lo escuchado.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [callOn, listening, heardText]);
+
+  // Cortar la llamada al salir de la pantalla.
+  useEffect(
+    () => () => {
+      callOnRef.current = false;
+      stopSpeech();
+    },
+    []
+  );
+
+  // Arrancar timer de hint cuando el coach termina de responder
   useEffect(() => {
     if (hintTimerRef.current) clearTimeout(hintTimerRef.current);
     setShowHint(false);
@@ -409,6 +491,17 @@ export default function Conversation() {
         <p className="text-xs text-paper-muted font-mono uppercase tracking-widest">
           {topic ?? "Free chat"}
         </p>
+        <div className="flex items-center gap-4">
+        {learningLanguage !== "ca" && speechSupported() && (
+          <button
+            onClick={startCall}
+            disabled={thinking || generatingReport}
+            className="flex items-center gap-1.5 text-xs font-medium text-mint hover:text-mint/80 transition disabled:opacity-40"
+            aria-label="Start voice call"
+          >
+            <Phone size={13} /> Call
+          </button>
+        )}
         <button
           onClick={handleEndSession}
           disabled={generatingReport || countUserTurns(turns) === 0}
@@ -423,6 +516,7 @@ export default function Conversation() {
             learningLanguage === "ca" ? "Finalitza i veu l'informe →" : "Finish & see report →"
           )}
         </button>
+        </div>
       </div>
 
       {/* Estado real de registro — el usuario siempre sabe si esto va a contar */}
@@ -585,6 +679,67 @@ export default function Conversation() {
           </button>
         </div>
       </div>
+
+      {callOn && (
+        <div
+          className="fixed inset-0 z-50 flex flex-col items-center justify-between bg-ink-900/95 p-6 backdrop-blur"
+          role="dialog"
+          aria-label="Voice call"
+        >
+          <div className="pt-6 text-center">
+            <p className="eyebrow">Voice call</p>
+            <p className="mt-1 text-xs text-paper-faint">{topic ?? "Free chat"}</p>
+          </div>
+          <div className="w-full max-w-md space-y-6 text-center">
+            <VoiceOrb listening={listening} />
+            <p className="font-display text-xl font-bold">
+              {thinking
+                ? "Thinking…"
+                : coachSpeaking
+                ? "Your coach is speaking…"
+                : listening
+                ? "Your turn — speak now"
+                : touch
+                ? "Tap the microphone to answer"
+                : "Listening will start…"}
+            </p>
+            <p className="min-h-[3.5rem] text-paper-muted italic">
+              {listening
+                ? heardText || "…"
+                : lastRole === "assistant"
+                ? spokenPart(turns[turns.length - 1].content)
+                : ""}
+            </p>
+            {voice.error && <p className="text-xs text-coral">{voice.error}</p>}
+          </div>
+          <div className="flex items-center gap-5 pb-6">
+            {!thinking && !coachSpeaking && !listening && (
+              <button
+                onClick={listenInCall}
+                className="grid h-14 w-14 place-items-center rounded-full bg-coral text-ink-900"
+                aria-label="Speak"
+              >
+                <Mic size={22} />
+              </button>
+            )}
+            {listening && (
+              <button
+                onClick={() => voice.stop()}
+                className="flex h-14 items-center gap-2 rounded-full bg-mint px-5 font-semibold text-ink-900"
+              >
+                <Square size={16} /> Done
+              </button>
+            )}
+            <button
+              onClick={endCall}
+              className="grid h-14 w-14 place-items-center rounded-full bg-red-600 text-white"
+              aria-label="Hang up"
+            >
+              <PhoneOff size={22} />
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

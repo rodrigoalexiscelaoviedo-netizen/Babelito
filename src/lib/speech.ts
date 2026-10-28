@@ -15,7 +15,11 @@ export interface SpeakOptions {
   voiceName?: string;
   rate?: number;
   lang?: string;
+  /** Se llama al terminar (o cortarse) la lectura de ESTA frase; no si otra la reemplazó. */
+  onEnd?: () => void;
 }
+
+let currentUtterance: SpeechSynthesisUtterance | null = null;
 
 /**
  * Devuelve las voces disponibles en el dispositivo, opcionalmente filtradas
@@ -43,6 +47,7 @@ export function speak(text: string, langOrOpts: string | SpeakOptions = "en-GB")
   let lang = "en-GB";
   let rate = 0.95;
   let voiceName: string | undefined;
+  let onEnd: (() => void) | undefined;
 
   if (typeof langOrOpts === "string") {
     lang = langOrOpts;
@@ -50,6 +55,7 @@ export function speak(text: string, langOrOpts: string | SpeakOptions = "en-GB")
     lang = langOrOpts.lang ?? "en-GB";
     rate = langOrOpts.rate ?? 0.95;
     voiceName = langOrOpts.voiceName;
+    onEnd = langOrOpts.onEnd;
   }
 
   const u = new SpeechSynthesisUtterance(clean);
@@ -66,8 +72,29 @@ export function speak(text: string, langOrOpts: string | SpeakOptions = "en-GB")
   }
   if (voice) u.voice = voice;
 
+  if (onEnd) {
+    const done = () => {
+      if (currentUtterance === u) {
+        currentUtterance = null;
+        onEnd?.();
+      }
+    };
+    u.onend = done;
+    u.onerror = done;
+  }
+  currentUtterance = u;
   window.speechSynthesis.cancel();
   window.speechSynthesis.speak(u);
+}
+
+/** Corta la lectura en curso sin disparar su onEnd. */
+export function stopSpeech() {
+  currentUtterance = null;
+  try {
+    if (typeof window !== "undefined" && "speechSynthesis" in window) window.speechSynthesis.cancel();
+  } catch {
+    /* ignorar */
+  }
 }
 
 /** Pausa la narración en curso. En Chrome Android puede ser inestable. */
