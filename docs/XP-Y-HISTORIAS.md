@@ -44,7 +44,6 @@ Obras de dominio público que podemos adaptar (versiones propias, no copias): *F
 - Las conversaciones se guardan turno a turno. Si salís a mitad, al volver aparece **"Continue your last conversation?"** (48 h). Solo en inglés por ahora.
 
 ## Pendiente
-- Retomar roleplay de la misma forma que la conversación.
 - Desafío semanal y medallas por XP.
 - Replicar XP, banner de retomar y textos de notificación en catalán.
 
@@ -55,3 +54,8 @@ Obras de dominio público que podemos adaptar (versiones propias, no copias): *F
 - **Historias:** filtros por nivel y tema, orden `sortForLearner`, A1 (migración `0006_a1_stories.sql`).
 - **Menú:** agrupado por habilidad; `/words` agregado.
 - **Recordatorios:** `send-reminders` acepta `x-dry-run: 1` para probar sin enviar.
+
+## Novedades posteriores
+
+- **XP en Sonidos y Escucha:** +2 por par mínimo acertado (una vez por par y día) y 10 + 2 por acierto al terminar una sesión de Escucha. Requiere la migración `0007_xp_sounds_listening.sql` (ya aplicada en producción).
+- **Roleplay a medias:** al volver a Roleplay aparece "Continue …?" si hay una sesión sin terminar de las últimas 48 h (solo inglés por ahora).
