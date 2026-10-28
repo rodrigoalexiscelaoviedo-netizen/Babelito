@@ -2,6 +2,8 @@ import { useHistoryBack } from "../lib/useHistoryBack";
 import { useEffect, useState } from "react";
 import { ArrowLeft, Volume2, CheckCircle2, XCircle } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
+import { awardXp, SOUND_PAIR_XP } from "../lib/xp";
+import { localDateISO } from "../lib/dates";
 import { supabase } from "../lib/supabaseClient";
 import { SOUNDS, type SoundEntry } from "../lib/soundsData";
 import { catalanSounds, type CatalanSound } from "../lib/catalanSounds";
@@ -300,6 +302,7 @@ function MinimalPairsSection({
   voicePrefs: ReturnType<typeof useVoicePrefs>;
 }) {
   const ui = useUi();
+  const { profile } = useAuth();
   const init = (): PairState => ({
     playing: null,
     guess: null,
@@ -334,6 +337,13 @@ function MinimalPairsSection({
   function handleGuess(pairIdx: number, guess: "a" | "b") {
     const correctSide = played[pairIdx];
     const isRight = guess === correctSide;
+    if (isRight && profile && profile.learning_language !== "ca") {
+      void awardXp(profile.id, {
+        source: "sound",
+        refKey: `sound:${sound.id}:${pairIdx}:${localDateISO()}`,
+        amount: SOUND_PAIR_XP,
+      });
+    }
     setStates((prev) =>
       prev.map((s, i) =>
         i === pairIdx
