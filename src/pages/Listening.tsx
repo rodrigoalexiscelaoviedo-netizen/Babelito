@@ -1,5 +1,5 @@
 import { useHistoryBack } from "../lib/useHistoryBack";
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { Volume2, RotateCcw, ArrowLeft, Headphones } from "lucide-react";
 import {
   PATTERNS,
@@ -13,6 +13,7 @@ import { catalanListeningPatterns, type ListeningPattern } from "../lib/catalanL
 import { speak } from "../lib/speech";
 import { useVoicePrefs } from "../lib/useVoicePrefs";
 import { useAuth } from "../context/AuthContext";
+import { awardXp, listeningXp } from "../lib/xp";
 import ShadowingBlock from "../components/ShadowingBlock";
 
 // Rate for native-speed playback
@@ -358,6 +359,12 @@ export function TrainView({
   const [chosen, setChosen] = useState<string | null>(null);
   const [correct, setCorrect] = useState(0);
   const [done, setDone] = useState(false);
+  const { profile } = useAuth();
+  const sessionKey = useRef<string | null>(null);
+  useEffect(() => {
+    if (!done || !profile || profile.learning_language === "ca") return;
+    void awardXp(profile.id, { source: "listening", refKey: (sessionKey.current ??= `listening:${Date.now()}`), amount: listeningXp(correct), meta: { correct } });
+  }, [done, profile, correct]);
 
   const pattern = queue[idx];
 

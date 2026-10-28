@@ -10,7 +10,7 @@
 import { supabase } from "./supabaseClient";
 import { localDateISO } from "./dates";
 
-export type XpSource = "conversation" | "roleplay" | "story" | "review" | "daily_lesson";
+export type XpSource = "conversation" | "roleplay" | "story" | "review" | "daily_lesson" | "sound" | "listening";
 
 // ── Niveles ─────────────────────────────────────────────────────────────────────
 
@@ -99,6 +99,14 @@ export function reviewXp(quality: "good" | "again"): number {
   return quality === "good" ? 3 : 1;
 }
 
+/** Sonidos: 2 por cada par mínimo acertado (una vez por par y día). */
+export const SOUND_PAIR_XP = 2;
+
+/** Escucha: 10 por terminar una sesión + 2 por cada acierto. */
+export function listeningXp(correct: number): number {
+  return 10 + clamp(correct, 0, 40) * 2;
+}
+
 /** Práctica del día completa: bonus fijo, una vez por día. */
 export const DAILY_LESSON_XP = 25;
 
@@ -173,6 +181,8 @@ export const SOURCE_LABEL: Record<XpSource, string> = {
   story: "Story",
   review: "Review",
   daily_lesson: "Daily practice",
+  sound: "Sounds",
+  listening: "Listening",
 };
 
 /**
