@@ -14,7 +14,11 @@ export interface ResumableSession {
  * escribir al menos un mensaje. Se usa en Conversación (banner "continuar") y
  * en Inicio (tarjeta), para no perder lo hecho aunque se haya salido a mitad.
  */
-export function useResumableSession(userId: string | undefined, hours = 48) {
+export function useResumableSession(
+  userId: string | undefined,
+  hours = 48,
+  type: "conversation" | "roleplay" = "conversation"
+) {
   const [session, setSession] = useState<ResumableSession | null>(null);
 
   useEffect(() => {
@@ -25,7 +29,7 @@ export function useResumableSession(userId: string | undefined, hours = 48) {
       .from("sessions")
       .select("id, messages, topic, created_at")
       .eq("user_id", userId)
-      .eq("session_type", "conversation")
+      .eq("session_type", type)
       .eq("completed", false)
       .gte("created_at", since)
       .order("created_at", { ascending: false })
@@ -45,7 +49,7 @@ export function useResumableSession(userId: string | undefined, hours = 48) {
     return () => {
       cancelled = true;
     };
-  }, [userId, hours]);
+  }, [userId, hours, type]);
 
   return { session, dismiss: () => setSession(null) };
 }
