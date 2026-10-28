@@ -28,6 +28,7 @@ import { scopeByLanguage } from "../lib/language";
 import { getAchievements, type AchievementWithStatus } from "../lib/achievements";
 import Loader from "../components/Loader";
 import Maica from "../components/Maica";
+import LevelLadder from "../components/LevelLadder";
 
 interface ErrRow { error_type: string }
 interface SessRow { created_at: string; duration_seconds: number }
@@ -270,6 +271,11 @@ export default function Progress() {
     <div className="animate-fade-up">
       <p className="eyebrow mb-2">{learningLanguage === "ca" ? "El teu progrés" : "Your progress"}</p>
       <h1 className="page-title mb-6">{learningLanguage === "ca" ? "Com estàs" : "How you're doing"}</h1>
+      {learningLanguage !== "ca" && (
+        <div className="mb-6">
+          <LevelLadder />
+        </div>
+      )}
 
       <div className="mb-8"><XpCard /></div>
 
