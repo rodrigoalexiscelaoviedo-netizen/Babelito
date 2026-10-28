@@ -658,6 +658,13 @@ export default function Dashboard() {
           <span className="text-coral group-hover:translate-x-1 transition">→</span>
         </Link>
       )}
+      {stats?.topError && learningLanguage !== "ca" && (
+        <p className="-mt-6 mb-8 text-right text-xs">
+          <Link to="/mistakes" className="text-paper-muted transition hover:text-coral">
+            See all my mistakes and exercises →
+          </Link>
+        </p>
+      )}
 
       {learningLanguage !== "ca" && <div className="mb-6"><XpCard compact /></div>}
 

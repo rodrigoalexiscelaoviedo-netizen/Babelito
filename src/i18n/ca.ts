@@ -26,6 +26,8 @@ export const ca: Shape<typeof en> = {
     profile: "Perfil",
     situations: "Situacions",
     dictation: "Dictat",
+    grammar: "Gramàtica",
+    mistakes: "Els meus errors",
     words: "Les meves paraules",
     groupSpeak: "Parla i escriu",
     groupSounds: "Sons i escolta",

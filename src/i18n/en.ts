@@ -21,6 +21,8 @@ export const en = {
     profile: "Profile",
     situations: "Situations",
     dictation: "Dictation",
+    grammar: "Grammar",
+    mistakes: "My mistakes",
     words: "My words",
     groupSpeak: "Speak & write",
     groupSounds: "Sounds & listening",
