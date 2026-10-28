@@ -5,6 +5,16 @@ import { comparePhrases, generatePronunciationFeedback, savePronunciationError }
 import { useSpeechCapture } from "../lib/useSpeechCapture";
 import { useVoicePrefs } from "../lib/useVoicePrefs";
 import { useAuth } from "../context/AuthContext";
+import {
+  assessAvailable,
+  assessPronunciation,
+  startAudioCapture,
+  wordTone,
+  type AudioCapture,
+  type PronunciationScore,
+} from "../lib/pronunciationAssess";
+
+const TONE_CLASS = { good: "text-mint", fair: "text-gold", poor: "text-coral underline decoration-wavy" } as const;
 
 interface Props {
   text: string;
@@ -37,6 +47,18 @@ export default function ShadowingBlock({ text, lang, label = "Listen & repeat" }
   const [drillPhrase, setDrillPhrase] = useState("");
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
+  // Puntaje real (Azure). null = no disponible o todavía calculando.
+  const [score, setScore] = useState<PronunciationScore | null>(null);
+  const [scoring, setScoring] = useState(false);
+  const captureRef = useRef<AudioCapture | null>(null);
+
+  // Consulta la disponibilidad al montar, para que al tocar Record no se pierda el inicio del audio.
+  useEffect(() => {
+    if (learningLanguage === "en") void assessAvailable();
+  }, [learningLanguage]);
+
+  // Libera el micrófono si se desmonta a mitad de una grabación.
+  useEffect(() => () => captureRef.current?.cancel(), []);
 
   const doneTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -78,12 +100,26 @@ export default function ShadowingBlock({ text, lang, label = "Listen & repeat" }
     setError("");
     setSaved(false);
     setResult(null);
+    setScore(null);
     setTip("");
     setState("recording");
+    // Audio en paralelo al reconocimiento, para el puntaje real (solo inglés).
+    captureRef.current?.cancel();
+    captureRef.current = null;
+    const capturePromise: Promise<AudioCapture | null> =
+      learningLanguage === "en"
+        ? assessAvailable().then((ok) => (ok ? startAudioCapture() : null))
+        : Promise.resolve(null);
+    void capturePromise.then((c) => {
+      captureRef.current = c;
+    });
     voiceRec.start(async (spokenText, errorCode) => {
       // Punto de salida único del hook: Done, corte fatal o timeout de 30 s.
       setState("processing");
+      const capture = (await capturePromise) ?? captureRef.current;
+      captureRef.current = null;
       if (!spokenText.trim()) {
+        capture?.cancel();
         setError(
           errorCode === "not-allowed" || errorCode === "service-not-allowed"
             ? "Microphone blocked — enable the permission in your browser."
@@ -98,6 +134,14 @@ export default function ShadowingBlock({ text, lang, label = "Listen & repeat" }
       setSpoken(spokenText);
       setResult(cmp);
       setState("result");
+      if (capture) {
+        setScoring(true);
+        void capture
+          .stop()
+          .then((wav) => (wav ? assessPronunciation(wav, text, voicePrefs.voiceAccent ?? "en-GB") : null))
+          .then(setScore)
+          .finally(() => setScoring(false));
+      }
       if (profile && cmp.incorrect.length > 0) {
         const toSave = cmp.incorrect.filter(
           (w) => w.length > 3 && !SHORT_WORDS.has(w.toLowerCase())
@@ -138,7 +182,12 @@ export default function ShadowingBlock({ text, lang, label = "Listen & repeat" }
     setTip("");
     setError("");
     setSaved(false);
+    setScore(null);
   }
+
+  // Los puntajes por palabra de Azure se alinean con la frase si coinciden en cantidad.
+  const azureWords = score?.words.filter((w) => w.errorType !== "Insertion") ?? [];
+  const useAzureTones = !!result && azureWords.length === result.tokens.length;
 
   const hasIncorrect = result && result.incorrect.length > 0;
 
@@ -162,7 +211,9 @@ export default function ShadowingBlock({ text, lang, label = "Listen & repeat" }
           {result.tokens.map((t, i) => (
             <span
               key={i}
-              className={`font-medium text-sm ${t.ok ? "text-mint" : "text-coral underline decoration-wavy"}`}
+              className={`font-medium text-sm ${
+                useAzureTones ? TONE_CLASS[wordTone(azureWords[i])] : t.ok ? "text-mint" : "text-coral underline decoration-wavy"
+              }`}
             >
               {t.word}
             </span>
@@ -170,6 +221,25 @@ export default function ShadowingBlock({ text, lang, label = "Listen & repeat" }
         </div>
       ) : (
         <p className="text-sm font-medium leading-snug text-paper">{text}</p>
+      )}
+
+      {(scoring || score) && state !== "idle" && state !== "recording" && (
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
+          {score ? (
+            <>
+              <span className="font-mono text-paper">
+                Pronunciation <strong className="text-mint">{score.overall}</strong>/100
+              </span>
+              <span className="text-paper-muted">Accuracy {score.accuracy}</span>
+              <span className="text-paper-muted">Fluency {score.fluency}</span>
+              <span className="text-paper-muted">Complete {score.completeness}</span>
+            </>
+          ) : (
+            <span className="flex items-center gap-1.5 text-paper-faint">
+              <Loader2 size={12} className="animate-spin" /> Scoring your pronunciation…
+            </span>
+          )}
+        </div>
       )}
 
       {spoken && state !== "idle" && state !== "recording" && (
