@@ -7,6 +7,7 @@ import { supabase } from "../lib/supabaseClient";
 import { buildAnkiText, downloadAnki, ankiFileName } from "../lib/anki";
 import { localDateISO } from "../lib/dates";
 import { getVoices, speak } from "../lib/speech";
+import { naturalVoicePref, setNaturalVoicePref } from "../lib/naturalVoice";
 import { subscribeToPush, unsubscribeFromPush, getNotificationPermission } from "../lib/notifications";
 
 export default function Profile() {
@@ -41,6 +42,7 @@ export default function Profile() {
   const [voiceAccent, setVoiceAccent] = useState(profile?.voice_accent ?? "en-GB");
   const [voiceName, setVoiceName] = useState(profile?.voice_name ?? "");
   const [voiceRate, setVoiceRate] = useState<number>(parseFloat(String(profile?.voice_rate ?? 0.95)));
+  const [naturalVoice, setNaturalVoice] = useState(naturalVoicePref);
   const [availableAccents, setAvailableAccents] = useState<string[]>(["en-GB", "en-US"]);
   const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([]);
 
@@ -318,6 +320,25 @@ export default function Profile() {
               <span>{learningLanguage === "ca" ? "0.5× lent" : "0.5× slow"}</span>
               <span>{learningLanguage === "ca" ? "1.5× ràpid" : "1.5× fast"}</span>
             </div>
+            {learningLanguage !== "ca" && (
+              <label className="mt-3 flex cursor-pointer items-start gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  className="mt-1 accent-coral"
+                  checked={naturalVoice}
+                  onChange={(e) => {
+                    setNaturalVoice(e.target.checked);
+                    setNaturalVoicePref(e.target.checked);
+                  }}
+                />
+                <span>
+                  Natural voice
+                  <span className="block text-xs text-paper-muted">
+                    A more human voice for English audio. If it is not available, the browser voice is used.
+                  </span>
+                </span>
+              </label>
+            )}
             {voiceRate < 0.6 && (
               <p className="mt-2 text-xs text-gold">
                 {learningLanguage === "ca"

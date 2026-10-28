@@ -73,10 +73,10 @@ export default function ShadowingBlock({ text, lang, label = "Listen & repeat" }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state]);
 
-  function handleListen() {
+  function handleListen(slow = false) {
     speak(text, {
       voiceName: voicePrefs.voiceName ?? undefined,
-      rate: voicePrefs.voiceRate ?? 0.9,
+      rate: slow ? 0.7 : voicePrefs.voiceRate ?? 0.9,
       lang: voicePrefs.voiceAccent ?? "en-GB",
     });
     setState("speaking");
@@ -261,7 +261,7 @@ export default function ShadowingBlock({ text, lang, label = "Listen & repeat" }
       <div className="flex items-center gap-2 flex-wrap">
         {/* Listen */}
         <button
-          onClick={state === "speaking" ? handlePauseResume : handleListen}
+          onClick={state === "speaking" ? handlePauseResume : () => handleListen()}
           disabled={state === "recording"}
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-ink-600 hover:bg-ink-500 text-paper text-xs font-medium transition disabled:opacity-40"
           aria-label={state === "speaking" ? (paused ? "Resume" : "Pause") : "Listen"}
@@ -272,6 +272,16 @@ export default function ShadowingBlock({ text, lang, label = "Listen & repeat" }
             <><Volume2 size={13} /> Listen</>
           )}
         </button>
+
+        {state !== "speaking" && state !== "recording" && (
+          <button
+            onClick={() => handleListen(true)}
+            className="px-2.5 py-1.5 rounded-lg bg-ink-600 hover:bg-ink-500 text-paper-muted hover:text-paper text-xs font-medium transition"
+            aria-label="Listen slowly"
+          >
+            🐢 Slow
+          </button>
+        )}
 
         {/* Record / Done / Processing */}
         {state === "recording" ? (
