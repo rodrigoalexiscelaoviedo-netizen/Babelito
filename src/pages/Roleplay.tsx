@@ -3,6 +3,7 @@ import { awardSessionXp } from "../lib/xp";
 import { SuggestedChunks, XpEarned } from "../components/ReportExtras";
 import { useTranslation } from "react-i18next";
 import { useEffect, useRef, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   Send,
   Briefcase,
@@ -34,6 +35,7 @@ import { generateReport, type SessionReport } from "../lib/sessionReport";
 import { MIN_USER_TURNS, countUserTurns, turnsRemaining } from "../lib/practice";
 import ShadowingBlock from "../components/ShadowingBlock";
 import { requestHint } from "../lib/hints";
+import { saveStep } from "../lib/situations";
 import { useResumableSession, type ResumableSession } from "../lib/useResumableSession";
 
 const SCENARIO_ICONS: Record<string, LucideIcon> = {
@@ -48,7 +50,12 @@ const SCENARIO_ICONS: Record<string, LucideIcon> = {
 export default function Roleplay() {
   const { profile } = useAuth();
   const learningLanguage = profile?.learning_language || "en";
-  const [scenario, setScenario] = useState<Scenario | null>(null);
+  // Si se llega desde una Situación, el escenario y su id vienen en el estado de la ruta.
+  const location = useLocation();
+  const navigate = useNavigate();
+  const incoming = location.state as { scenario?: Scenario; packId?: string } | null;
+  const [packId] = useState<string | null>(incoming?.packId ?? null);
+  const [scenario, setScenario] = useState<Scenario | null>(incoming?.scenario ?? null);
   const [resumeFrom, setResumeFrom] = useState<ResumableSession | null>(null);
   useHistoryBack(scenario !== null, () => setScenario(null));
 
@@ -118,8 +125,13 @@ export default function Roleplay() {
     <RoleplayChat
       scenario={scenario}
       resume={resumeFrom}
+      packId={packId}
       onExit={() => {
         setResumeFrom(null);
+        if (packId) {
+          navigate(`/situations/${packId}`, { replace: true });
+          return;
+        }
         setScenario(null);
       }}
       key={scenario.id}
@@ -130,10 +142,12 @@ export default function Roleplay() {
 function RoleplayChat({
   scenario,
   resume,
+  packId,
   onExit,
 }: {
   scenario: Scenario;
   resume?: ResumableSession | null;
+  packId?: string | null;
   onExit: () => void;
 }) {
   const { t } = useTranslation();
@@ -304,6 +318,8 @@ function RoleplayChat({
         if (error) {
           setReportError(`No se pudo registrar la sesión: ${error.message}`);
         }
+        // Misión de una Situación: este paso queda hecho.
+        if (packId) void saveStep(profile.id, packId, { roleplay: true });
       }
 
       setReportCounted(counts);
@@ -444,7 +460,7 @@ function RoleplayChat({
           {learningLanguage === "ca" ? "Escrit pel teu coach d’IA" : "Written by your AI coach"}
         </p>
         <button className="btn-coral w-full" onClick={onExit}>
-          {learningLanguage === "ca" ? "Torna als escenaris" : "Back to scenarios"}
+          {learningLanguage === "ca" ? "Torna als escenaris" : packId ? "Back to the situation" : "Back to scenarios"}
         </button>
       </div>
     );

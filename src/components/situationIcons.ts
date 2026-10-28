@@ -1,0 +1,31 @@
+import {
+  BedDouble,
+  Briefcase,
+  Bus,
+  Compass,
+  House,
+  Phone,
+  Plane,
+  Presentation,
+  ShoppingBag,
+  Smile,
+  Stethoscope,
+  UtensilsCrossed,
+  type LucideIcon,
+} from "lucide-react";
+
+/** Íconos de las situaciones (el nombre viene de situationsData.ts). */
+export const SITUATION_ICONS: Record<string, LucideIcon> = {
+  Briefcase,
+  ShoppingBag,
+  Bus,
+  Plane,
+  Compass,
+  UtensilsCrossed,
+  BedDouble,
+  Stethoscope,
+  Smile,
+  Phone,
+  Presentation,
+  House,
+};

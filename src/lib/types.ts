@@ -73,3 +73,12 @@ export interface DiagnosticAnswer {
   correct: boolean;
   level: Level;
 }
+
+/** Fila de public.situation_progress (migración 0008). */
+export interface SituationProgressRow {
+  user_id: string;
+  pack_id: string;
+  steps: { phrases?: boolean; dialogue?: boolean; quiz?: number; roleplay?: boolean };
+  completed_at: string | null;
+  updated_at: string;
+}

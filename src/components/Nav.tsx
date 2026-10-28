@@ -16,6 +16,7 @@ import {
   Layers,
   Headphones,
   MoreHorizontal,
+  Target,
   X,
   type LucideIcon,
 } from "lucide-react";
@@ -25,7 +26,7 @@ import i18n, { uiLang } from "../i18n";
 
 type NavKey =
   | "home" | "talk" | "chunks" | "correct" | "roleplay" | "reading" | "stories"
-  | "sounds" | "review" | "listening" | "progress" | "profile" | "words";
+  | "sounds" | "review" | "listening" | "progress" | "profile" | "words" | "situations";
 
 interface NavItem {
   to: string;
@@ -36,6 +37,7 @@ interface NavItem {
 
 const ITEMS: Record<string, NavItem> = {
   "/": { to: "/", key: "home", icon: LayoutDashboard, end: true },
+  "/situations": { to: "/situations", key: "situations", icon: Target },
   "/conversation": { to: "/conversation", key: "talk", icon: MessageCircle },
   "/roleplay": { to: "/roleplay", key: "roleplay", icon: Drama },
   "/correct": { to: "/correct", key: "correct", icon: PencilLine },
@@ -57,7 +59,7 @@ const ITEMS: Record<string, NavItem> = {
  */
 const GROUPS: Array<{ labelKey: string | null; routes: string[] }> = [
   { labelKey: null, routes: ["/"] },
-  { labelKey: "groupSpeak", routes: ["/conversation", "/roleplay", "/correct"] },
+  { labelKey: "groupSpeak", routes: ["/situations", "/conversation", "/roleplay", "/correct"] },
   { labelKey: "groupSounds", routes: ["/sounds", "/listening"] },
   { labelKey: "groupRead", routes: ["/stories", "/reading"] },
   { labelKey: "groupRemember", routes: ["/review", "/chunks", "/words"] },
@@ -90,7 +92,9 @@ export default function Nav() {
   const isActive = (item: NavItem) =>
     item.end ? location.pathname === item.to : location.pathname.startsWith(item.to);
 
-  const moreRoutes = Object.keys(ITEMS).filter((r) => !BOTTOM_FIXED.includes(r));
+  // Situaciones aún no existe en catalán (se replica cuando cierre la versión inglesa).
+  const hidden = new Set<string>(profile?.learning_language === "ca" ? ["/situations"] : []);
+  const moreRoutes = Object.keys(ITEMS).filter((r) => !BOTTOM_FIXED.includes(r) && !hidden.has(r));
   const moreIsActive = moreRoutes.some((r) => isActive(ITEMS[r]));
 
   const badge = (to: string, small = false) =>
@@ -125,7 +129,7 @@ export default function Nav() {
                 </p>
               )}
               <div className="flex flex-col gap-0.5">
-                {group.routes.map((route) => {
+                {group.routes.filter((r) => !hidden.has(r)).map((route) => {
                   const item = ITEMS[route];
                   const Icon = item.icon;
                   return (

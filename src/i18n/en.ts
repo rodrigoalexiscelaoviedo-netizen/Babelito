@@ -19,6 +19,7 @@ export const en = {
     listening: "Listening",
     progress: "Progress",
     profile: "Profile",
+    situations: "Situations",
     words: "My words",
     groupSpeak: "Speak & write",
     groupSounds: "Sounds & listening",
