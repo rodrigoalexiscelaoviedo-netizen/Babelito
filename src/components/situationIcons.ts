@@ -1,5 +1,11 @@
 import {
   BedDouble,
+  Dumbbell,
+  Frown,
+  Heart,
+  Landmark,
+  Laptop,
+  Truck,
   Briefcase,
   Bus,
   Compass,
@@ -28,4 +34,10 @@ export const SITUATION_ICONS: Record<string, LucideIcon> = {
   Phone,
   Presentation,
   House,
+  Landmark,
+  Dumbbell,
+  Truck,
+  Frown,
+  Heart,
+  Laptop,
 };
