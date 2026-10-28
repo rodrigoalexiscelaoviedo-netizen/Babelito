@@ -19,6 +19,8 @@ const Review = lazy(() => import("./pages/Review"));
 const Listening = lazy(() => import("./pages/Listening"));
 const Progress = lazy(() => import("./pages/Progress"));
 const Words = lazy(() => import("./pages/Words"));
+const Situations = lazy(() => import("./pages/Situations"));
+const SituationDetail = lazy(() => import("./pages/SituationDetail"));
 const Profile   = lazy(() => import("./pages/Profile"));
 // Solo en desarrollo: en producción Vite elimina este import y la ruta.
 const DevGallery = import.meta.env.DEV ? lazy(() => import("./pages/DevGallery")) : null;
@@ -65,6 +67,8 @@ export default function App() {
         <Route path="/review" element={<Shell><Review /></Shell>} />
         <Route path="/listening" element={<Shell><Listening /></Shell>} />
         <Route path="/words" element={<Shell><Words /></Shell>} />
+        <Route path="/situations" element={<Shell><Situations /></Shell>} />
+        <Route path="/situations/:id" element={<Shell><SituationDetail /></Shell>} />
         <Route path="/progress" element={<Shell><Progress /></Shell>} />
         <Route path="/profile" element={<Shell><Profile /></Shell>} />
         {/* Galería visual: solo en desarrollo, nunca en producción */}

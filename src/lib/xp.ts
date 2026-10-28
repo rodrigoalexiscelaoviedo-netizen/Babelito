@@ -10,7 +10,7 @@
 import { supabase } from "./supabaseClient";
 import { localDateISO } from "./dates";
 
-export type XpSource = "conversation" | "roleplay" | "story" | "review" | "daily_lesson" | "sound" | "listening";
+export type XpSource = "conversation" | "roleplay" | "story" | "review" | "daily_lesson" | "sound" | "listening" | "situation";
 
 // ── Niveles ─────────────────────────────────────────────────────────────────────
 
@@ -183,6 +183,7 @@ export const SOURCE_LABEL: Record<XpSource, string> = {
   daily_lesson: "Daily practice",
   sound: "Sounds",
   listening: "Listening",
+  situation: "Situation",
 };
 
 /**
