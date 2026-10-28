@@ -13,17 +13,26 @@
 import webpush from "npm:web-push@3.6.7";
 import { createClient } from "npm:@supabase/supabase-js@2";
 
-const admin = createClient(
-  Deno.env.get("SUPABASE_URL")!,
-  Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-  { auth: { persistSession: false } }
-);
+const env = (name: string): string => (Deno.env.get(name) ?? "").trim();
 
-webpush.setVapidDetails(
-  Deno.env.get("VAPID_SUBJECT") ?? "mailto:admin@babelito.app",
-  Deno.env.get("VAPID_PUBLIC_KEY")!,
-  Deno.env.get("VAPID_PRIVATE_KEY")!
-);
+const admin = createClient(env("SUPABASE_URL"), env("SUPABASE_SERVICE_ROLE_KEY"), {
+  auth: { persistSession: false },
+});
+
+let vapidReady = false;
+/** Configura VAPID al primer uso. Devuelve un mensaje de error legible (sin secretos) o null. */
+function ensureVapid(): string | null {
+  if (vapidReady) return null;
+  const missing = ["VAPID_PUBLIC_KEY", "VAPID_PRIVATE_KEY"].filter((n) => !env(n));
+  if (missing.length) return "Faltan secretos: " + missing.join(", ");
+  try {
+    webpush.setVapidDetails(env("VAPID_SUBJECT") || "mailto:admin@babelito.app", env("VAPID_PUBLIC_KEY"), env("VAPID_PRIVATE_KEY"));
+    vapidReady = true;
+    return null;
+  } catch (err) {
+    return "Clave VAPID inválida (revisá VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY y VAPID_SUBJECT): " + String(err instanceof Error ? err.message : err);
+  }
+}
 
 const WINDOW_MINUTES = 15;
 
@@ -78,9 +87,16 @@ function localParts(now: Date, timeZone: string): { date: string; minutes: numbe
 }
 
 Deno.serve(async (req) => {
-  if (req.headers.get("x-cron-secret") !== Deno.env.get("CRON_SECRET")) {
+  const secret = env("CRON_SECRET");
+  if (!secret || req.headers.get("x-cron-secret")?.trim() !== secret) {
     return new Response("forbidden", { status: 403 });
   }
+
+  // x-dry-run: 1 → no envía nada; solo informa a quién le tocaría (para probar el cron).
+  const dryRun = req.headers.get("x-dry-run") === "1";
+
+  const vapidError = ensureVapid();
+  if (vapidError && !dryRun) return Response.json({ error: vapidError }, { status: 500 });
 
   const now = new Date();
   const { data: profiles, error } = await admin
@@ -109,6 +125,8 @@ Deno.serve(async (req) => {
         .eq("user_id", p.id)
         .eq("lesson_date", local.date)
         .maybeSingle();
+
+      if (dryRun) { sent++; continue; }
 
       if (!lesson?.completed) {
         const { data: subs } = await admin
@@ -163,5 +181,12 @@ Deno.serve(async (req) => {
     }
   }
 
-  return Response.json({ sent, skipped, pruned, checked: profiles?.length ?? 0 });
+  return Response.json({
+    dryRun,
+    vapid: vapidError ?? "ok",
+    [dryRun ? "wouldSend" : "sent"]: sent,
+    skipped,
+    pruned,
+    checked: profiles?.length ?? 0,
+  });
 });

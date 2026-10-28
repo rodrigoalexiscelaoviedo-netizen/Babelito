@@ -285,9 +285,10 @@ export default function ClickableText({
 
       {/* Word panel */}
       {mode === "word" && selectedWord && (
-        <div className="card mt-3 p-4 relative" onClick={(e) => e.stopPropagation()}>
+        <div className="card mt-3 p-4 sticky bottom-2 z-10 shadow-[0_-12px_40px_rgba(0,0,0,0.55)]" onClick={(e) => e.stopPropagation()}>
           <button
             onClick={() => setSelectedWord(null)}
+            aria-label="Close"
             className="absolute top-3 right-3 text-paper-faint hover:text-paper"
           >
             <X size={15} />
@@ -366,9 +367,10 @@ export default function ClickableText({
 
       {/* Sentence / phrase panel */}
       {mode === "sentence" && selectedSentence && (
-        <div className="card mt-3 p-4 relative border-mint/30" onClick={(e) => e.stopPropagation()}>
+        <div className="card mt-3 p-4 sticky bottom-2 z-10 border-mint/30 shadow-[0_-12px_40px_rgba(0,0,0,0.55)]" onClick={(e) => e.stopPropagation()}>
           <button
             onClick={() => setSelectedSentence(null)}
+            aria-label="Close"
             className="absolute top-3 right-3 text-paper-faint hover:text-paper"
           >
             <X size={15} />

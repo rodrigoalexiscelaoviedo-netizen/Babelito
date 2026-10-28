@@ -1,6 +1,7 @@
 import { supabase } from "./supabaseClient";
 import { askCoach, RetryableError } from "./claude";
 import { scopeByLanguage } from "./language";
+import { tryParseAiJson } from "./json";
 
 export interface StoryQuestion {
   question: string;
@@ -99,26 +100,15 @@ export async function generateStory(
     });
   } catch (e) {
     if (e instanceof RetryableError) {
-      throw new Error("El coach está ocupado, prueba de nuevo en unos segundos.");
+      throw new Error("The coach is busy right now. Try again in a few seconds.");
     }
     throw e;
   }
 
-  // Parse JSON (strip markdown if present)
-  const cleaned = raw.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
-  const start = cleaned.indexOf("{");
-  const end = cleaned.lastIndexOf("}");
-  if (start === -1 || end === -1) {
-    console.error("generateStory: response truncated or no JSON found:", raw);
-    throw new Error("La historia salió muy larga. Prueba con un tema más simple o con menos palabras.");
-  }
-
-  let parsed: { title: string; content: string; questions: StoryQuestion[] };
-  try {
-    parsed = JSON.parse(cleaned.slice(start, end + 1));
-  } catch {
-    console.error("generateStory: JSON parse failed (likely truncated). Raw:", raw);
-    throw new Error("La historia salió muy larga. Prueba con un tema más simple o con menos palabras.");
+  const parsed = tryParseAiJson<{ title: string; content: string; questions: StoryQuestion[] }>(raw);
+  if (!parsed || !parsed.title || !parsed.content || !Array.isArray(parsed.questions)) {
+    console.error("generateStory: respuesta incompleta o inválida. Raw:", raw);
+    throw new Error("The story came out incomplete. Try again, or pick a simpler topic.");
   }
 
   const { data, error } = await supabase

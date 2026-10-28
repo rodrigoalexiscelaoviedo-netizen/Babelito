@@ -1,5 +1,6 @@
 import { askCoach } from "./claude";
 import type { Level } from "./types";
+import { parseAiJson } from "./json";
 
 export type DiagLang = "en" | "ca";
 
@@ -44,14 +45,6 @@ export function minCefr(a: string, b: string): Level {
   const safeB = iB < 0 ? 99 : iB;
   const idx = Math.min(safeA, safeB);
   return (order[idx] as Level) ?? "A1";
-}
-
-function parseJsonObject<T>(raw: string): T {
-  const cleaned = raw.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
-  const start = cleaned.indexOf("{");
-  const end = cleaned.lastIndexOf("}");
-  if (start === -1 || end === -1) throw new Error("No JSON");
-  return JSON.parse(cleaned.slice(start, end + 1)) as T;
 }
 
 // ── Open question generation ──────────────────────────────────────────────────
@@ -122,7 +115,7 @@ export async function evaluateReading(
       maxTokens: 400,
       temperature: 0.1,
     });
-    const parsed = parseJsonObject<{ level: string; errors: Array<{ sound: string; word: string }> }>(raw);
+    const parsed = parseAiJson<{ level: string; errors: Array<{ sound: string; word: string }> }>(raw);
     const level = (CEFR_ORDER.includes(parsed.level as Level) ? parsed.level : "B1") as Level;
     return { level, errors: Array.isArray(parsed.errors) ? parsed.errors : [] };
   } catch {
@@ -161,7 +154,7 @@ export async function evaluateOpenResponse(
       maxTokens: 120,
       temperature: 0.1,
     });
-    const parsed = parseJsonObject<{ level: string }>(raw);
+    const parsed = parseAiJson<{ level: string }>(raw);
     return (CEFR_ORDER.includes(parsed.level as Level) ? parsed.level : "B1") as Level;
   } catch {
     return "B1";

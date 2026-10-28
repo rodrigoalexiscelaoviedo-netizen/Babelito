@@ -33,6 +33,7 @@ import type { ChatTurn } from "../lib/types";
 import { generateReport, type SessionReport } from "../lib/sessionReport";
 import { MIN_USER_TURNS, countUserTurns, turnsRemaining } from "../lib/practice";
 import ShadowingBlock from "../components/ShadowingBlock";
+import { requestHint } from "../lib/hints";
 
 const SCENARIO_ICONS: Record<string, LucideIcon> = {
   Briefcase,
@@ -216,32 +217,29 @@ function RoleplayChat({ scenario, onExit }: { scenario: Scenario; onExit: () => 
 
   async function getHint() {
     if (!profile || turns.length === 0) return;
-    const lastCoachMsg = [...turns].reverse().find((t) => t.role === "assistant")?.content ?? "";
+    const last = [...turns].reverse().find((t) => t.role === "assistant")?.content ?? "";
     setHintLoading(true);
     try {
-      const hint = await askCoach({
-        system: `You are an English roleplay coach. The student is stuck and needs a small push.
-Give ONE short hint (max 12 words): a phrase they could say, a vocabulary hint, or a sentence starter.
-Do NOT reveal what the "correct" full answer is. Student level: ${profile.current_level ?? "B1"}.
-Reply with only the hint text.`,
-        messages: [{ role: "user", content: `Coach said: "${lastCoachMsg}"\nGive a brief hint.` }],
-        maxTokens: 50,
-      });
-      setHintText(hint.trim().replace(/^["']|["']$/g, ""));
-    } catch {
-      setHintText('Try: "Could you...", "I\'d like to...", or "Actually..."');
+      setHintText(
+        await requestHint({
+          lang: profile.learning_language === "ca" ? "ca" : "en",
+          kind: "roleplay",
+          level: profile.current_level,
+          lastCoachMessage: last,
+        })
+      );
     } finally {
       setHintLoading(false);
     }
   }
 
   async function handleEndSession() {
-    if (!profile || turns.length === 0) return;
+    if (!profile || countUserTurns(turns) === 0) return;
     setGeneratingReport(true);
     setReportError("");
     try {
       const sid = sessionIdRef.current ?? sessionId;
-      const r = await generateReport(profile.id, sid, "roleplay", turns, profile.learning_language || "en");
+      const r = await generateReport(profile.id, sid, "roleplay", turns, profile.learning_language || "en", profile.current_level);
       const userTurns = countUserTurns(turns);
       const counts = userTurns >= MIN_USER_TURNS;
 
@@ -331,7 +329,7 @@ Reply with only the hint text.`,
       <div className="animate-fade-up max-w-xl mx-auto">
         <div className="flex items-center justify-between mb-6">
           <div>
-            <p className="eyebrow mb-1">{learningLanguage === "ca" ? "Reporte de sessió" : "Session report"} · {scenario.title}</p>
+            <p className="eyebrow mb-1">{learningLanguage === "ca" ? "Informe de sessió" : "Session report"} · {scenario.title}</p>
             <h1 className="font-display text-2xl font-extrabold">{learningLanguage === "ca" ? "Com ha anat" : "How it went"}</h1>
             <div className="mt-2"><XpEarned amount={xpEarned} learningLanguage={learningLanguage} /></div>
           </div>
@@ -408,21 +406,23 @@ Reply with only the hint text.`,
   return (
     <div className="flex flex-col h-[calc(100vh-7rem)] md:h-[calc(100vh-5rem)] max-w-2xl mx-auto">
       <div className="flex items-center justify-between mb-3">
-        <div>
-          <p className="eyebrow">{scenario.title}</p>
-          <p className="text-sm text-paper-muted">Playing: {scenario.coach_role}</p>
+        <div className="min-w-0">
+          <p className="eyebrow truncate">{scenario.title}</p>
+          <p className="truncate text-sm text-paper-muted">
+            {learningLanguage === "ca" ? "Parles amb" : "You're talking to"}: {scenario.coach_role}
+          </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex shrink-0 items-center gap-3 whitespace-nowrap">
           {reportError && <p className="text-coral text-xs">{reportError}</p>}
           <button
             onClick={handleEndSession}
-            disabled={generatingReport || turns.length === 0}
+            disabled={generatingReport || countUserTurns(turns) === 0}
             className="flex items-center gap-1.5 text-xs text-paper-muted hover:text-coral transition disabled:opacity-40"
           >
             {generatingReport ? (
               <span className="flex items-center gap-2"><BrandDots /> {learningLanguage === "ca" ? "Generant…" : "Generating…"}</span>
             ) : (
-              learningLanguage === "ca" ? "Finalitzar i reporte →" : "End & report →"
+              learningLanguage === "ca" ? "Finalitza i veu l'informe →" : "End & report →"
             )}
           </button>
           <button className="text-sm text-paper-muted hover:text-paper" onClick={onExit}>

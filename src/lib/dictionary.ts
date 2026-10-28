@@ -1,5 +1,6 @@
 import { askCoach } from "./claude";
 import { supabase } from "./supabaseClient";
+import { parseAiJson } from "./json";
 
 export type LearningLang = "en" | "ca";
 
@@ -50,14 +51,6 @@ const UNAVAILABLE: WordDefinition = {
   phonetic: "",
 };
 
-function parseJson<T>(raw: string): T {
-  const cleaned = raw.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
-  const start = cleaned.indexOf("{");
-  const end = cleaned.lastIndexOf("}");
-  if (start === -1 || end === -1) throw new Error("No JSON");
-  return JSON.parse(cleaned.slice(start, end + 1)) as T;
-}
-
 /**
  * Definición de palabra. Primero mira la caché compartida (word_definitions):
  * cada palabra se consulta al coach UNA sola vez para todos los usuarios, lo que
@@ -82,7 +75,7 @@ export async function lookupWord(word: string, language: LearningLang = "en"): P
       maxTokens: 200,
       temperature: 0.1,
     });
-    const def = parseJson<WordDefinition>(raw);
+    const def = parseAiJson<WordDefinition>(raw);
     await supabase
       .from("word_definitions")
       .upsert({ lang: language, word: key, data: def }, { onConflict: "lang,word", ignoreDuplicates: true });
@@ -100,7 +93,7 @@ export async function lookupPhrase(phrase: string, language: LearningLang = "en"
       maxTokens: 200,
       temperature: 0.1,
     });
-    return parseJson<PhraseExplanation>(raw);
+    return parseAiJson<PhraseExplanation>(raw);
   } catch {
     return { es: "No disponible", grammar: "" };
   }
