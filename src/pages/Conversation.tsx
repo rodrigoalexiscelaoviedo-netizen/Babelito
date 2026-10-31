@@ -20,6 +20,9 @@ import {
   stopSpeech,
 } from "../lib/speech";
 import { SILENCE_MS, isTouchDevice } from "../lib/callMode";
+import LiveCall from "../components/LiveCall";
+import { liveSupported } from "../lib/liveSession";
+import { geminiToolsAvailable } from "../lib/geminiTools";
 import { useSpeechCapture } from "../lib/useSpeechCapture";
 import { useVoicePrefs, type VoicePrefs } from "../lib/useVoicePrefs";
 import type { ChatTurn, DetectedError } from "../lib/types";
@@ -135,6 +138,8 @@ export default function Conversation() {
   // El coach habla, se te escucha y, al callarte un momento, se envía solo.
   // En pantallas táctiles el micrófono se activa con un toque (Chrome Android
   // no permite abrirlo sin un gesto del usuario).
+  const [liveOn, setLiveOn] = useState(false);
+  const [liveReady, setLiveReady] = useState(false);
   const [callOn, setCallOn] = useState(false);
   const [coachSpeaking, setCoachSpeaking] = useState(false);
   const callOnRef = useRef(false);
@@ -200,6 +205,18 @@ export default function Conversation() {
     // Interesa reiniciar el temporizador solo cuando cambia lo escuchado.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [callOn, listening, heardText]);
+
+  // La llamada en vivo (beta) solo se ofrece si el servidor la tiene y el navegador puede.
+  useEffect(() => {
+    if (learningLanguage === "ca" || !liveSupported()) return;
+    let cancelled = false;
+    void geminiToolsAvailable().then((ok) => {
+      if (!cancelled) setLiveReady(ok);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [learningLanguage]);
 
   // Cortar la llamada al salir de la pantalla.
   useEffect(
@@ -502,6 +519,16 @@ export default function Conversation() {
             <Phone size={13} /> Call
           </button>
         )}
+        {learningLanguage !== "ca" && liveReady && (
+          <button
+            onClick={() => setLiveOn(true)}
+            disabled={thinking || generatingReport}
+            className="flex items-center gap-1.5 text-xs font-medium text-gold hover:text-gold/80 transition disabled:opacity-40"
+            aria-label="Start live call (beta)"
+          >
+            <Phone size={13} /> Live <span className="rounded bg-gold/20 px-1 text-[9px] uppercase">beta</span>
+          </button>
+        )}
         <button
           onClick={handleEndSession}
           disabled={generatingReport || countUserTurns(turns) === 0}
@@ -679,6 +706,16 @@ export default function Conversation() {
           </button>
         </div>
       </div>
+
+      {liveOn && profile && (
+        <LiveCall
+          userId={profile.id}
+          level={profile.current_level ?? "A2"}
+          name={profile.name ?? ""}
+          topic={topic}
+          onClose={() => setLiveOn(false)}
+        />
+      )}
 
       {callOn && (
         <div
