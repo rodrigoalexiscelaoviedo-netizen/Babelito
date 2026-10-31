@@ -134,9 +134,15 @@ Deno.serve(async (req) => {
       parts: [{ text: m.content }],
     }));
 
+    // json: true → Gemini devuelve JSON válido (sin ```json, comas ni texto alrededor).
+    const wantJson = payload.json === true;
     const geminiBody: any = {
       contents,
-      generationConfig: { temperature, maxOutputTokens: maxTokens },
+      generationConfig: {
+        temperature,
+        maxOutputTokens: maxTokens,
+        ...(wantJson ? { responseMimeType: "application/json" } : {}),
+      },
     };
     if (system) geminiBody.systemInstruction = { parts: [{ text: system }] };
 

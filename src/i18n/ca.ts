@@ -29,6 +29,7 @@ export const ca: Shape<typeof en> = {
     grammar: "Gramàtica",
     mistakes: "Els meus errors",
     plan: "El meu pla",
+    lens: "Càmera",
     words: "Les meves paraules",
     groupSpeak: "Parla i escriu",
     groupSounds: "Sons i escolta",

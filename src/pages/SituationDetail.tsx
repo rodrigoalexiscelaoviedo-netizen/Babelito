@@ -34,11 +34,12 @@ const STEP_LABELS: Record<StepKey, string> = {
 function useSpeakPhrase() {
   const prefs = useVoicePrefs();
   return useCallback(
-    (text: string, onEnd?: () => void) =>
+    (text: string, onEnd?: () => void, alt = false) =>
       speak(text, {
         voiceName: prefs.voiceName ?? undefined,
         rate: prefs.voiceRate,
         lang: prefs.voiceAccent || "en-GB",
+        alt,
         onEnd,
       }),
     [prefs.voiceName, prefs.voiceRate, prefs.voiceAccent]
@@ -267,7 +268,7 @@ function DialogueStep({ pack, done, onDone }: { pack: Situation; done: boolean; 
       return;
     }
     setPlaying(i);
-    say(lines[i].en, () => playFrom(i + 1));
+    say(lines[i].en, () => playFrom(i + 1), lines[i].who === "other");
   }
 
   function toggleAll() {
@@ -315,7 +316,7 @@ function DialogueStep({ pack, done, onDone }: { pack: Situation; done: boolean; 
               </p>
               <div className="flex items-start gap-2">
                 <p className="flex-1">{l.en}</p>
-                <button onClick={() => say(l.en)} className="mt-0.5 opacity-70 hover:opacity-100" aria-label={`Listen: ${l.en}`}>
+                <button onClick={() => say(l.en, undefined, l.who === "other")} className="mt-0.5 opacity-70 hover:opacity-100" aria-label={`Listen: ${l.en}`}>
                   <Volume2 size={14} />
                 </button>
               </div>

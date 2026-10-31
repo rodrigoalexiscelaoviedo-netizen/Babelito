@@ -97,6 +97,7 @@ export async function generatePronunciationFeedback(
   const userMsg = `Target phrase: "${targetText}"\nSpoken: "${spokenText}"\nTarget sound: ${targetSound}`;
 
   const raw = await askCoach({
+      json: true,
     system: FEEDBACK_SYSTEM,
     messages: [{ role: "user", content: userMsg }],
     maxTokens: 300,

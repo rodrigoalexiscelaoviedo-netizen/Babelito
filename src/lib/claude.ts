@@ -8,6 +8,8 @@ interface AskOptions {
   messages: ChatTurn[];
   maxTokens?: number;
   temperature?: number;
+  /** Pide a Gemini que responda JSON válido (para módulos que lo parsean). */
+  json?: boolean;
 }
 
 /** Thrown when Gemini is overloaded — the caller can show a retry button. */
@@ -23,7 +25,7 @@ export class RetryableError extends Error {
  * Manda la conversación al proxy (que a su vez llama a Gemini).
  * Lanza RetryableError si la Edge Function indica que el servicio está saturado.
  */
-export async function askCoach({ system, messages, maxTokens = 1024, temperature = 0.7 }: AskOptions): Promise<string> {
+export async function askCoach({ system, messages, maxTokens = 1024, temperature = 0.7, json = false }: AskOptions): Promise<string> {
   const { data: sessionData } = await supabase.auth.getSession();
   const token = sessionData.session?.access_token;
   if (!token) throw new Error("No hay sesión activa.");
@@ -36,7 +38,7 @@ export async function askCoach({ system, messages, maxTokens = 1024, temperature
         Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ system, messages, max_tokens: maxTokens, temperature }),
+      body: JSON.stringify({ system, messages, max_tokens: maxTokens, temperature, ...(json ? { json: true } : {}) }),
       signal: AbortSignal.timeout(32000),
     });
   } catch (fetchErr: unknown) {

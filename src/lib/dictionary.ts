@@ -70,6 +70,7 @@ export async function lookupWord(word: string, language: LearningLang = "en"): P
 
   try {
     const raw = await askCoach({
+      json: true,
       system: WORD_SYSTEM[language],
       messages: [{ role: "user", content: key }],
       maxTokens: 200,
@@ -88,6 +89,7 @@ export async function lookupWord(word: string, language: LearningLang = "en"): P
 export async function lookupPhrase(phrase: string, language: LearningLang = "en"): Promise<PhraseExplanation> {
   try {
     const raw = await askCoach({
+      json: true,
       system: PHRASE_SYSTEM[language],
       messages: [{ role: "user", content: phrase.trim() }],
       maxTokens: 200,

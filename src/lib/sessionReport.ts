@@ -101,6 +101,7 @@ export async function generateReport(
   const transcript = transcriptText(turns);
 
   const raw = await askCoach({
+      json: true,
     system: reportSystem(language, level, kind),
     messages: [{ role: "user", content: `Session transcript:\n\n${transcript}` }],
     maxTokens: 800,
