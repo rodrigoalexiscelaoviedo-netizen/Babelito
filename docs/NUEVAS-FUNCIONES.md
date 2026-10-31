@@ -22,3 +22,17 @@ Todas están ocultas en catalán hasta cerrar la versión en inglés.
 ## Funciones de Supabase (Edge)
 `send-reminders`, `pronunciation-assess`, `speech-tts` (sin Verify JWT: validan la sesión ellas mismas) y `claude-proxy`.
 Secretos de Azure: `AZURE_SPEECH_KEY`, `AZURE_SPEECH_REGION` (`northeurope`).
+
+## Gemini (Google AI Studio) — segunda tanda
+
+| Qué | Dónde |
+|---|---|
+| **JSON garantizado** | `claude-proxy` acepta `json: true` (Gemini responde JSON válido). Lo piden diccionario, ejercicios de errores, diagnóstico oral, feedback de pronunciación, informes e historias. |
+| **Feedback de voz con audio** | Botón "Coach feedback on my voice" en Listen & repeat: Gemini escucha la grabación y comenta palabra por palabra. |
+| **Photo helper** (`/lens`) | Foto de un menú/cartel/etiqueta → explicación en inglés simple, vocabulario y frases útiles, y todo al repaso. |
+| **Diálogos con dos voces** | En Situaciones, el otro personaje habla con una segunda voz neural. |
+| **Live (beta)** | Botón "Live" en Conversación: voz a voz en tiempo real con Gemini Live. Credencial de un solo uso desde `gemini-tools`. |
+
+`gemini-tools` (Edge Function, sin Verify JWT): modos `audio`, `vision` y `live-token`; comparte la cuota diaria del coach.
+Toda la UI nueva se oculta sola si `gemini-tools` no está desplegada.
+Privacidad: en el plan gratuito de la API de Gemini, Google puede usar lo enviado para mejorar sus productos.
