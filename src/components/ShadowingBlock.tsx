@@ -13,6 +13,7 @@ import {
   type AudioCapture,
   type PronunciationScore,
 } from "../lib/pronunciationAssess";
+import { geminiToolsAvailable, voiceFeedback, type VoiceFeedback } from "../lib/geminiTools";
 
 const TONE_CLASS = { good: "text-mint", fair: "text-gold", poor: "text-coral underline decoration-wavy" } as const;
 
@@ -51,6 +52,36 @@ export default function ShadowingBlock({ text, lang, label = "Listen & repeat" }
   const [score, setScore] = useState<PronunciationScore | null>(null);
   const [scoring, setScoring] = useState(false);
   const captureRef = useRef<AudioCapture | null>(null);
+  // Grabación (WAV) para pedirle al coach comentarios sobre la voz, si la función está disponible.
+  const [wav, setWav] = useState<Uint8Array | null>(null);
+  const [geminiOk, setGeminiOk] = useState(false);
+  const [voiceFb, setVoiceFb] = useState<VoiceFeedback | null>(null);
+  const [voiceFbLoading, setVoiceFbLoading] = useState(false);
+  const [voiceFbError, setVoiceFbError] = useState("");
+
+  useEffect(() => {
+    if (learningLanguage !== "en") return;
+    let cancelled = false;
+    void geminiToolsAvailable().then((ok) => {
+      if (!cancelled) setGeminiOk(ok);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [learningLanguage]);
+
+  async function askVoiceCoach() {
+    if (!wav) return;
+    setVoiceFbLoading(true);
+    setVoiceFbError("");
+    try {
+      setVoiceFb(await voiceFeedback(wav, text, profile?.current_level ?? "A2"));
+    } catch (e) {
+      setVoiceFbError(e instanceof Error ? e.message : "Could not get feedback right now.");
+    } finally {
+      setVoiceFbLoading(false);
+    }
+  }
 
   // Consulta la disponibilidad al montar, para que al tocar Record no se pierda el inicio del audio.
   useEffect(() => {
@@ -101,6 +132,9 @@ export default function ShadowingBlock({ text, lang, label = "Listen & repeat" }
     setSaved(false);
     setResult(null);
     setScore(null);
+    setWav(null);
+    setVoiceFb(null);
+    setVoiceFbError("");
     setTip("");
     setState("recording");
     // Audio en paralelo al reconocimiento, para el puntaje real (solo inglés).
@@ -138,7 +172,10 @@ export default function ShadowingBlock({ text, lang, label = "Listen & repeat" }
         setScoring(true);
         void capture
           .stop()
-          .then((wav) => (wav ? assessPronunciation(wav, text, voicePrefs.voiceAccent ?? "en-GB") : null))
+          .then((audio) => {
+            setWav(audio);
+            return audio ? assessPronunciation(audio, text, voicePrefs.voiceAccent ?? "en-GB") : null;
+          })
           .then(setScore)
           .finally(() => setScoring(false));
       }
@@ -183,6 +220,9 @@ export default function ShadowingBlock({ text, lang, label = "Listen & repeat" }
     setError("");
     setSaved(false);
     setScore(null);
+    setWav(null);
+    setVoiceFb(null);
+    setVoiceFbError("");
   }
 
   // Los puntajes por palabra de Azure se alinean con la frase si coinciden en cantidad.
@@ -247,6 +287,22 @@ export default function ShadowingBlock({ text, lang, label = "Listen & repeat" }
       )}
 
       {error && <p className="text-xs text-coral">{error}</p>}
+
+      {voiceFbError && <p className="text-xs text-coral">{voiceFbError}</p>}
+
+      {voiceFb && (
+        <div className="bg-ink-700 rounded-lg p-3 space-y-2">
+          {voiceFb.transcript && <p className="text-xs text-paper-faint italic">The coach heard: “{voiceFb.transcript}”</p>}
+          {voiceFb.summary && <p className="text-xs text-paper leading-relaxed">{voiceFb.summary}</p>}
+          {voiceFb.tips.map((t, i) => (
+            <div key={i} className="text-xs leading-relaxed">
+              <p className="font-semibold text-gold">{t.word}</p>
+              {t.problem && <p className="text-paper-muted">{t.problem}</p>}
+              {t.fix && <p className="text-paper">→ {t.fix}</p>}
+            </div>
+          ))}
+        </div>
+      )}
 
       {(state === "tip" || state === "tip-loading") && tip && (
         <div className="bg-ink-700 rounded-lg p-3 space-y-1">
@@ -317,6 +373,16 @@ export default function ShadowingBlock({ text, lang, label = "Listen & repeat" }
             className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-ink-600 hover:bg-ink-500 text-paper-muted hover:text-paper text-xs transition"
           >
             Why?
+          </button>
+        )}
+
+        {state === "result" && wav && geminiOk && !voiceFb && (
+          <button
+            onClick={askVoiceCoach}
+            disabled={voiceFbLoading}
+            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-ink-600 hover:bg-ink-500 text-paper-muted hover:text-paper text-xs transition disabled:opacity-50"
+          >
+            {voiceFbLoading ? <Loader2 size={12} className="animate-spin" /> : "🎧"} Coach feedback on my voice
           </button>
         )}
 

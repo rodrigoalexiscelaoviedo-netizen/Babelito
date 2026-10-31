@@ -24,6 +24,7 @@ export const en = {
     grammar: "Grammar",
     mistakes: "My mistakes",
     plan: "My plan",
+    lens: "Photo helper",
     words: "My words",
     groupSpeak: "Speak & write",
     groupSounds: "Sounds & listening",

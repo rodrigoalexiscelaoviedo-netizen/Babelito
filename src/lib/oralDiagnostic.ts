@@ -110,6 +110,7 @@ export async function evaluateReading(
 
   try {
     const raw = await askCoach({
+      json: true,
       system: READING_SYSTEM[lang],
       messages: [{ role: "user", content: pairs }],
       maxTokens: 400,
@@ -146,6 +147,7 @@ export async function evaluateOpenResponse(
   if (!transcript.trim()) return "A1";
   try {
     const raw = await askCoach({
+      json: true,
       system: OPEN_SYSTEM[lang],
       messages: [{
         role: "user",

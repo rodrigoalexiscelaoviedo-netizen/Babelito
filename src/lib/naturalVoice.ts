@@ -13,7 +13,12 @@ const PREF_KEY = "babelito:natural-voice";
 const CACHE_LIMIT = 80;
 
 /** Voz neural según el acento elegido. */
-export function neuralVoiceFor(lang: string): string | null {
+export function neuralVoiceFor(lang: string, alt = false): string | null {
+  // La voz "alt" (masculina) permite que los diálogos suenen como dos personas.
+  if (alt) {
+    if (lang.startsWith("en-US")) return "en-US-GuyNeural";
+    if (lang.startsWith("en")) return "en-GB-RyanNeural";
+  }
   if (lang.startsWith("en-US")) return "en-US-JennyNeural";
   if (lang.startsWith("en-AU")) return "en-AU-NatashaNeural";
   if (lang.startsWith("en-IN")) return "en-IN-NeerjaNeural";
@@ -110,9 +115,9 @@ async function fetchAudioUrl(text: string, voice: string): Promise<string | null
  */
 export function playNatural(
   text: string,
-  opts: { lang: string; rate: number; onEnd?: () => void; onFail: () => void }
+  opts: { lang: string; rate: number; alt?: boolean; onEnd?: () => void; onFail: () => void }
 ): void {
-  const voice = neuralVoiceFor(opts.lang);
+  const voice = neuralVoiceFor(opts.lang, opts.alt);
   if (!voice) {
     opts.onFail();
     return;

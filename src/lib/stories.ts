@@ -93,6 +93,7 @@ export async function generateStory(
   let raw: string;
   try {
     raw = await askCoach({
+      json: true,
       system: GENERATE_SYSTEM,
       messages: [{ role: "user", content: userMsg }],
       maxTokens: 3000,

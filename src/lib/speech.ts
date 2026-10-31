@@ -17,6 +17,8 @@ export interface SpeakOptions {
   voiceName?: string;
   rate?: number;
   lang?: string;
+  /** Voz alternativa (masculina) para el otro personaje de un diálogo. Solo con voz natural. */
+  alt?: boolean;
   /** Se llama al terminar (o cortarse) la lectura de ESTA frase; no si otra la reemplazó. */
   onEnd?: () => void;
 }
@@ -88,6 +90,7 @@ export function speak(text: string, langOrOpts: string | SpeakOptions = "en-GB")
   let rate = 0.95;
   let voiceName: string | undefined;
   let onEnd: (() => void) | undefined;
+  let alt = false;
 
   if (typeof langOrOpts === "string") {
     lang = langOrOpts;
@@ -96,6 +99,7 @@ export function speak(text: string, langOrOpts: string | SpeakOptions = "en-GB")
     rate = langOrOpts.rate ?? 0.95;
     voiceName = langOrOpts.voiceName;
     onEnd = langOrOpts.onEnd;
+    alt = langOrOpts.alt === true;
   }
 
   if (lang.startsWith("en") && naturalVoiceReady()) {
@@ -106,7 +110,7 @@ export function speak(text: string, langOrOpts: string | SpeakOptions = "en-GB")
     } catch {
       /* ignorar */
     }
-    playNatural(clean, { lang, rate, onEnd, onFail: () => browserSpeak(clean, lang, rate, voiceName, onEnd) });
+    playNatural(clean, { lang, rate, alt, onEnd, onFail: () => browserSpeak(clean, lang, rate, voiceName, onEnd) });
     return;
   }
 

@@ -141,6 +141,7 @@ export async function generateDrill(errorType: string, level: string): Promise<{
   const meta = ERROR_TYPES[errorType];
   try {
     const raw = await askCoach({
+      json: true,
       system:
         `You write short grammar exercises for a Spanish speaker learning English at level ${level}. ` +
         `Focus: ${meta?.label ?? errorType} — ${meta?.hint ?? ""}. ` +
