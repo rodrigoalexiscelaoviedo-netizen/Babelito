@@ -1,6 +1,7 @@
 import { askCoach } from "./claude";
 import type { Level } from "./types";
 import { parseAiJson } from "./json";
+import { diffWords } from "./dictation";
 
 export type DiagLang = "en" | "ca";
 
@@ -45,6 +46,48 @@ export function minCefr(a: string, b: string): Level {
   const safeB = iB < 0 ? 99 : iB;
   const idx = Math.min(safeA, safeB);
   return (order[idx] as Level) ?? "A1";
+}
+
+// ── Combinar escrito + hablado ────────────────────────────────────────────────
+
+const LEVEL_IDX = (l: string): number => {
+  const i = CEFR_ORDER.indexOf((l === "C2" ? "C1" : l) as Level);
+  return i < 0 ? 0 : i;
+};
+const clampIdx = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n));
+
+/** Exactitud (0–1) con que se leyeron las frases: promedio de palabras acertadas. null si no hubo lectura. */
+export function readingAccuracy(sentences: ReadingSentence[], transcripts: string[]): number | null {
+  const scores: number[] = [];
+  sentences.forEach((s, i) => {
+    const said = (transcripts[i] ?? "").trim();
+    if (said) scores.push(diffWords(s.text, said).accuracy / 100);
+  });
+  return scores.length ? scores.reduce((a, b) => a + b, 0) / scores.length : null;
+}
+
+export interface CombinedLevels {
+  reading: Level;
+  open: Level;
+  oral: Level;
+  final: Level;
+}
+
+/**
+ * El nivel escrito es lo más fiable; lo hablado lo ajusta como máximo UN escalón
+ * (hacia abajo si la lectura fue muy imprecisa, hacia arriba o abajo según la
+ * conversación). Antes el resultado era el mínimo de las tres partes y una sola
+ * lectura floja bajaba a cualquiera hasta A1.
+ */
+export function combineLevels(written: Level, readingAcc: number | null, openLevel: Level | string | null): CombinedLevels {
+  const w = LEVEL_IDX(written);
+  const readingAdj = readingAcc !== null && readingAcc < 0.5 ? -1 : 0;
+  const openAdj = openLevel ? clampIdx(LEVEL_IDX(openLevel) - w, -1, 1) : 0;
+  const adj = clampIdx(readingAdj + openAdj, -1, 1);
+  const at = (i: number) => CEFR_ORDER[clampIdx(i, 0, CEFR_ORDER.length - 1)];
+  const reading = at(w + readingAdj);
+  const open = openLevel ? at(LEVEL_IDX(openLevel)) : written;
+  return { reading, open, oral: at(Math.min(LEVEL_IDX(reading), LEVEL_IDX(open))), final: at(w + adj) };
 }
 
 // ── Open question generation ──────────────────────────────────────────────────

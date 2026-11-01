@@ -15,7 +15,8 @@ import {
   generateOpenQuestion,
   evaluateReading,
   evaluateOpenResponse,
-  minCefr,
+  readingAccuracy,
+  combineLevels,
 } from "../lib/oralDiagnostic";
 
 type Phase = "text" | "oral_reading" | "oral_open" | "evaluating" | "done";
@@ -324,22 +325,26 @@ export default function Diagnostic() {
     setBusy(true);
     setPhase("evaluating");
 
-    let oralReadLvl: Level = tLevel;
-    let oralOpenLvl: Level = tLevel;
+    let readingAcc: number | null = null;
+    let openLvl: Level | null = null;
     let pronunciationErrors: Array<{ sound: string; word: string }> = [];
 
     if (!skip && rTranscripts.some((t) => t.trim())) {
+      // La IA solo señala sonidos difíciles; el puntaje sale de las palabras acertadas.
       const result = await evaluateReading(READING, rTranscripts, diagLang);
-      oralReadLvl = result.level;
       pronunciationErrors = result.errors;
+      readingAcc = readingAccuracy(READING, rTranscripts);
     }
 
     if (!skip && oTranscript.trim()) {
-      oralOpenLvl = await evaluateOpenResponse(openQuestion, oTranscript, diagLang);
+      openLvl = await evaluateOpenResponse(openQuestion, oTranscript, diagLang);
     }
 
-    const oralLvl: Level  = skip ? tLevel : minCefr(oralReadLvl, oralOpenLvl);
-    const finalLvl: Level = skip ? tLevel : minCefr(tLevel, oralLvl);
+    const combined = skip ? null : combineLevels(tLevel, readingAcc, openLvl);
+    const oralReadLvl: Level = combined?.reading ?? tLevel;
+    const oralOpenLvl: Level = combined?.open ?? tLevel;
+    const oralLvl: Level = combined?.oral ?? tLevel;
+    const finalLvl: Level = combined?.final ?? tLevel;
 
     setOralReadingLevel(oralReadLvl);
     setOralOpenLevel(oralOpenLvl);
