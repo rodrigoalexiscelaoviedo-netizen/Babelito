@@ -67,7 +67,8 @@ async function generate(parts: unknown[], system: string): Promise<{ text: strin
   const body = {
     systemInstruction: { parts: [{ text: system }] },
     contents: [{ role: "user", parts }],
-    generationConfig: { temperature: 0.4, maxOutputTokens: 900, responseMimeType: "application/json" },
+    // Sin "razonamiento": es una tarea simple y ese razonamiento se comía el presupuesto de salida (JSON cortado).
+    generationConfig: { temperature: 0.4, maxOutputTokens: 1200, responseMimeType: "application/json", thinkingConfig: { thinkingBudget: 0 } },
   };
   let r = await callGemini(MODEL, body);
   if (!r.ok && [429, 500, 502, 503, 504].includes(r.status)) r = await callGemini(MODEL_FALLBACK, body);
