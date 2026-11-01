@@ -166,3 +166,13 @@ export async function deckSize(userId: string, language: string): Promise<number
   if (error) return 0;
   return count ?? 0;
 }
+
+/** Una muestra del mazo (frases y palabras) para armar opciones falsas realistas. */
+export async function getDeckSample(userId: string, language: string, limit = 80): Promise<Array<Pick<ReviewItem, "item_type" | "content">>> {
+  const { data, error } = await scopeByLanguage(
+    supabase.from("review_items").select("item_type, content").eq("user_id", userId),
+    language
+  ).limit(limit);
+  if (error) return [];
+  return (data ?? []) as Array<Pick<ReviewItem, "item_type" | "content">>;
+}

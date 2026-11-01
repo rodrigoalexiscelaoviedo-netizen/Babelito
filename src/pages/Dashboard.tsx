@@ -7,10 +7,6 @@ import { localDateISO, addLocalDays, timestampToLocalDate } from "../lib/dates";
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
-  MessageCircle,
-  Library,
-  PencilLine,
-  Drama,
   BarChart3,
   Flame,
   Target,
@@ -244,18 +240,6 @@ export default function Dashboard() {
     : !activeLast2Days && streak === 0 && (stats?.sessions ?? 0) > 0
     ? (isCa ? "La Maica et trobava a faltar 🐾" : "Maica missed you 🐾")
     : (isCa ? "La Maica t'espera! 🐾" : "Maica is waiting for you! 🐾");
-
-  const modules = learningLanguage === "ca" ? [
-    { to: "/conversation", label: "Parla amb el coach", desc: "Conversa en directe amb feedback", icon: MessageCircle, accent: "coral" },
-    { to: "/roleplay", label: "Representa una escena", desc: "Entrevistes, crides, reunions", icon: Drama, accent: "mint" },
-    { to: "/chunks", label: "Biblioteca d'expressions", desc: "Expressions ja fetes", icon: Library, accent: "gold" },
-    { to: "/correct", label: "Corregeix la meva escriptura", desc: "Enganxa un correu o missatge", icon: PencilLine, accent: "coral" },
-  ] : [
-    { to: "/conversation", label: "Talk to your coach", desc: "Live conversation with feedback", icon: MessageCircle, accent: "coral" },
-    { to: "/roleplay", label: "Roleplay a scene", desc: "Interviews, calls, meetings", icon: Drama, accent: "mint" },
-    { to: "/chunks", label: "Chunks library", desc: "Ready-made expressions", icon: Library, accent: "gold" },
-    { to: "/correct", label: "Fix my writing", desc: "Paste an email or message", icon: PencilLine, accent: "coral" },
-  ];
 
   return (
     <div className="animate-fade-up">
@@ -592,49 +576,25 @@ export default function Dashboard() {
         )}
       </div>
 
-      {/* Stat strip */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
+      {/* Racha y nivel */}
+      <div className="grid grid-cols-2 gap-3 mb-6">
         <div className="card p-4">
           <div className="flex items-center gap-2 text-paper-muted mb-1">
             <Flame size={15} className="text-coral" />
-            <span className="text-xs">
-              {learningLanguage === "ca" ? "Racha" : "Streak"}
-            </span>
+            <span className="text-xs">{learningLanguage === "ca" ? "Racha" : "Streak"}</span>
           </div>
           <p className="font-display text-2xl font-bold">
-            {streak} <span className="text-sm font-normal text-paper-muted">
-              {learningLanguage === "ca" ? "dies" : "days"}
-            </span>
+            {streak} <span className="text-sm font-normal text-paper-muted">{learningLanguage === "ca" ? "dies" : "days"}</span>
           </p>
-          {freezesLeft > 0 && (
-            <p className="text-[10px] text-paper-faint mt-0.5">❄️ {freezesLeft}</p>
-          )}
+          {freezesLeft > 0 && <p className="text-[10px] text-paper-faint mt-0.5">❄️ {freezesLeft}</p>}
         </div>
-        <div className="card p-4">
+        <Link to="/progress" className="card-interactive p-4">
           <div className="flex items-center gap-2 text-paper-muted mb-1">
             <Target size={15} className="text-mint" />
-            <span className="text-xs">
-              {learningLanguage === "ca" ? "Nivell" : "Level"}
-            </span>
+            <span className="text-xs">{learningLanguage === "ca" ? "Nivell" : "Level"}</span>
           </div>
           <p className="font-display text-2xl font-bold">{profile?.current_level ?? "—"}</p>
-        </div>
-        <div className="card p-4">
-          <div className="flex items-center gap-2 text-paper-muted mb-1">
-            <MessageCircle size={15} className="text-gold" />
-            <span className="text-xs">Sessions</span>
-          </div>
-          <p className="font-display text-2xl font-bold">{stats?.sessions ?? 0}</p>
-        </div>
-        <div className="card p-4">
-          <div className="flex items-center gap-2 text-paper-muted mb-1">
-            <Library size={15} className="text-mint" />
-            <span className="text-xs">
-              {learningLanguage === "ca" ? "Expressions" : "Chunks"}
-            </span>
-          </div>
-          <p className="font-display text-2xl font-bold">{stats?.chunksLearned ?? 0}</p>
-        </div>
+        </Link>
       </div>
 
       {/* Coach nudge */}
@@ -668,37 +628,13 @@ export default function Dashboard() {
 
       {learningLanguage !== "ca" && <div className="mb-6"><XpCard compact /></div>}
 
-      {/* Modules */}
-      <div className="grid sm:grid-cols-2 gap-4 stagger">
-        {modules.map((m) => (
-          <Link
-            key={m.to}
-            to={m.to}
-            className="card-interactive p-6 group relative overflow-hidden"
-          >
-            <span
-              aria-hidden="true"
-              className={`pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full blur-2xl opacity-0 transition-opacity duration-300 group-hover:opacity-30 ${
-                m.accent === "coral" ? "bg-coral" : m.accent === "mint" ? "bg-mint" : "bg-gold"
-              }`}
-            />
-            <m.icon
-              size={28}
-              className={
-                m.accent === "coral" ? "text-coral" : m.accent === "mint" ? "text-mint" : "text-gold"
-              }
-            />
-            <h3 className="font-display text-lg font-bold mt-4">{m.label}</h3>
-            <p className="text-sm text-paper-muted mt-1">{m.desc}</p>
-            <span className="absolute right-5 bottom-5 text-paper-faint group-hover:text-paper transition">
-              →
-            </span>
+      <div className="mt-2 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm">
+        {learningLanguage !== "ca" && (
+          <Link to="/plan" className="inline-flex items-center gap-2 text-paper-muted hover:text-paper">
+            <Layers size={15} /> See your plan for the week
           </Link>
-        ))}
-      </div>
-
-      <div className="mt-6 text-center">
-        <Link to="/progress" className="inline-flex items-center gap-2 text-sm text-paper-muted hover:text-paper">
+        )}
+        <Link to="/progress" className="inline-flex items-center gap-2 text-paper-muted hover:text-paper">
           <BarChart3 size={15} />
           {learningLanguage === "ca" ? "Veu el teu progrés complet" : "See your full progress"}
         </Link>
