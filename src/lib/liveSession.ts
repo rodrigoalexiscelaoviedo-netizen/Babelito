@@ -133,16 +133,8 @@ export function liveSupported(): boolean {
 
 // ── Sesión (navegador) ───────────────────────────────────────────────────────────
 
-const WORKLET_SRC = `
-class Capture extends AudioWorkletProcessor {
-  process(inputs) {
-    const ch = inputs[0] && inputs[0][0];
-    if (ch && ch.length) this.port.postMessage(new Float32Array(ch));
-    return true;
-  }
-}
-registerProcessor("babelito-capture", Capture);
-`;
+/** Módulo de captura: archivo estático (la política de seguridad no admite scripts desde Blob). */
+export const WORKLET_URL = "/live-worklet.js";
 
 export interface LiveHandlers {
   onState: (s: "connecting" | "live" | "ended" | "error", detail?: string) => void;
@@ -207,9 +199,7 @@ export class LiveSession {
 
   private async startMic() {
     if (!this.ctx || !this.stream) return;
-    const url = URL.createObjectURL(new Blob([WORKLET_SRC], { type: "application/javascript" }));
-    await this.ctx.audioWorklet.addModule(url);
-    URL.revokeObjectURL(url);
+    await this.ctx.audioWorklet.addModule(WORKLET_URL);
     const src = this.ctx.createMediaStreamSource(this.stream);
     this.node = new AudioWorkletNode(this.ctx, "babelito-capture");
     const inRate = this.ctx.sampleRate;
