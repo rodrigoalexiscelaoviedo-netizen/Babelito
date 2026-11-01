@@ -85,17 +85,21 @@ export default function HomeNudges({ userId, language }: { userId: string; langu
       {plan && !ca && (() => {
         const next = plan.tasks.find((t) => !t.done);
         return (
-          <Link to={next ? "/plan" : "/plan"} className="card-interactive flex items-center gap-3 p-4">
+          // Un solo paso a la vez: la tarjeta abre directo la próxima tarea del plan.
+          <Link to={next ? next.to : "/plan"} className="card-interactive flex items-center gap-3 p-4">
             <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-mint/15 text-mint">
               <CalendarCheck size={18} />
             </span>
             <span className="min-w-0 flex-1">
-              <span className="block font-medium">
-                {next ? `Today's plan · ${plan.doneToday}/${plan.tasks.length} done` : "Today's plan complete 🎉"}
+              <span className="block text-[10px] font-mono uppercase tracking-widest text-mint">
+                {next ? `Up next · ${plan.doneToday}/${plan.tasks.length} done today` : "Today's plan complete 🎉"}
               </span>
-              <span className="block truncate text-xs text-paper-muted">
-                {next ? `Next: ${next.title}` : "See your week and level progress"}
-              </span>
+              <span className="block font-medium">{next ? next.title : "See your week and level progress"}</span>
+              {next && (
+                <span className="block truncate text-xs text-paper-muted">
+                  About {next.minutes} min · {next.detail}
+                </span>
+              )}
             </span>
             <span className="text-mint">→</span>
           </Link>
