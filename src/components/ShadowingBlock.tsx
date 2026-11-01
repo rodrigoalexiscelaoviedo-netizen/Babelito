@@ -21,13 +21,15 @@ interface Props {
   text: string;
   lang?: string;
   label?: string;
+  /** Avisa el resultado de cada intento (el repaso lo usa para calificar). */
+  onResult?: (r: { ok: boolean; score?: number }) => void;
 }
 
 type State = "idle" | "speaking" | "recording" | "processing" | "result" | "tip-loading" | "tip";
 
 const SHORT_WORDS = new Set(["a", "an", "the", "to", "of", "in", "on", "at", "or", "is", "it", "as", "be", "by", "do", "so", "up", "no", "he", "we", "me", "my"]);
 
-export default function ShadowingBlock({ text, lang, label = "Listen & repeat" }: Props) {
+export default function ShadowingBlock({ text, lang, label = "Listen & repeat", onResult }: Props) {
   const { profile } = useAuth();
   const voicePrefs = useVoicePrefs();
 
@@ -168,6 +170,7 @@ export default function ShadowingBlock({ text, lang, label = "Listen & repeat" }
       setSpoken(spokenText);
       setResult(cmp);
       setState("result");
+      onResult?.({ ok: cmp.incorrect.length === 0 });
       if (capture) {
         setScoring(true);
         void capture
@@ -176,7 +179,10 @@ export default function ShadowingBlock({ text, lang, label = "Listen & repeat" }
             setWav(audio);
             return audio ? assessPronunciation(audio, text, voicePrefs.voiceAccent ?? "en-GB") : null;
           })
-          .then(setScore)
+          .then((sc) => {
+            setScore(sc);
+            if (sc) onResult?.({ ok: cmp.incorrect.length === 0, score: sc.overall });
+          })
           .finally(() => setScoring(false));
       }
       if (profile && cmp.incorrect.length > 0) {
