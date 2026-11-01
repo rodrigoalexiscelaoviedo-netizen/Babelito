@@ -9,8 +9,8 @@ const LEVELS: Level[] = ["A1", "A2", "B1", "B2", "C1"];
 
 describe("banco de diagnóstico", () => {
   for (const [name, bank] of [["en", DIAGNOSTIC], ["ca", DIAGNOSTIC_CA]] as const) {
-    it(`${name}: 16 preguntas con 4 opciones y respuesta válida`, () => {
-      expect(bank).toHaveLength(16);
+    it(`${name}: preguntas con 4 opciones y respuesta válida (en tiene 5 por nivel)`, () => {
+      expect(bank).toHaveLength(name === "en" ? 26 : 16);
       for (const q of bank) {
         expect(q.options).toHaveLength(4);
         expect(q.answer).toBeGreaterThanOrEqual(0);
