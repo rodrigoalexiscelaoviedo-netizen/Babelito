@@ -36,3 +36,10 @@ Secretos de Azure: `AZURE_SPEECH_KEY`, `AZURE_SPEECH_REGION` (`northeurope`).
 `gemini-tools` (Edge Function, sin Verify JWT): modos `audio`, `vision` y `live-token`; comparte la cuota diaria del coach.
 Toda la UI nueva se oculta sola si `gemini-tools` no está desplegada.
 Privacidad: en el plan gratuito de la API de Gemini, Google puede usar lo enviado para mejorar sus productos.
+
+## Repaso global (noviembre 2026)
+
+- **Repaso en inglés primero.** Sin traducir desde el español: tarjeta nueva (audio + definición + ejemplo en inglés) → elegir lo que se escucha → completar el hueco (in/on/at, a/an/the, is/are…) → decirlo en voz alta con puntaje. El español solo aparece al tocar "Need the Spanish?". Sesiones de 12 tarjetas; lo errado vuelve una vez más. Definiciones y ejemplos: una llamada a la IA por sesión, guardada en el navegador (`reviewMeta.ts`); opciones falsas: tu mazo + frases de Situaciones (`reviewCards.ts`).
+- **5 puertas** en vez de ~20 secciones: Inicio · Hablar · Aprender · Recordar · Yo (`lib/hubs.ts`, `pages/Hub.tsx`). Las rutas no cambian. El catalán solo ve lo que existe en catalán.
+- **Inicio** sin el menú de módulos ni las tarjetas de relleno (Sessions/Chunks).
+- **Test de nivel** para todos: "I don't know" en cada pregunta, corte al no sostener un escalón, 5 preguntas por nivel (26), y quien empieza de cero se salta las partes habladas.
