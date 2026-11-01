@@ -9,9 +9,19 @@ export interface DiagnosticQuestion {
   skill: "grammar" | "vocab" | "usage";
 }
 
-// 16 preguntas graduadas A1 → C1. El scoring estima nivel por el escalón
-// más alto que el usuario sostiene bien, no por el total bruto.
-export const DIAGNOSTIC: DiagnosticQuestion[] = [
+/** Respuesta "No lo sé": cuenta como error, pero evita adivinar a ciegas. */
+export const DONT_KNOW = -1;
+
+const RANK: Record<Level, number> = { A1: 0, A2: 1, B1: 2, B2: 3, C1: 4 };
+
+/** Ordena por nivel (estable) para que cada escalón sea contiguo en el test. */
+function byLevel(list: DiagnosticQuestion[]): DiagnosticQuestion[] {
+  return [...list].sort((a, b) => RANK[a.level] - RANK[b.level]);
+}
+
+// 26 preguntas graduadas A1 → C1 (5 por nivel). El scoring estima nivel por el
+// escalón más alto que el usuario sostiene bien, no por el total bruto.
+const DIAGNOSTIC_RAW: DiagnosticQuestion[] = [
   { id: 1, level: "A1", skill: "grammar", prompt: "She ___ from Spain.", options: ["am", "is", "are", "be"], answer: 1 },
   { id: 2, level: "A1", skill: "vocab", prompt: "What's the opposite of 'big'?", options: ["tall", "small", "long", "wide"], answer: 1 },
   { id: 3, level: "A1", skill: "grammar", prompt: "They ___ to the cinema yesterday.", options: ["go", "goes", "went", "going"], answer: 2 },
@@ -28,7 +38,20 @@ export const DIAGNOSTIC: DiagnosticQuestion[] = [
   { id: 14, level: "C1", skill: "grammar", prompt: "___ harder, she would have passed.", options: ["If she studied", "Had she studied", "She had studied", "Did she study"], answer: 1 },
   { id: 15, level: "C1", skill: "usage", prompt: "Choose the idiomatic option:", options: ["At the end of the day, results matter.", "In the end of the day, results matter.", "At the final of the day, results matter.", "By the end of day, results matter."], answer: 0 },
   { id: 16, level: "C1", skill: "vocab", prompt: "A 'fair point' is something:", options: ["completely wrong", "reasonable / valid", "unfair", "boring"], answer: 1 },
+  // Más preguntas por escalón: el nivel se estima con más evidencia y menos azar.
+  { id: 17, level: "A1", skill: "grammar", prompt: "I ___ a student.", options: ["is", "am", "are", "be"], answer: 1 },
+  { id: 18, level: "A1", skill: "vocab", prompt: "Hello! My ___ is Ana.", options: ["name", "called", "am", "age"], answer: 0 },
+  { id: 19, level: "A2", skill: "grammar", prompt: "There ___ two books on the table.", options: ["is", "are", "has", "have"], answer: 1 },
+  { id: 20, level: "A2", skill: "grammar", prompt: "She ___ TV every evening.", options: ["watch", "watches", "watching", "is watch"], answer: 1 },
+  { id: 21, level: "B1", skill: "grammar", prompt: "I haven't finished my homework ___.", options: ["yet", "ago", "since", "during"], answer: 0 },
+  { id: 22, level: "B1", skill: "usage", prompt: "He suggested ___ to the beach.", options: ["to go", "going", "go", "went"], answer: 1 },
+  { id: 23, level: "B2", skill: "grammar", prompt: "She asked me where ___.", options: ["did I live", "I lived", "do I live", "I do live"], answer: 1 },
+  { id: 24, level: "B2", skill: "usage", prompt: "I'm not used ___ up so early.", options: ["to get", "to getting", "getting", "for get"], answer: 1 },
+  { id: 25, level: "C1", skill: "grammar", prompt: "Not only ___ late, but he also forgot the documents.", options: ["he arrived", "did he arrive", "he did arrive", "arrived he"], answer: 1 },
+  { id: 26, level: "C1", skill: "vocab", prompt: "'Ubiquitous' means:", options: ["very rare", "found everywhere", "dangerous", "extremely old"], answer: 1 },
 ];
+
+export const DIAGNOSTIC: DiagnosticQuestion[] = byLevel(DIAGNOSTIC_RAW);
 
 const LEVEL_ORDER: Level[] = ["A1", "A2", "B1", "B2", "C1"];
 
@@ -37,6 +60,16 @@ const LEVEL_ORDER: Level[] = ["A1", "A2", "B1", "B2", "C1"];
  * el usuario mantenga >=60% de acierto en cada escalón. Se frena en el
  * primer escalón que no sostiene.
  */
+/**
+ * ¿Hay que cortar el test aquí? Se corta al terminar un escalón si no se sostuvo
+ * (menos del 60 % de aciertos): seguir con preguntas más difíciles solo frustra.
+ */
+export function levelFailed(answers: Array<{ level: Level; correct: boolean }>, level: Level): boolean {
+  const bucket = answers.filter((a) => a.level === level);
+  if (bucket.length === 0) return false;
+  return bucket.filter((a) => a.correct).length / bucket.length < 0.6;
+}
+
 export function estimateLevel(correctByLevel: Record<Level, { correct: number; total: number }>): Level {
   let result: Level = "A1";
   for (const lvl of LEVEL_ORDER) {
