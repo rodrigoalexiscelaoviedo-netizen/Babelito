@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Mic, Square, Volume2, X } from "lucide-react";
 import { supabase } from "../lib/supabaseClient";
 import { useAuth } from "../context/AuthContext";
-import { diagnosticFor, estimateLevel } from "../lib/diagnosticQuestions";
+import { DONT_KNOW, diagnosticFor, estimateLevel, levelFailed } from "../lib/diagnosticQuestions";
 import type { Level, DiagnosticAnswer } from "../lib/types";
 import { speechSupported, speak } from "../lib/speech";
 import { useSpeechCapture } from "../lib/useSpeechCapture";
@@ -195,13 +195,16 @@ export default function Diagnostic() {
     const ans: DiagnosticAnswer = {
       question_id: q.id,
       chosen: optionIndex,
-      correct: optionIndex === q.answer,
+      correct: optionIndex !== DONT_KNOW && optionIndex === q.answer,
       level: q.level,
     };
     const next = [...answers, ans];
+    // Se corta al cerrar un escalón que no se sostuvo: no tiene sentido seguir con lo más difícil.
+    const levelClosed = isLast || DIAG[idx + 1].level !== q.level;
+    const stopHere = isLast || (levelClosed && levelFailed(next, q.level));
     setTimeout(async () => {
       setSelected(null);
-      if (isLast) {
+      if (stopHere) {
         await finishText(next);
       } else {
         setAnswers(next);
@@ -246,7 +249,11 @@ export default function Diagnostic() {
 
     setBusy(false);
 
-    if (speechSupported()) {
+    // Quien está empezando de cero no necesita leer ni hablar a esta altura: se evita el muro.
+    const unsure = allAnswers.filter((a) => a.chosen === DONT_KNOW).length;
+    const beginner = level === "A1" && unsure >= 3;
+
+    if (speechSupported() && !beginner) {
       setPhase("oral_reading");
     } else {
       await finishAll(level, diagId, [], "", true);
@@ -848,6 +855,14 @@ export default function Diagnostic() {
             );
           })}
         </div>
+
+        <button
+          disabled={selected !== null || busy}
+          onClick={() => choose(DONT_KNOW)}
+          className="mt-3 w-full rounded-xl border border-dashed border-ink-500 px-4 py-3 text-sm text-paper-muted transition hover:border-ink-400 hover:text-paper disabled:opacity-50"
+        >
+          {isCatalan ? "No ho sé" : "I don't know"}
+        </button>
 
         {/* Escape: nadie queda atrapado en el test si no lo quiere hacer. */}
         <button
