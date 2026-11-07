@@ -12,6 +12,7 @@ import { speak, pauseSpeech, resumeSpeech } from "../lib/speech";
 import { useVoicePrefs } from "../lib/useVoicePrefs";
 import ClickableText from "../components/ClickableText";
 import ShadowingBlock from "../components/ShadowingBlock";
+import ReadingFinish, { type SavedWord } from "../components/ReadingFinish";
 import Loader from "../components/Loader";
 
 const LEVEL_BADGE: Record<string, string> = {
@@ -19,6 +20,11 @@ const LEVEL_BADGE: Record<string, string> = {
   B1: "bg-gold/20 text-gold",
   B2: "bg-coral/20 text-coral",
 };
+
+/** Minutos de lectura a ~120 palabras por minuto (ritmo de quien aprende), mínimo 1. */
+function readingMinutes(content: string): number {
+  return Math.max(1, Math.round(content.split(/s+/).length / 120));
+}
 
 /** Returns the first complete sentence (ending in . ! ?) from a text. */
 function firstSentence(text: string): string {
@@ -60,7 +66,7 @@ export default function Reading() {
       <p className="eyebrow mb-2">{learningLanguage === "ca" ? "Lectura" : "Reading"}</p>
       <h1 className="page-title mb-2">{learningLanguage === "ca" ? "Llegeix i crea vocabulari" : "Read & build vocabulary"}</h1>
       <p className="text-paper-muted mb-8">
-        {learningLanguage === "ca" ? "Clica qualsevol paraula per cercar-la i rastreja-la. Les paraules colorejades estan a la teva llista de vocabulari." : "Click any word to look it up and track it. Coloured words are in your vocabulary list."}
+        {learningLanguage === "ca" ? "Clica qualsevol paraula per cercar-la i rastreja-la. Les paraules colorejades estan a la teva llista de vocabulari." : "1. Read. 2. Tap any word or sentence to hear it and see what it means. 3. Answer a quick check: the words you save come back in Review."}
       </p>
 
       <div className="grid sm:grid-cols-2 gap-4 mb-8 stagger">
@@ -79,6 +85,9 @@ export default function Reading() {
             <h3 className="font-display font-bold text-base leading-snug">{t.title}</h3>
             <p className="text-xs text-paper-muted mt-0.5">{t.author}</p>
             <p className="text-xs text-paper-faint mt-2 line-clamp-2">{t.content.slice(0, 100)}…</p>
+            <p className="mt-3 font-mono text-[10px] uppercase tracking-widest text-paper-faint">
+              ~{readingMinutes(t.content)} min · {learningLanguage === "ca" ? "toca paraules" : "tap words"} · {learningLanguage === "ca" ? "comprova" : "quick check"}
+            </p>
           </button>
         ))}
       </div>
@@ -113,6 +122,7 @@ function Reader({ text, onBack }: { text: ReadingText; onBack: () => void }) {
   const [scrollProgress, setScrollProgress] = useState(0);
   const [speaking, setSpeaking] = useState(false);
   const [paused, setPaused] = useState(false);
+  const [savedWords, setSavedWords] = useState<SavedWord[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -173,6 +183,11 @@ function Reader({ text, onBack }: { text: ReadingText; onBack: () => void }) {
       ...prev,
       [word]: { status, definition: def?.definition_es, example: def?.example, phonetic: def?.phonetic },
     }));
+    // Las palabras que la persona decide practicar en esta lectura se repasan al cerrarla.
+    setSavedWords((prev) => {
+      const rest = prev.filter((w) => w.word !== word);
+      return status === "learning" ? [...rest, { word, translation: def?.translation || def?.definition_es || "" }] : rest;
+    });
   }
 
   if (loadingVocab) return <Loader />;
@@ -228,12 +243,20 @@ function Reader({ text, onBack }: { text: ReadingText; onBack: () => void }) {
           onVocabUpdate={handleVocabUpdate}
         />
 
-        {/* Shadowing block — first sentence as practice phrase */}
+        {/* Cierre: comprensión + palabras guardadas + qué sigue */}
+        {learningLanguage !== "ca" && (
+          <div className="mt-8">
+            <ReadingFinish text={text} saved={savedWords} userId={profile!.id} voicePrefs={voicePrefs} onNext={onBack} />
+          </div>
+        )}
+
+        {/* Bonus: decir la primera frase en voz alta */}
         <div className="mt-6 pb-4">
+          <p className="eyebrow mb-2">{learningLanguage === "ca" ? "Extra" : "Bonus"}</p>
           <ShadowingBlock
             text={shadowSentence}
             lang={voicePrefs.voiceAccent ?? "en-GB"}
-            label={learningLanguage === "ca" ? "Pràctica d'ombra" : "Shadowing practice"}
+            label={learningLanguage === "ca" ? "Pràctica d'ombra" : "Say the first sentence"}
           />
         </div>
       </div>
