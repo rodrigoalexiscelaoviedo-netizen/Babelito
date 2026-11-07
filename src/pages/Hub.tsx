@@ -8,6 +8,14 @@ import { countDue, deckSize } from "../lib/srs";
 import { supabase } from "../lib/supabaseClient";
 import { scopeByLanguage } from "../lib/language";
 
+/** Cada puerta tiene su color: se reconoce dónde estás de un vistazo. Clases estáticas para Tailwind. */
+const ACCENT: Record<HubId, { solid: string; soft: string; text: string; border: string }> = {
+  speak: { solid: "bg-coral", soft: "bg-coral/10 text-coral", text: "text-coral", border: "border-coral/30" },
+  learn: { solid: "bg-sky", soft: "bg-sky/10 text-sky", text: "text-sky", border: "border-sky/30" },
+  remember: { solid: "bg-mint", soft: "bg-mint/10 text-mint", text: "text-mint", border: "border-mint/30" },
+  me: { solid: "bg-gold", soft: "bg-gold/15 text-ongold", text: "text-paper-muted", border: "border-gold/40" },
+};
+
 /**
  * Página de una puerta: la herramienta principal grande ("empezá por acá") y el
  * resto como tarjetas simples. Una sola decisión a la vez.
@@ -47,6 +55,7 @@ export default function Hub({ id }: { id: HubId }) {
   const rest = items.filter((i) => i !== featured);
   const copy = ca ? hub.ca : hub.en;
   const FeaturedIcon = featured ? HUB_ICONS[featured.icon] : null;
+  const accent = ACCENT[id];
 
   return (
     <div className="animate-fade-up mx-auto max-w-3xl">
@@ -78,13 +87,13 @@ export default function Hub({ id }: { id: HubId }) {
       {featured && FeaturedIcon && (
         <Link
           to={featured.to}
-          className="card-interactive group mb-5 flex items-center gap-4 border-coral/30 bg-gradient-to-br from-ink-700 to-ink-800 p-6"
+          className={`card-interactive group mb-5 flex items-center gap-4 ${accent.border} p-6`}
         >
-          <span className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-coral text-ink-900">
+          <span className={`grid h-14 w-14 shrink-0 place-items-center rounded-2xl ${accent.solid} text-white`}>
             <FeaturedIcon size={26} />
           </span>
           <span className="min-w-0 flex-1">
-            <span className="mb-0.5 block font-mono text-[10px] uppercase tracking-widest text-coral">{ca ? "Comença aquí" : "Start here"}</span>
+            <span className={`mb-0.5 block font-mono text-[10px] uppercase tracking-widest ${accent.text}`}>{ca ? "Comença aquí" : "Start here"}</span>
             <span className="block font-display text-xl font-bold">{featured.text.title}</span>
             <span className="block text-sm text-paper-muted">{featured.text.desc}</span>
           </span>
@@ -93,7 +102,7 @@ export default function Hub({ id }: { id: HubId }) {
               {due}
             </span>
           )}
-          <ArrowRight className="shrink-0 text-coral transition group-hover:translate-x-1" size={20} />
+          <ArrowRight className={`shrink-0 ${accent.text} transition group-hover:translate-x-1`} size={20} />
         </Link>
       )}
 
@@ -102,7 +111,7 @@ export default function Hub({ id }: { id: HubId }) {
           const Icon = HUB_ICONS[item.icon];
           return (
             <Link key={item.to} to={item.to} className="card-interactive flex items-start gap-3 p-4">
-              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-ink-700 text-coral">{Icon && <Icon size={18} />}</span>
+              <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl ${accent.soft}`}>{Icon && <Icon size={18} />}</span>
               <span className="min-w-0">
                 <span className="block font-medium">{item.text.title}</span>
                 <span className="block text-xs text-paper-muted">{item.text.desc}</span>

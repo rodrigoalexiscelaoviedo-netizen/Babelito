@@ -26,6 +26,10 @@ export default {
           DEFAULT: "rgb(var(--gold) / <alpha-value>)",
           soft: "rgb(var(--gold-soft) / <alpha-value>)",
         },
+        sky: {
+          DEFAULT: "rgb(var(--sky) / <alpha-value>)",
+          soft: "rgb(var(--sky-soft) / <alpha-value>)",
+        },
         paper: {
           DEFAULT: "rgb(var(--paper) / <alpha-value>)",
           muted: "rgb(var(--paper-muted) / <alpha-value>)",
