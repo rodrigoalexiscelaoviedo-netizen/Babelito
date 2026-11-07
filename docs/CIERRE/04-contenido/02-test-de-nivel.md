@@ -1,0 +1,320 @@
+# Test de nivel (diagnóstico)
+
+Pantalla: `/diagnostic`. Archivos: `src/lib/diagnosticQuestions.ts`, `src/lib/oralDiagnostic.ts`, `src/pages/Diagnostic.tsx`.
+
+## Cómo decide el nivel
+
+1. **Parte escrita** — preguntas de opción múltiple ordenadas de A1 a C1 (5 por nivel). Al cerrar un nivel con menos de 60 % de aciertos, el test se corta. El nivel es el más alto sostenido antes del corte.
+2. **Segunda oportunidad** — si un nivel queda justo en 2 de 5, se hacen 3 preguntas de desempate del mismo nivel y se decide con las 8 (hace falta 5 de 8). No se activa si la persona respondió "I don't know" 3 veces o más.
+3. **Parte oral** (si hay micrófono y no es principiante) — lectura en voz alta de 3 frases y una pregunta abierta. La lectura se puntúa por palabras acertadas; la respuesta abierta la evalúa el coach.
+4. **Combinación** — el nivel escrito es el ancla; lo oral lo mueve como máximo un escalón.
+
+## Banco principal (inglés, 26 preguntas)
+
+- **[A1 · grammar] She ___ from Spain.**
+  - · am
+  - **✔** is
+  - · are
+  - · be
+- **[A1 · vocab] What's the opposite of 'big'?**
+  - · tall
+  - **✔** small
+  - · long
+  - · wide
+- **[A1 · grammar] They ___ to the cinema yesterday.**
+  - · go
+  - · goes
+  - **✔** went
+  - · going
+- **[A1 · grammar] I ___ a student.**
+  - · is
+  - **✔** am
+  - · are
+  - · be
+- **[A1 · vocab] Hello! My ___ is Ana.**
+  - **✔** name
+  - · called
+  - · am
+  - · age
+- **[A2 · grammar] I ___ to learn English.**
+  - · need
+  - **✔** need to
+  - · needs
+  - · needing
+- **[A2 · usage] Choose the natural sentence:**
+  - · I listen music every day.
+  - **✔** I listen to music every day.
+  - · I listen the music every day.
+  - · I hear to music every day.
+- **[A2 · vocab] We usually ___ breakfast at 8.**
+  - · do
+  - · make
+  - **✔** have
+  - · take
+- **[A2 · grammar] There ___ two books on the table.**
+  - · is
+  - **✔** are
+  - · has
+  - · have
+- **[A2 · grammar] She ___ TV every evening.**
+  - · watch
+  - **✔** watches
+  - · watching
+  - · is watch
+- **[B1 · grammar] If I ___ more time, I would travel.**
+  - · have
+  - **✔** had
+  - · will have
+  - · would have
+- **[B1 · usage] 'Actually' in English means:**
+  - · currently / nowadays
+  - **✔** in fact / really
+  - · actively
+  - · at the moment
+- **[B1 · grammar] I've lived here ___ 2019.**
+  - · for
+  - **✔** since
+  - · during
+  - · from
+- **[B1 · vocab] Pick the most natural: 'Let me ___ you through the numbers.'**
+  - **✔** walk
+  - · pass
+  - · drive
+  - · go
+- **[B1 · grammar] I haven't finished my homework ___.**
+  - **✔** yet
+  - · ago
+  - · since
+  - · during
+- **[B1 · usage] He suggested ___ to the beach.**
+  - · to go
+  - **✔** going
+  - · go
+  - · went
+- **[B2 · grammar] By next year, I ___ here for a decade.**
+  - · will work
+  - · will be working
+  - **✔** will have worked
+  - · work
+- **[B2 · usage] Most natural in a meeting:**
+  - · I want that you do this.
+  - **✔** I'd like you to handle this.
+  - · I want you do this.
+  - · I like you do this.
+- **[B2 · vocab] 'To chase up on something' means to:**
+  - · abandon it
+  - **✔** follow up / remind
+  - · speed up
+  - · cancel
+- **[B2 · grammar] She asked me where ___.**
+  - · did I live
+  - **✔** I lived
+  - · do I live
+  - · I do live
+- **[B2 · usage] I'm not used ___ up so early.**
+  - · to get
+  - **✔** to getting
+  - · getting
+  - · for get
+- **[C1 · grammar] ___ harder, she would have passed.**
+  - · If she studied
+  - **✔** Had she studied
+  - · She had studied
+  - · Did she study
+- **[C1 · usage] Choose the idiomatic option:**
+  - **✔** At the end of the day, results matter.
+  - · In the end of the day, results matter.
+  - · At the final of the day, results matter.
+  - · By the end of day, results matter.
+- **[C1 · vocab] A 'fair point' is something:**
+  - · completely wrong
+  - **✔** reasonable / valid
+  - · unfair
+  - · boring
+- **[C1 · grammar] Not only ___ late, but he also forgot the documents.**
+  - · he arrived
+  - **✔** did he arrive
+  - · he did arrive
+  - · arrived he
+- **[C1 · vocab] 'Ubiquitous' means:**
+  - · very rare
+  - **✔** found everywhere
+  - · dangerous
+  - · extremely old
+
+## Preguntas de desempate (inglés)
+
+- **[A1 · grammar] My brother ___ two children.**
+  - · have
+  - **✔** has
+  - · is having
+  - · haves
+- **[A1 · grammar] ___ you like coffee?**
+  - · Does
+  - **✔** Do
+  - · Are
+  - · Is
+- **[A1 · vocab] The opposite of 'hot' is:**
+  - **✔** cold
+  - · tall
+  - · new
+  - · fast
+- **[A2 · grammar] I ___ to the gym yesterday.**
+  - · go
+  - **✔** went
+  - · gone
+  - · going
+- **[A2 · grammar] She is taller ___ her sister.**
+  - · that
+  - **✔** than
+  - · then
+  - · as
+- **[A2 · usage] How ___ water do you drink every day?**
+  - · many
+  - **✔** much
+  - · few
+  - · lot
+- **[B1 · grammar] If I ___ more money, I would buy a bigger flat.**
+  - · have
+  - **✔** had
+  - · will have
+  - · would have
+- **[B1 · grammar] She has lived here ___ 2015.**
+  - · for
+  - **✔** since
+  - · during
+  - · from
+- **[B1 · usage] I'm looking forward ___ you next week.**
+  - · to see
+  - **✔** to seeing
+  - · seeing
+  - · for see
+- **[B2 · grammar] By the time we arrived, the film ___ already started.**
+  - · has
+  - **✔** had
+  - · was
+  - · have
+- **[B2 · grammar] The report ___ by the manager before the meeting.**
+  - · wrote
+  - **✔** was written
+  - · has wrote
+  - · is writing
+- **[B2 · usage] He denied ___ the window.**
+  - · to break
+  - **✔** breaking
+  - · break
+  - · to have break
+- **[C1 · grammar] Had I known about the delay, I ___ earlier.**
+  - · would leave
+  - **✔** would have left
+  - · will leave
+  - · left
+- **[C1 · vocab] The new policy has had a ___ effect on small businesses.**
+  - **✔** detrimental
+  - · detrimentally
+  - · detriment
+  - · detrimented
+- **[C1 · vocab] 'To be on the fence' about something means:**
+  - **✔** to be undecided
+  - · to be angry
+  - · to be very sure
+  - · to be tired
+
+## Banco catalán (pausado, 16 preguntas)
+
+- **[A1 · grammar] Ella ___ de Barcelona.**
+  - **✔** és
+  - · ets
+  - · sou
+  - · són
+- **[A1 · vocab] Quin és l'antònim de 'gran'?**
+  - · alt
+  - **✔** petit
+  - · llarg
+  - · ample
+- **[A1 · grammar] Ahir ___ al cinema.**
+  - **✔** vaig anar
+  - · vaig anat
+  - · anar
+  - · vaig
+- **[A2 · grammar] Jo ___ aprendre català.**
+  - **✔** vull
+  - · vulc
+  - · vol
+  - · volen
+- **[A2 · usage] Quina frase és natural?**
+  - · Jo like el cafè molt.
+  - · Em gusta molt el café.
+  - **✔** M'agrada molt el cafè.
+  - · Sóc molt gust de cafè.
+- **[A2 · vocab] Ella ___ els ulls blaus.**
+  - **✔** té
+  - · és
+  - · fa
+  - · va
+- **[B1 · grammar] Si ___ més temps, viatjaria.**
+  - **✔** tingués
+  - · tindria
+  - · tinc
+  - · tindré
+- **[B1 · usage] 'Doncs' en català sol significar:**
+  - · encara
+  - **✔** llavors / per tant
+  - · mai
+  - · tanmateix
+- **[B1 · grammar] Visc aquí ___ 2019.**
+  - **✔** des de
+  - · durant
+  - · des
+  - · fa
+- **[B1 · vocab] Ens hem ___ a les vuit al bar.**
+  - **✔** quedat
+  - · trobat
+  - · vist
+  - · mirat
+- **[B2 · grammar] Per l'any que ve, ja ___ aquí durant una dècada.**
+  - **✔** hauré treballat
+  - · treballaré
+  - · treballo
+  - · treballava
+- **[B2 · usage] En una reunió, la frase més natural és:**
+  - · Vull que tu facis això.
+  - **✔** M'agradaria que t'encarreguessis d'això.
+  - · Jo vull tu fer això.
+  - · Vull que fas això.
+- **[B2 · vocab] 'Fer un seguiment' vol dir:**
+  - · abandonar-ho
+  - **✔** fer el seguiment / recordar
+  - · accelerar
+  - · cancel·lar
+- **[C1 · grammar] Si hagués estudiat més, ___.**
+  - · aprovaria
+  - **✔** hauria aprovat
+  - · aproveria
+  - · aprovés
+- **[C1 · grammar] Espero que ___ bé el teu examen.**
+  - · sortís
+  - · sorti
+  - **✔** surti
+  - · surtirà
+- **[C1 · vocab] Una 'objecció justa' és una cosa:**
+  - · completament errònia
+  - **✔** raonable / vàlida
+  - · injusta
+  - · avorrida
+
+## Frases de lectura en voz alta
+
+### Inglés
+- The weather in the north is rather cold this time of year. _(sonidos: th_voiced, th_voiceless)_
+- I've lived in seven different villages and every view was very vivid. _(sonidos: v_vs_b)_
+- The ship sailed past the sheep grazing on the beach. _(sonidos: ship_sheep)_
+- We would really like to work with the whole world. _(sonidos: w_sound, r_sound)_
+- I think success requires three things: patience, practice, and persistence. _(sonidos: th_voiceless, consonant_clusters)_
+
+### Catalán
+- La xerrada de demà al matí serà a la biblioteca. _(sonidos: x_sh)_
+- Vaig veure una gran cassola plena de cargols i xocolata. _(sonidos: ll_palatal, c_cedilla)_
+- Quan arribo a casa, em rento les mans i menjo alguna cosa. _(sonidos: vowel_reduction)_
+- La Núria vol aprendre a parlar bé el català abans de l'estiu. _(sonidos: r_trill, vowel_reduction)_
+- Ens trobem al pati del costat de la plaça de Sant Jaume. _(sonidos: ny_palatal, tj_dj)_
