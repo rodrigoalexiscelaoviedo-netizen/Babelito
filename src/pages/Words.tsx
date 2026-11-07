@@ -120,7 +120,7 @@ export default function Words() {
           <p className="empty-state-title">{ui("No saved words yet", "Encara no tens paraules desades")}</p>
           <p className="empty-state-sub">
             {ui(
-              "Tap any word while you read a story and choose “Learning” — it will show up here and in your daily review.",
+              "Tap any word while you read and press “Practise this word”: it will show up here and in your daily review.",
               "Toca qualsevol paraula mentre llegeixes una història i tria «Aprenent»: apareixerà aquí i al repàs diari."
             )}
           </p>
