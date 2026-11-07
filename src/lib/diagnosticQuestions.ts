@@ -107,6 +107,72 @@ export const DIAGNOSTIC_CA: DiagnosticQuestion[] = [
   { id: 16, level: "C1", skill: "vocab", prompt: "Una 'objecció justa' és una cosa:", options: ["completament errònia", "raonable / vàlida", "injusta", "avorrida"], answer: 1 },
 ];
 
+// ── Segunda oportunidad ───────────────────────────────────────────────────────
+// Cada escalón se juzga con 5 preguntas: un 2 de 5 puede ser mala suerte y cortaba
+// el test ahí. En ese caso exacto se hacen 3 preguntas más del mismo nivel y se
+// decide con las 8 (hace falta 60 %, o sea 5 de 8).
+
+const TIEBREAKERS_EN: Record<Level, DiagnosticQuestion[]> = {
+  A1: [
+    { id: 101, level: "A1", skill: "grammar", prompt: "My brother ___ two children.", options: ["have", "has", "is having", "haves"], answer: 1 },
+    { id: 102, level: "A1", skill: "grammar", prompt: "___ you like coffee?", options: ["Does", "Do", "Are", "Is"], answer: 1 },
+    { id: 103, level: "A1", skill: "vocab", prompt: "The opposite of 'hot' is:", options: ["cold", "tall", "new", "fast"], answer: 0 },
+  ],
+  A2: [
+    { id: 104, level: "A2", skill: "grammar", prompt: "I ___ to the gym yesterday.", options: ["go", "went", "gone", "going"], answer: 1 },
+    { id: 105, level: "A2", skill: "grammar", prompt: "She is taller ___ her sister.", options: ["that", "than", "then", "as"], answer: 1 },
+    { id: 106, level: "A2", skill: "usage", prompt: "How ___ water do you drink every day?", options: ["many", "much", "few", "lot"], answer: 1 },
+  ],
+  B1: [
+    { id: 107, level: "B1", skill: "grammar", prompt: "If I ___ more money, I would buy a bigger flat.", options: ["have", "had", "will have", "would have"], answer: 1 },
+    { id: 108, level: "B1", skill: "grammar", prompt: "She has lived here ___ 2015.", options: ["for", "since", "during", "from"], answer: 1 },
+    { id: 109, level: "B1", skill: "usage", prompt: "I'm looking forward ___ you next week.", options: ["to see", "to seeing", "seeing", "for see"], answer: 1 },
+  ],
+  B2: [
+    { id: 110, level: "B2", skill: "grammar", prompt: "By the time we arrived, the film ___ already started.", options: ["has", "had", "was", "have"], answer: 1 },
+    { id: 111, level: "B2", skill: "grammar", prompt: "The report ___ by the manager before the meeting.", options: ["wrote", "was written", "has wrote", "is writing"], answer: 1 },
+    { id: 112, level: "B2", skill: "usage", prompt: "He denied ___ the window.", options: ["to break", "breaking", "break", "to have break"], answer: 1 },
+  ],
+  C1: [
+    { id: 113, level: "C1", skill: "grammar", prompt: "Had I known about the delay, I ___ earlier.", options: ["would leave", "would have left", "will leave", "left"], answer: 1 },
+    { id: 114, level: "C1", skill: "vocab", prompt: "The new policy has had a ___ effect on small businesses.", options: ["detrimental", "detrimentally", "detriment", "detrimented"], answer: 0 },
+    { id: 115, level: "C1", skill: "vocab", prompt: "'To be on the fence' about something means:", options: ["to be undecided", "to be angry", "to be very sure", "to be tired"], answer: 0 },
+  ],
+};
+
+/** Preguntas de desempate de un nivel (solo inglés por ahora). */
+export function tiebreakersFor(lang: "en" | "ca", level: Level): DiagnosticQuestion[] {
+  return lang === "en" ? TIEBREAKERS_EN[level] : [];
+}
+
+export const ALL_TIEBREAKERS: DiagnosticQuestion[] = Object.values(TIEBREAKERS_EN).flat();
+
+/**
+ * ¿Toca desempatar este nivel? Solo con 2 de 5 (borde), una vez por nivel, y no a quien
+ * contestó "No lo sé" varias veces: eso no es mala suerte, es que el nivel aún no llegó.
+ */
+export function needsTiebreak(
+  answers: Array<{ level: Level; correct: boolean; chosen?: number }>,
+  level: Level,
+  alreadyAsked: boolean
+): boolean {
+  if (alreadyAsked) return false;
+  const bucket = answers.filter((a) => a.level === level);
+  if (bucket.length !== 5 || bucket.filter((a) => a.correct).length !== 2) return false;
+  return bucket.filter((a) => a.chosen === DONT_KNOW).length < 3;
+}
+
+/** Inserta cada desempate justo después de la última pregunta de su nivel. */
+export function withTiebreakers(base: DiagnosticQuestion[], extra: DiagnosticQuestion[]): DiagnosticQuestion[] {
+  if (extra.length === 0) return base;
+  const out = [...base];
+  for (const level of new Set(extra.map((e) => e.level))) {
+    const last = out.map((q) => q.level).lastIndexOf(level);
+    out.splice(last + 1, 0, ...extra.filter((e) => e.level === level));
+  }
+  return out;
+}
+
 /** Banco de preguntas según el idioma que se aprende. */
 export function diagnosticFor(lang: "en" | "ca"): DiagnosticQuestion[] {
   return lang === "ca" ? DIAGNOSTIC_CA : DIAGNOSTIC;
