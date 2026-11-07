@@ -1,3 +1,4 @@
+import ThemeToggle from "../components/ThemeToggle";
 import { useTranslation } from "react-i18next";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -183,6 +184,11 @@ export default function Profile() {
     <div className="animate-fade-up max-w-xl mx-auto">
       <p className="eyebrow mb-2">{learningLanguage === "ca" ? "Perfil" : "Profile"}</p>
       <h1 className="page-title mb-8">{learningLanguage === "ca" ? "La teva configuració" : "Your settings"}</h1>
+
+      <div className="mb-6 flex items-center justify-between rounded-xl2 border border-ink-600 bg-ink-700 px-4 py-3">
+        <p className="text-sm font-medium">{learningLanguage === "ca" ? "Aspecte" : "Look"}</p>
+        <ThemeToggle />
+      </div>
 
       <div className="space-y-5">
         <Field label={learningLanguage === "ca" ? "Nom" : "Name"}>

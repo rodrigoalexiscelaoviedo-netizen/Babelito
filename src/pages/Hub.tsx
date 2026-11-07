@@ -89,7 +89,7 @@ export default function Hub({ id }: { id: HubId }) {
             <span className="block text-sm text-paper-muted">{featured.text.desc}</span>
           </span>
           {featured.dueBadge && due > 0 && (
-            <span className="rounded-full bg-gold px-2.5 py-1 text-xs font-bold text-ink-900" aria-label={`${due} due`}>
+            <span className="rounded-full bg-gold px-2.5 py-1 text-xs font-bold text-ongold" aria-label={`${due} due`}>
               {due}
             </span>
           )}
