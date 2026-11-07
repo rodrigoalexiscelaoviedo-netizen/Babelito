@@ -4,33 +4,35 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Babelito palette — ink night blue base, warm coral action, mint "correct"
+        // Los valores viven en index.css (tema Día por defecto, Noche con data-theme="night").
         ink: {
-          900: "#0E1320",
-          800: "#131A2B",
-          700: "#1A2236",
-          600: "#222C44",
-          500: "#2C3852",
+          900: "rgb(var(--ink-900) / <alpha-value>)",
+          800: "rgb(var(--ink-800) / <alpha-value>)",
+          700: "rgb(var(--ink-700) / <alpha-value>)",
+          600: "rgb(var(--ink-600) / <alpha-value>)",
+          500: "rgb(var(--ink-500) / <alpha-value>)",
         },
         coral: {
-          DEFAULT: "#FF6B5E",
-          soft: "#FF8A7E",
-          deep: "#E14B3D",
+          DEFAULT: "rgb(var(--coral) / <alpha-value>)",
+          soft: "rgb(var(--coral-soft) / <alpha-value>)",
+          deep: "rgb(var(--coral-deep) / <alpha-value>)",
         },
         mint: {
-          DEFAULT: "#36C5A8",
-          soft: "#5BD6BD",
-          deep: "#1FA88D",
+          DEFAULT: "rgb(var(--mint) / <alpha-value>)",
+          soft: "rgb(var(--mint-soft) / <alpha-value>)",
+          deep: "rgb(var(--mint-deep) / <alpha-value>)",
         },
         gold: {
-          DEFAULT: "#F6C445",
-          soft: "#F9D77A",
+          DEFAULT: "rgb(var(--gold) / <alpha-value>)",
+          soft: "rgb(var(--gold-soft) / <alpha-value>)",
         },
         paper: {
-          DEFAULT: "#EAEEF7",
-          muted: "#8A93A8",
-          faint: "#5A6379",
+          DEFAULT: "rgb(var(--paper) / <alpha-value>)",
+          muted: "rgb(var(--paper-muted) / <alpha-value>)",
+          faint: "rgb(var(--paper-faint) / <alpha-value>)",
         },
+        // Texto oscuro fijo para ponerlo sobre el dorado en cualquier tema.
+        ongold: "rgb(28 27 24 / <alpha-value>)",
       },
       fontFamily: {
         display: ['"Bricolage Grotesque"', "system-ui", "sans-serif"],

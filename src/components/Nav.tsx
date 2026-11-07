@@ -8,6 +8,7 @@ import { warmNaturalVoice } from "../lib/naturalVoice";
 import i18n, { uiLang } from "../i18n";
 import { HUBS, hubForPath, visibleItems, type HubId } from "../lib/hubs";
 import { HUB_ICONS } from "./hubIcons";
+import ThemeToggle from "./ThemeToggle";
 
 /**
  * Menú de 5 puertas: Inicio, Hablar, Aprender, Recordar y Yo.
@@ -42,7 +43,7 @@ export default function Nav() {
   const dueBadge = (id: HubId, small = false) =>
     id === "remember" && reviewCount > 0 ? (
       <span
-        className={`rounded-full bg-gold font-bold leading-none text-ink-900 ${small ? "absolute -top-1 -right-2 flex h-3.5 min-w-3.5 items-center justify-center px-0.5 text-[8px]" : "px-1.5 py-0.5 text-[10px]"}`}
+        className={`rounded-full bg-gold font-bold leading-none text-ongold ${small ? "absolute -top-1 -right-2 flex h-3.5 min-w-3.5 items-center justify-center px-0.5 text-[8px]" : "px-1.5 py-0.5 text-[10px]"}`}
         aria-label={`${reviewCount} due`}
       >
         {small && reviewCount > 9 ? "9+" : reviewCount}
@@ -103,6 +104,9 @@ export default function Nav() {
             );
           })}
         </nav>
+        <div className="mt-auto pt-4">
+          <ThemeToggle className="w-full" />
+        </div>
       </aside>
 
       {/* ── Barra inferior móvil ─────────────────────────────────────── */}
