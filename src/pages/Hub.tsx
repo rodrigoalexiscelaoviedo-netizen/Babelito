@@ -4,7 +4,9 @@ import { ArrowRight } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { HUB_ICONS } from "../components/hubIcons";
 import { hubById, visibleItems, type HubId } from "../lib/hubs";
-import { countDue } from "../lib/srs";
+import { countDue, deckSize } from "../lib/srs";
+import { supabase } from "../lib/supabaseClient";
+import { scopeByLanguage } from "../lib/language";
 
 /**
  * Página de una puerta: la herramienta principal grande ("empezá por acá") y el
@@ -16,13 +18,25 @@ export default function Hub({ id }: { id: HubId }) {
   const language = profile?.learning_language || "en";
   const ca = language === "ca";
   const [due, setDue] = useState(0);
+  const [stats, setStats] = useState<{ deck: number; learning: number; known: number } | null>(null);
 
   useEffect(() => {
     if (!profile || id !== "remember") return;
     let cancelled = false;
-    void countDue(profile.id, language).then((n) => {
-      if (!cancelled) setDue(n);
-    });
+    const count = (status: string) =>
+      scopeByLanguage(
+        supabase.from("user_vocabulary").select("id", { count: "exact", head: true }).eq("user_id", profile.id).eq("status", status),
+        language
+      ).then((r: { count: number | null }) => r.count ?? 0);
+    void Promise.all([countDue(profile.id, language), deckSize(profile.id, language), count("learning"), count("known")])
+      .then(([d, deck, learning, known]) => {
+        if (cancelled) return;
+        setDue(d);
+        setStats({ deck, learning, known });
+      })
+      .catch(() => {
+        /* sin números: la pantalla funciona igual */
+      });
     return () => {
       cancelled = true;
     };
@@ -38,6 +52,28 @@ export default function Hub({ id }: { id: HubId }) {
     <div className="animate-fade-up mx-auto max-w-3xl">
       <h1 className="page-title mb-1">{copy.title}</h1>
       <p className="mb-6 text-paper-muted">{copy.subtitle}</p>
+
+      {id === "remember" && !ca && (
+        <>
+          <p className="mb-4 text-sm text-paper-muted">
+            Everything you save while you read, listen and talk lands here. Review it a few minutes a day and it stays in your head.
+          </p>
+          {stats && (
+            <div className="mb-5 grid grid-cols-3 gap-3">
+              {[
+                { n: due, label: "due today", tone: due > 0 ? "text-gold" : "text-mint" },
+                { n: stats.learning, label: "words in practice", tone: "text-coral" },
+                { n: stats.known, label: "words you know", tone: "text-mint" },
+              ].map((x) => (
+                <div key={x.label} className="card p-3 text-center">
+                  <p className={`font-display text-2xl font-extrabold ${x.tone}`}>{x.n}</p>
+                  <p className="text-[11px] leading-tight text-paper-muted">{x.label}</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </>
+      )}
 
       {featured && FeaturedIcon && (
         <Link

@@ -1,9 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Mic, Square, Volume2, X } from "lucide-react";
 import { supabase } from "../lib/supabaseClient";
 import { useAuth } from "../context/AuthContext";
-import { DONT_KNOW, diagnosticFor, estimateLevel, levelFailed } from "../lib/diagnosticQuestions";
+import { DONT_KNOW, diagnosticFor, estimateLevel, levelFailed, needsTiebreak, tiebreakersFor, withTiebreakers, type DiagnosticQuestion } from "../lib/diagnosticQuestions";
 import type { Level, DiagnosticAnswer } from "../lib/types";
 import { speechSupported, speak } from "../lib/speech";
 import { useSpeechCapture } from "../lib/useSpeechCapture";
@@ -106,6 +106,8 @@ export default function Diagnostic() {
   const [idx, setIdx]         = useState(0);
   const [answers, setAnswers] = useState<DiagnosticAnswer[]>([]);
   const [selected, setSelected] = useState<number | null>(null);
+  // Preguntas de desempate sumadas cuando un nivel quedó justo en el borde.
+  const [tiebreak, setTiebreak] = useState<DiagnosticQuestion[]>([]);
 
   // ── Phase control ───────────────────────────────────────────────────────────
   const [phase, setPhase]             = useState<Phase>("text");
@@ -140,7 +142,7 @@ export default function Diagnostic() {
 
   const isCatalan = (profile?.learning_language || "en") === "ca";
   const diagLang: DiagLang = isCatalan ? "ca" : "en";
-  const DIAG = diagnosticFor(diagLang);
+  const DIAG = useMemo(() => withTiebreakers(diagnosticFor(diagLang), tiebreak), [diagLang, tiebreak]);
   const READING = readingSentencesFor(diagLang);
   const ttsLang = isCatalan ? TARGET_TTS_LANG.ca : TARGET_TTS_LANG.en;
 
@@ -202,6 +204,19 @@ export default function Diagnostic() {
     const next = [...answers, ans];
     // Se corta al cerrar un escalón que no se sostuvo: no tiene sentido seguir con lo más difícil.
     const levelClosed = isLast || DIAG[idx + 1].level !== q.level;
+    // Un 2 de 5 puede ser mala suerte: 3 preguntas más del mismo nivel antes de decidir.
+    if (levelClosed && needsTiebreak(next, q.level, tiebreak.some((t) => t.level === q.level))) {
+      const extra = tiebreakersFor(diagLang, q.level);
+      if (extra.length > 0) {
+        setTiebreak((t) => [...t, ...extra]);
+        setTimeout(() => {
+          setSelected(null);
+          setAnswers(next);
+          setIdx((i) => i + 1);
+        }, 380);
+        return;
+      }
+    }
     const stopHere = isLast || (levelClosed && levelFailed(next, q.level));
     setTimeout(async () => {
       setSelected(null);

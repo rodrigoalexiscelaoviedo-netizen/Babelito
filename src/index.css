@@ -36,7 +36,7 @@ body {
 @layer components {
   /* ── Cards ─────────────────────────────────────────────────────────────── */
   .card {
-    @apply bg-ink-700 border border-ink-600 rounded-xl2 transition-all duration-200;
+    @apply bg-ink-700 border border-ink-600 rounded-xl2 transition-[border-color,box-shadow,transform,background-color] duration-200 shadow-[inset_0_1px_0_0_rgb(255_255_255/0.04),0_12px_32px_-20px_rgb(0_0_0/0.7)];
   }
   /* Hover lift — opt-in via .card-lift so lists don't all bounce */
   .card-lift {
@@ -45,16 +45,16 @@ body {
 
   /* ── Buttons ────────────────────────────────────────────────────────────── */
   .btn {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 font-medium transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 font-medium transition-[background-color,color,box-shadow,opacity,scale] duration-150 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none;
   }
   .btn-coral {
-    @apply btn bg-coral text-ink-900 hover:bg-coral-soft active:scale-[0.97] focus-visible:ring-2 focus-visible:ring-coral/60 focus-visible:outline-none;
+    @apply btn bg-coral text-ink-900 shadow-[0_8px_24px_-10px_rgb(255_107_94/0.65)] hover:bg-coral-soft hover:shadow-[0_10px_28px_-8px_rgb(255_107_94/0.75)] active:scale-[0.97] focus-visible:ring-2 focus-visible:ring-coral/60 focus-visible:outline-none;
   }
   .btn-ghost {
     @apply btn bg-ink-600 text-paper hover:bg-ink-500 active:scale-[0.97] focus-visible:ring-2 focus-visible:ring-paper/20 focus-visible:outline-none;
   }
   .btn-mint {
-    @apply btn bg-mint text-ink-900 hover:bg-mint-soft active:scale-[0.97] focus-visible:ring-2 focus-visible:ring-mint/60 focus-visible:outline-none;
+    @apply btn bg-mint text-ink-900 shadow-[0_8px_24px_-10px_rgb(54_197_168/0.6)] hover:bg-mint-soft hover:shadow-[0_10px_28px_-8px_rgb(54_197_168/0.7)] active:scale-[0.97] focus-visible:ring-2 focus-visible:ring-mint/60 focus-visible:outline-none;
   }
 
   /* ── Form inputs ────────────────────────────────────────────────────────── */
@@ -86,6 +86,10 @@ body {
   .stagger > *:nth-child(4) { animation-delay: 120ms; }
   .stagger > *:nth-child(5) { animation-delay: 160ms; }
   .stagger > *:nth-child(6) { animation-delay: 200ms; }
+  .stagger > *:nth-child(7) { animation-delay: 240ms; }
+  .stagger > *:nth-child(8) { animation-delay: 280ms; }
+  .stagger > *:nth-child(9) { animation-delay: 320ms; }
+  .stagger > *:nth-child(10) { animation-delay: 360ms; }
 
   /* ── Check-pop: micro-rebote para íconos de completado ─────────────────── */
   .check-pop {
@@ -175,6 +179,9 @@ body {
 
 /* ── Foco visible consistente (teclado) ──────────────────────────────────────── */
 @layer base {
+  h1, h2, h3, .page-title { text-wrap: balance; }
+  p { text-wrap: pretty; }
+  .font-mono, .font-display { font-variant-numeric: tabular-nums; }
   a:focus-visible,
   button:focus-visible,
   [role="button"]:focus-visible,

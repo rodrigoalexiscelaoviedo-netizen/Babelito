@@ -1,6 +1,7 @@
 import { useHistoryBack } from "../lib/useHistoryBack";
 import { useState, useCallback, useEffect, useRef } from "react";
-import { Volume2, RotateCcw, ArrowLeft, Headphones } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Volume2, RotateCcw, ArrowLeft, Headphones, Keyboard } from "lucide-react";
 import {
   PATTERNS,
   ALL_TYPES,
@@ -83,6 +84,7 @@ export default function Listening() {
   const patterns = isCatalan ? CATALAN_PATTERNS : PATTERNS;
   const [view, setView] = useState<View>("list");
   const [detail, setDetail] = useState<LinkingLike | null>(null);
+  const [trainKey, setTrainKey] = useState(0);
   useHistoryBack(view !== "list", () => setView("list"));
 
   function playSpoken(pattern: LinkingLike, e?: React.MouseEvent) {
@@ -109,6 +111,8 @@ export default function Listening() {
   if (view === "train") {
     return (
       <TrainView
+        key={trainKey}
+        onRestart={() => setTrainKey((k) => k + 1)}
         patterns={patterns}
         learningLanguage={learningLanguage}
         voicePrefs={voicePrefs}
@@ -159,20 +163,44 @@ function ListView({
 
   return (
     <div className="animate-fade-up">
-      <header className="flex items-end justify-between mb-6">
-        <div>
-          <p className="eyebrow mb-2">{learningLanguage === "ca" ? "Escoltar" : "Listening"}</p>
-          <h1 className="page-title">{learningLanguage === "ca" ? "Escoltar" : "Listening"}</h1>
-          <p className="text-paper-muted mt-1">
-            {isCatalan
-              ? "Entrena la teva orella per al català parlat ràpid."
-              : "Train your ear for the way natives link words together."}
-          </p>
-        </div>
-        <button className="btn-coral shrink-0" onClick={onTrain}>
-          <Headphones size={16} /> {learningLanguage === "ca" ? "Entrena la meva orella" : "Train my ear"}
-        </button>
+      <header className="mb-6">
+        <p className="eyebrow mb-2">{learningLanguage === "ca" ? "Escoltar" : "Listening"}</p>
+        <h1 className="page-title">{learningLanguage === "ca" ? "Escoltar" : "Understand fast English"}</h1>
+        <p className="text-paper-muted mt-1">
+          {isCatalan
+            ? "Entrena la teva orella per al català parlat ràpid."
+            : "Natives don't say word by word: \"want to\" turns into \"wanna\". Learn these patterns and fast speech stops being a blur."}
+        </p>
       </header>
+
+      {!isCatalan && (
+        <div className="card mb-8 border-coral/30 bg-gradient-to-br from-ink-700 to-ink-800 p-5">
+          <ol className="mb-4 grid gap-3 text-sm sm:grid-cols-3">
+            {[
+              ["1", "Listen", "Hear a phrase at native speed"],
+              ["2", "Pick", "Choose what was really said"],
+              ["3", "Say it", "Repeat it and get a score"],
+            ].map(([n, t, d]) => (
+              <li key={n} className="flex items-start gap-3">
+                <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-coral/15 font-mono text-xs font-bold text-coral">{n}</span>
+                <span>
+                  <span className="block font-medium">{t}</span>
+                  <span className="block text-xs text-paper-muted">{d}</span>
+                </span>
+              </li>
+            ))}
+          </ol>
+          <button className="btn-coral flex w-full items-center justify-center gap-2" onClick={onTrain}>
+            <Headphones size={16} /> Train my ear · about 2 min
+          </button>
+          <p className="mt-2 text-center text-xs text-paper-faint">Or browse the patterns below and learn them one by one.</p>
+        </div>
+      )}
+      {isCatalan && (
+        <button className="btn-coral mb-6 flex items-center gap-2" onClick={onTrain}>
+          <Headphones size={16} /> Entrena la meva orella
+        </button>
+      )}
 
       {/* Type filter */}
       <div className="flex flex-wrap gap-2 mb-6">
@@ -345,13 +373,17 @@ export function TrainView({
   voicePrefs,
   playSpoken,
   onBack,
+  onRestart,
 }: {
   patterns: LinkingLike[];
   learningLanguage: string;
   voicePrefs: ReturnType<typeof useVoicePrefs>;
   playSpoken: (p: LinkingLike, e?: React.MouseEvent) => void;
   onBack: () => void;
+  onRestart?: () => void;
 }) {
+  const navigate = useNavigate();
+  const [missed, setMissed] = useState<LinkingLike[]>([]);
   const [queue] = useState<LinkingLike[]>(() => buildQueue(patterns));
   const [idx, setIdx] = useState(0);
   const [phase, setPhase] = useState<TrainPhase>("listening");
@@ -392,6 +424,7 @@ export function TrainView({
     if (phase === "answered") return;
     setChosen(choice);
     if (choice === pattern.written) setCorrect((c) => c + 1);
+    else setMissed((m) => [...m, pattern]);
     setPhase("answered");
   }
 
@@ -411,20 +444,53 @@ export function TrainView({
   }
 
   if (done) {
+    const ca = learningLanguage === "ca";
     return (
-      <div className="animate-fade-up max-w-md mx-auto text-center pt-16">
-        <Headphones size={48} className="mx-auto text-coral mb-4" />
-        <h1 className="page-title mb-2">{learningLanguage === "ca" ? "Sessió completada!" : "Session complete!"}</h1>
+      <div className="animate-fade-up max-w-md mx-auto text-center pt-10">
+        <Headphones size={44} className="mx-auto text-coral mb-3" />
+        <h1 className="page-title mb-2">{ca ? "Sessió completada!" : "Session complete!"}</h1>
         <p className="font-display text-5xl font-extrabold text-mint mb-1">{correct}</p>
-        <p className="text-paper-muted mb-2">{learningLanguage === "ca" ? "de" : "out of"} {queue.length} {learningLanguage === "ca" ? "correctes" : "correct"}</p>
-        <p className="text-sm text-paper-faint mb-8">
+        <p className="text-paper-muted mb-2">{ca ? "de" : "out of"} {queue.length} {ca ? "correctes" : "correct"}</p>
+        <p className="text-sm text-paper-faint mb-6">
           {correct >= queue.length * 0.8
-            ? (learningLanguage === "ca" ? "Oïda excel·lent! Continua així." : "Excellent ear! Keep it up.")
-            : (learningLanguage === "ca" ? "Continua practitzant — la teva oïda es fa més aguda." : "Keep practising — your ear is getting sharper.")}
+            ? (ca ? "Oïda excel·lent! Continua així." : "Excellent ear! Keep it up.")
+            : (ca ? "Continua practitzant — la teva oïda es fa més aguda." : "Keep practising — your ear is getting sharper.")}
         </p>
-        <button className="btn-coral w-full" onClick={onBack}>
-          {learningLanguage === "ca" ? "Torna als patrons" : "Back to patterns"}
-        </button>
+
+        {missed.length > 0 && !ca && (
+          <div className="card mb-6 p-4 text-left">
+            <p className="eyebrow mb-2">To hear again</p>
+            <ul className="space-y-2">
+              {missed.map((p) => (
+                <li key={p.id} className="flex items-center gap-3 text-sm">
+                  <button onClick={(e) => playSpoken(p, e)} aria-label="Listen" className="text-coral">
+                    <Volume2 size={16} />
+                  </button>
+                  <span className="flex-1">
+                    <span className="text-paper-muted">{p.written}</span> <span className="text-paper-faint">→</span>{" "}
+                    <span className="font-semibold italic text-coral">{p.spoken}</span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        <div className="flex flex-col gap-2">
+          {onRestart && (
+            <button className="btn-coral w-full" onClick={onRestart}>
+              {ca ? "Una altra sessió" : "Train again"}
+            </button>
+          )}
+          {!ca && (
+            <button className="flex w-full items-center justify-center gap-2 rounded-xl bg-ink-600 py-2.5 text-sm font-medium transition hover:bg-ink-500" onClick={() => navigate("/dictation")}>
+              <Keyboard size={16} className="text-coral" /> Next: write what you hear (Dictation)
+            </button>
+          )}
+          <button className="py-2 text-sm text-paper-muted hover:text-paper" onClick={onBack}>
+            {ca ? "Torna als patrons" : "Back to patterns"}
+          </button>
+        </div>
       </div>
     );
   }
