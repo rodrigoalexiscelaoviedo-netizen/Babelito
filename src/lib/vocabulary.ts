@@ -48,24 +48,34 @@ export async function upsertWord(
     language
   ).maybeSingle();
 
-  if (existing) {
-    await supabase
-      .from("user_vocabulary")
-      .update({
-        ...meta,
-        times_seen: ((existing as { times_seen: number }).times_seen ?? 0) + 1,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", (existing as { id: string }).id);
-  } else {
-    await supabase.from("user_vocabulary").insert({
+  // La columna `phonetic` falta en algunas bases (el esquema se armó a mano): si es el caso se
+  // guarda igual sin ella. Antes el error se perdía y la palabra nunca llegaba a "Mis palabras".
+  const write = async (fields: typeof meta) => {
+    if (existing) {
+      return supabase
+        .from("user_vocabulary")
+        .update({
+          ...fields,
+          times_seen: ((existing as { times_seen: number }).times_seen ?? 0) + 1,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", (existing as { id: string }).id);
+    }
+    return supabase.from("user_vocabulary").insert({
       user_id: userId,
       word: lower,
       times_seen: 1,
       language,
-      ...meta,
+      ...fields,
     });
+  };
+
+  let { error } = await write(meta);
+  if (error && /phonetic/i.test(error.message)) {
+    const { phonetic: _omit, ...withoutPhonetic } = meta;
+    ({ error } = await write(withoutPhonetic));
   }
+  if (error) throw new Error(error.message);
 }
 
 // updateWordStatus se eliminó: nunca se llamó desde ningún módulo y upsertWord
