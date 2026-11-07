@@ -1,19 +1,19 @@
 # Babelito 🗣️
 
-Coach de idiomas con IA que se adapta a tu nivel, tus errores y tus objetivos. Hoy aprende **inglés** y **catalán**.
+Entrenador de idiomas con IA para hispanohablantes: conversación con un coach que corrige, lectura y escucha interactivas, repaso espaciado y un test de nivel. Hoy aprende **inglés** (versión completa); el **catalán** está en pausa.
 
-Registro → ficha previa → diagnóstico (escrito, lectura en voz alta y conversación) → desde ahí cada práctica se calibra a vos.
+> 📚 **Toda la documentación está en [`docs/CIERRE/`](docs/CIERRE/LEEME.md)** (también en PDF en `docs/CIERRE/PDF/`): cómo está construida, cómo funciona, contenidos, base de datos, funciones del servidor, servicios, cómo recrearla y decisiones.
 
 ## Stack
 
-- **Frontend:** React 18 + TypeScript + Vite + Tailwind CSS + React Router + i18next
+- **Frontend:** React 18 + TypeScript + Vite + Tailwind CSS + React Router + i18next (PWA instalable)
 - **Backend:** Supabase (Postgres + Auth + Edge Functions + pg_cron)
-- **IA:** Gemini vía Edge Function (`claude-proxy`). La clave nunca llega al navegador.
-- **Voz:** Web Speech API (reconocimiento y lectura), nativa del navegador
-- **Recordatorios:** Web Push con service worker y envío desde el servidor
-- **Monitoreo:** Sentry (opcional, activo si hay `VITE_SENTRY_DSN`)
-- **Tests:** Vitest (unitarios) · Playwright (end-to-end de idioma) · ESLint
-- **Deploy:** Vercel (frontend) · Supabase (base, funciones)
+- **IA:** Gemini vía Edge Functions (`claude-proxy`, `gemini-tools`). La clave nunca llega al navegador.
+- **Voz:** Azure Speech (voz neural y puntaje de pronunciación) con respaldo a la Web Speech API
+- **Recordatorios:** Web Push con envío desde el servidor
+- **Monitoreo:** Sentry (opcional)
+- **Pruebas:** Vitest (206) · Playwright · ESLint
+- **Publicación:** Vercel (frontend) · Supabase (base y funciones)
 
 ## Desarrollo
 
@@ -28,54 +28,33 @@ npm run dev
 | `npm run typecheck` | TypeScript estricto |
 | `npm run lint` | ESLint |
 | `npm test` | Vitest |
-| `npm run e2e` | Playwright (requiere cuenta de prueba, ver `docs/DESPLIEGUE.md`) |
+| `npm run e2e` | Playwright (requiere `E2E_EMAIL` y `E2E_PASSWORD`) |
 | `npm run build` | Typecheck + build de producción |
-| `npm run seed:catalan` | Carga el contenido catalán inicial (service role, ver `scripts/seed/`) |
+| `npm run seed:catalan` | Carga el contenido catalán inicial (requiere la service role key) |
+| `npm run docs:cierre` | Regenera los contenidos, el mapa de archivos y los PDF de `docs/CIERRE/` |
 
-## Despliegue
+## Publicar
 
-Ver [`docs/DESPLIEGUE.md`](docs/DESPLIEGUE.md) y [`docs/RECORDATORIOS.md`](docs/RECORDATORIOS.md).
-Las migraciones SQL y las Edge Functions **no** se despliegan con el push: se ejecutan a mano.
-
-## Módulos
-
-| Ruta | Qué hace |
-|---|---|
-| `/login` | Registro e ingreso |
-| `/onboarding` | Idioma, objetivo, nivel auto-percibido, intereses |
-| `/diagnostic` | Diagnóstico A1→C1: 16 preguntas, lectura en voz alta y respuesta hablada (en inglés o catalán) |
-| `/` | Inicio: práctica del día, racha, sugerencia del coach |
-| `/conversation` | Conversación con el coach: voz o texto, con feedback estructurado |
-| `/roleplay` | Escenas de rol (negocios en inglés; vida cotidiana en catalán) |
-| `/chunks` | Biblioteca de expresiones con modo repaso |
-| `/words` | Mis palabras: buscar, escuchar, cambiar estado y borrar |
-| `/review` | Repaso espaciado (SRS) |
-| `/reading` | Lectura con diccionario al tocar palabras |
-| `/stories` | Historias generadas por IA, con lectura y vocabulario |
-| `/sounds` · `/listening` | Sonidos y patrones de habla conectada |
-| `/correct` | Corrector de textos libres (correos, mensajes) |
-| `/progress` | Actividad, errores frecuentes, informes de sesión, logros |
-| `/profile` | Voz, notificaciones, idioma, reinicio de diagnóstico |
-
-## Idiomas
-
-- La interfaz sigue al idioma que se aprende (`src/i18n/`). Textos en `en.ts` y `ca.ts` con las mismas claves; TypeScript y un test verifican la paridad.
-- Las **ayudas de comprensión** (pistas, glosas, explicaciones de errores) van en **español neutro**.
-- El TTS siempre usa una voz del idioma del contenido (`ca-ES` para catalán), nunca la voz inglesa por defecto.
+Las migraciones SQL y las Edge Functions **no** se publican con `git push`: se hacen a mano. Solo el frontend se publica solo (Vercel, al pushear a `main`). Pasos completos en [`docs/CIERRE/08-recrear-desde-cero.md`](docs/CIERRE/08-recrear-desde-cero.md).
 
 ## Estructura
 
 ```
 src/
-  components/   UI compartida (Nav, Charts, ShadowingBlock, ...)
-  context/      AuthContext (sesión y perfil, con error visible)
-  i18n/         Textos de interfaz (en, ca)
-  lib/          Lógica: SRS, racha, diagnóstico, coach, voz, notificaciones, fechas locales
-  pages/        Una pantalla por módulo
+  pages/        una pantalla por módulo
+  components/   piezas compartidas
+  lib/          lógica y contenido: repaso, nivel, XP, coach, voz…
+  context/      sesión y perfil
+  i18n/         textos de la interfaz (en, ca)
+  __tests__/    pruebas
 supabase/
-  functions/    claude-proxy · send-reminders
-  migrations/   0001…0004 (0004 = push, cuota del coach, caché de diccionario)
-scripts/seed/   Carga de contenido catalán
-e2e/            Playwright
-docs/           Despliegue y recordatorios
+  functions/    claude-proxy · gemini-tools · speech-tts · pronunciation-assess · send-reminders
+  migrations/   0001…0008
+scripts/        seed del catalán y generador de la documentación
+e2e/            pruebas de extremo a extremo
+docs/CIERRE/    documentación completa
 ```
+
+## Idiomas
+
+La interfaz sigue al idioma que se aprende. Las **ayudas de comprensión** van en **español neutro**. El audio usa siempre una voz del idioma del contenido.

@@ -1,7 +1,7 @@
 /**
  * send-reminders — recordatorio diario por Web Push.
  *
- * Lo dispara pg_cron cada 15 minutos (ver docs/RECORDATORIOS.md). Para cada
+ * Lo dispara pg_cron cada 15 minutos (ver docs/CIERRE/08-recrear-desde-cero.md, sección D). Para cada
  * usuario con notification_time, calcula la hora LOCAL de su timezone y, si
  * estamos dentro de los 15 minutos desde su hora y todavía no se envió hoy,
  * manda el push a todos sus dispositivos. Si la práctica del día ya está

@@ -479,7 +479,7 @@ export default function Dashboard() {
                   <div className="flex items-center gap-2">
                     <p className="font-display font-bold">{lesson.word}</p>
                     {wordDef?.phonetic && (
-                      <span className="text-xs text-paper-muted font-mono">/{wordDef.phonetic}/</span>
+                      <span className="text-xs text-paper-muted font-mono">/{wordDef.phonetic.replace(/^\/|\/$/g, "")}/</span>
                     )}
                     <button
                       className="text-paper-faint hover:text-coral transition"
