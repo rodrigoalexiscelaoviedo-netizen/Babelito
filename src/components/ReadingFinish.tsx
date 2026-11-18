@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Check, CheckCircle2, Layers, Volume2, X } from "lucide-react";
 import { loadReadingQuiz, textKey, type QuizQuestion } from "../lib/readingQuiz";
@@ -48,6 +48,11 @@ export default function ReadingFinish({
   const [revealed, setRevealed] = useState(false);
   const [remembered, setRemembered] = useState(0);
   const [xp, setXp] = useState(0);
+  // Al cambiar de pregunta o de palabra, el foco va al contenido nuevo (lectores de pantalla lo anuncian).
+  const focusRef = useRef<HTMLParagraphElement>(null);
+  useEffect(() => {
+    focusRef.current?.focus();
+  }, [phase, qi, wi]);
 
   async function start() {
     const recall = saved.filter((w) => w.translation).slice(0, 4);
@@ -125,7 +130,7 @@ export default function ReadingFinish({
   if (phase === "loading") {
     return (
       <div className="card p-5 text-center">
-        <p className="animate-pulse text-sm text-paper-muted">Writing your questions…</p>
+        <p role="status" className="animate-pulse text-sm text-paper-muted">Writing your questions…</p>
       </div>
     );
   }
@@ -144,7 +149,7 @@ export default function ReadingFinish({
             ))}
           </div>
         </div>
-        <p className="mb-4 font-medium leading-snug">{q.q}</p>
+        <p ref={focusRef} tabIndex={-1} className="mb-4 font-medium leading-snug outline-none">{q.q}</p>
         <div className="space-y-2">
           {q.options.map((o, i) => {
             const isRight = i === q.answer;
@@ -164,12 +169,17 @@ export default function ReadingFinish({
                 className={`flex w-full items-center gap-2 rounded-xl border px-4 py-3 text-left text-sm transition active:scale-[0.99] ${state}`}
               >
                 <span className="flex-1">{o}</span>
-                {picked !== null && isRight && <Check size={16} className="animate-check-pop" />}
-                {picked !== null && i === picked && !isRight && <X size={16} />}
+                {picked !== null && isRight && <Check aria-hidden size={16} className="animate-check-pop" />}
+                {picked !== null && i === picked && !isRight && <X aria-hidden size={16} />}
+                {picked !== null && isRight && <span className="sr-only">(correct answer)</span>}
+                {picked !== null && i === picked && !isRight && <span className="sr-only">(your answer, not correct)</span>}
               </button>
             );
           })}
         </div>
+        <p role="status" className="sr-only">
+          {picked === null ? "" : picked === q.answer ? "Correct." : `Not correct. The right answer is: ${q.options[q.answer]}`}
+        </p>
         {picked !== null && (
           <button className="btn-coral mt-4 w-full animate-fade-up" onClick={nextQuestion}>
             {qi + 1 < quiz.length ? "Next" : toRecall.length > 0 ? "Now your words" : "See my result"}
@@ -183,7 +193,7 @@ export default function ReadingFinish({
     const w = toRecall[wi];
     return (
       <div className="card animate-fade-up p-5 text-center">
-        <p className="eyebrow mb-3">
+        <p ref={focusRef} tabIndex={-1} className="eyebrow mb-3 outline-none">
           Your words · {wi + 1} of {toRecall.length}
         </p>
         <button className="inline-flex items-center gap-2 font-display text-3xl font-bold" onClick={() => say(w.word)} aria-label={`Hear ${w.word}`}>

@@ -95,6 +95,7 @@ export default function Reading() {
       <div className="card p-5">
         <h3 className="font-display font-bold mb-3">{learningLanguage === "ca" ? "Enganxa el teu propi text" : "Paste your own text"}</h3>
         <textarea
+          aria-label={learningLanguage === "ca" ? "El teu text" : "Your text"}
           className="input min-h-[120px] resize-none w-full mb-3"
           placeholder={learningLanguage === "ca" ? "Enganxa qualsevol text en català aquí…" : "Paste any English text here…"}
           value={customContent}
@@ -227,12 +228,25 @@ function Reader({ text, onBack }: { text: ReadingText; onBack: () => void }) {
       </div>
 
       {/* Scroll progress */}
-      <div className="h-1 w-full bg-ink-600 rounded-full mb-4">
+      <div
+        role="progressbar"
+        aria-label={learningLanguage === "ca" ? "Progrés de lectura" : "Reading progress"}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={scrollProgress}
+        className="h-1 w-full bg-ink-600 rounded-full mb-4"
+      >
         <div className="h-1 bg-coral rounded-full transition-all" style={{ width: `${scrollProgress}%` }} />
       </div>
 
       {/* Scrollable text area */}
-      <div ref={containerRef} className="flex-1 overflow-y-auto space-y-4">
+      <div
+        ref={containerRef}
+        tabIndex={0}
+        role="region"
+        aria-label={learningLanguage === "ca" ? "Text" : "Text to read"}
+        className="flex-1 overflow-y-auto space-y-4 focus-visible:outline-2 focus-visible:outline-coral rounded-sm"
+      >
         <ClickableText
           text={text.content}
           vocabMap={vocabMap}

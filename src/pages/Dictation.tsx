@@ -127,6 +127,7 @@ export default function Dictation() {
                   <span className="flex-1">{m}</span>
                   <button
                     onClick={() => practise(m)}
+                    aria-label={`Practise: ${m}`}
                     disabled={!!saved[m]}
                     className={`flex shrink-0 items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-medium transition ${saved[m] === "done" ? "bg-gold/20 text-gold" : "bg-ink-600 hover:bg-ink-500"}`}
                   >
@@ -160,10 +161,13 @@ export default function Dictation() {
       <p className="mb-1 text-paper-muted">
         Goal: catch every word, even the small ones. Listen as many times as you need, then type exactly what you hear.
       </p>
-      <div className="mb-6 flex items-center gap-1.5" aria-label={`Sentence ${i + 1} of ${sentences.length}`}>
-        {sentences.map((_, k) => (
-          <span key={k} className={`h-1.5 flex-1 rounded-full transition-colors ${k < i ? "bg-mint" : k === i ? "bg-coral" : "bg-ink-600"}`} />
-        ))}
+      <div className="mb-6">
+        <p className="sr-only">{`Sentence ${i + 1} of ${sentences.length}`}</p>
+        <div aria-hidden className="flex items-center gap-1.5">
+          {sentences.map((_, k) => (
+            <span key={k} className={`h-1.5 flex-1 rounded-full transition-colors ${k < i ? "bg-mint" : k === i ? "bg-coral" : "bg-ink-600"}`} />
+          ))}
+        </div>
       </div>
 
       <div className="card space-y-4 p-5">
@@ -177,6 +181,7 @@ export default function Dictation() {
         </div>
 
         <textarea
+          aria-label="What you heard"
           className="min-h-[5rem] w-full resize-none rounded-xl border border-ink-600 bg-ink-800 p-3 text-paper placeholder:text-paper-faint focus:border-coral focus:outline-none"
           placeholder="Type what you hear…"
           value={typed}
@@ -198,13 +203,14 @@ export default function Dictation() {
             <p className="flex flex-wrap gap-x-1.5 gap-y-1 text-base">
               {result.tokens.map((t, k) => (
                 <span key={k} className={t.ok ? "font-medium text-mint" : "font-medium text-coral underline decoration-wavy"}>
+                  <span className="sr-only">{t.ok ? "" : "not correct: "}</span>
                   {t.word}
                 </span>
               ))}
             </p>
             {result.extra.length > 0 && <p className="text-xs text-paper-muted">Extra words: {result.extra.join(", ")}</p>}
-            <p className="flex items-center gap-1.5 text-sm text-paper-muted">
-              {result.accuracy === 100 && <Check size={14} className="text-mint animate-check-pop" />} {result.accuracy}% correct
+            <p role="status" className="flex items-center gap-1.5 text-sm text-paper-muted">
+              {result.accuracy === 100 && <Check aria-hidden size={14} className="text-mint animate-check-pop" />} {result.accuracy}% correct
             </p>
             <button onClick={() => play()} className="flex items-center gap-1.5 text-sm text-paper-faint transition hover:text-coral">
               <Volume2 size={14} /> Hear it again

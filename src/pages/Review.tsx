@@ -249,6 +249,7 @@ export default function Review() {
       {answered && (
         <div className="mt-4 animate-fade-up space-y-3">
           <div
+            role="status"
             className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium ${answered.correct ? "bg-mint/10 text-mint" : "bg-coral/10 text-coral"}`}
           >
             {answered.correct ? <CheckCircle2 size={16} /> : <XCircle size={16} />}
@@ -370,6 +371,8 @@ function CardBody({
                   className={`w-full rounded-xl border p-3 text-left font-medium transition ${state}`}
                 >
                   {o}
+                  {picked !== null && i === correctIndex && <span className="sr-only"> (correct answer)</span>}
+                  {picked !== null && i === picked && i !== correctIndex && <span className="sr-only"> (your answer, not correct)</span>}
                 </button>
               </li>
             );
@@ -414,6 +417,8 @@ function CardBody({
                   className={`w-full rounded-xl border p-3 text-center font-medium transition ${state}`}
                 >
                   {o}
+                  {picked !== null && i === g.correctIndex && <span className="sr-only"> (correct answer)</span>}
+                  {picked !== null && i === picked && i !== g.correctIndex && <span className="sr-only"> (your answer, not correct)</span>}
                 </button>
               </li>
             );

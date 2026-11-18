@@ -248,6 +248,7 @@ function TypeChip({
   return (
     <button
       onClick={onClick}
+      aria-pressed={active}
       className={`rounded-full px-4 py-1.5 text-sm font-medium transition ${
         active ? "bg-coral text-ink-900" : "bg-ink-600 text-paper-muted hover:text-paper"
       }`}
@@ -266,26 +267,24 @@ function PatternCard({
   playSpoken: (p: LinkingLike, e?: React.MouseEvent) => void;
   onSelect: (p: LinkingLike) => void;
 }) {
+  // La tarjeta y el botón de escuchar son hermanos (no un botón dentro de otro).
   return (
-    <button
-      onClick={() => onSelect(pattern)}
-      className="card p-4 text-left hover:border-coral/50 transition"
-    >
-      <div className="flex items-start justify-between gap-2 mb-2">
-        <span className="font-mono text-[10px] uppercase tracking-widest text-paper-faint">
+    <div className="card relative p-4 hover:border-coral/50 transition">
+      <button onClick={() => onSelect(pattern)} className="block w-full pr-8 text-left">
+        <span className="mb-2 block font-mono text-[10px] uppercase tracking-widest text-paper-faint">
           {TYPE_LABELS[pattern.type]}
         </span>
-        <button
-          onClick={(e) => playSpoken(pattern, e)}
-          className="text-paper-faint hover:text-coral transition shrink-0"
-          aria-label="Listen at native speed"
-        >
-          <Volume2 size={15} />
-        </button>
-      </div>
-      <p className="text-sm text-paper-muted leading-snug mb-1">{pattern.written}</p>
-      <p className="text-base font-semibold text-coral italic">{pattern.spoken}</p>
-    </button>
+        <span className="mb-1 block text-sm leading-snug text-paper-muted">{pattern.written}</span>
+        <span className="block text-base font-semibold italic text-coral">{pattern.spoken}</span>
+      </button>
+      <button
+        onClick={(e) => playSpoken(pattern, e)}
+        className="absolute right-3 top-3 text-paper-faint transition hover:text-coral"
+        aria-label={`Listen at native speed: ${pattern.spoken}`}
+      >
+        <Volume2 size={15} aria-hidden />
+      </button>
+    </div>
   );
 }
 
@@ -313,6 +312,7 @@ function DetailView({
         <ArrowLeft size={16} /> {learningLanguage === "ca" ? "Tots els patrons" : "All patterns"}
       </button>
 
+      <h1 className="sr-only">{TYPE_LABELS[pattern.type]}</h1>
       {/* Hero */}
       <div className="card p-6 mb-4">
         <span className="font-mono text-[10px] uppercase tracking-widest text-paper-faint mb-3 block">
@@ -463,7 +463,7 @@ export function TrainView({
             <ul className="space-y-2">
               {missed.map((p) => (
                 <li key={p.id} className="flex items-center gap-3 text-sm">
-                  <button onClick={(e) => playSpoken(p, e)} aria-label="Listen" className="text-coral">
+                  <button onClick={(e) => playSpoken(p, e)} aria-label={`Listen: ${p.spoken}`} className="text-coral">
                     <Volume2 size={16} />
                   </button>
                   <span className="flex-1">
@@ -499,6 +499,7 @@ export function TrainView({
 
   return (
     <div className="animate-fade-up max-w-lg mx-auto">
+      <h1 className="sr-only">{learningLanguage === "ca" ? "Entrena la teva orella" : "Train my ear"}</h1>
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <button
@@ -513,7 +514,14 @@ export function TrainView({
       </div>
 
       {/* Progress bar */}
-      <div className="h-1.5 w-full bg-ink-600 rounded-full mb-6 overflow-hidden">
+      <div
+        role="progressbar"
+        aria-label={learningLanguage === "ca" ? "Progrés" : "Progress"}
+        aria-valuemin={0}
+        aria-valuemax={queue.length}
+        aria-valuenow={idx}
+        className="h-1.5 w-full bg-ink-600 rounded-full mb-6 overflow-hidden"
+      >
         <div
           className="h-full bg-coral rounded-full transition-all"
           style={{ width: `${(idx / queue.length) * 100}%` }}
@@ -573,7 +581,7 @@ export function TrainView({
       {phase === "answered" && (
         <div className="animate-fade-up space-y-4">
           {/* Result banner */}
-          <div
+          <div role="status"
             className={`rounded-xl p-4 ${
               isCorrect ? "bg-mint/10 border border-mint/30" : "bg-coral/10 border border-coral/30"
             }`}

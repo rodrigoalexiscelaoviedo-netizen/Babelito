@@ -197,10 +197,8 @@ export default function ClickableText({
       // Texto normal: solo se marca al pasar el cursor (antes todo el texto quedaba rojo).
       base += "hover:text-coral hover:underline decoration-coral/50 decoration-dotted underline-offset-4";
     } else if (status === "learning") {
-      base += "text-gold/80 hover:text-gold";
-      if (highlightLearning) {
-        base += " underline decoration-gold/50 underline-offset-2 decoration-wavy";
-      }
+      // Color + subrayado: no depende solo del color para distinguir la palabra.
+      base += "text-gold hover:underline decoration-gold underline underline-offset-2 decoration-wavy";
     } else {
       base += "hover:text-paper-muted";
     }
@@ -227,6 +225,7 @@ export default function ClickableText({
       <div className="flex flex-wrap items-center gap-2 mb-3">
         <button
           onClick={() => { setMode("word"); clearAll(); }}
+          aria-pressed={mode === "word"}
           className={`px-3 py-1 rounded-full text-xs font-medium transition ${
             mode === "word"
               ? "bg-coral/20 text-coral"
@@ -237,6 +236,7 @@ export default function ClickableText({
         </button>
         <button
           onClick={() => { setMode("sentence"); clearAll(); }}
+          aria-pressed={mode === "sentence"}
           className={`px-3 py-1 rounded-full text-xs font-medium transition ${
             mode === "sentence"
               ? "bg-mint/20 text-mint"
@@ -268,7 +268,9 @@ export default function ClickableText({
             return (
               <span
                 key={i}
-                className={`cursor-pointer transition rounded-sm ${
+                role="button"
+                tabIndex={0}
+                className={`cursor-pointer transition rounded-sm focus-visible:outline-2 focus-visible:outline-coral ${
                   inSelected
                     ? "bg-mint/25 text-mint"
                     : "hover:bg-ink-600"
@@ -276,6 +278,12 @@ export default function ClickableText({
                 onClick={(e) => {
                   e.stopPropagation();
                   handleSentenceClick(tokenPositions[i]);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    handleSentenceClick(tokenPositions[i]);
+                  }
                 }}
               >
                 {token}
@@ -288,12 +296,20 @@ export default function ClickableText({
           return (
             <span
               key={i}
-              className={wordClass(token)}
+              role="button"
+              tabIndex={0}
+              className={`${wordClass(token)} rounded-sm focus-visible:outline-2 focus-visible:outline-coral`}
               onClick={(e) => {
                 e.stopPropagation();
                 handleWordClick(token);
               }}
-              title={isLearning ? "One of your learning words" : undefined}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  handleWordClick(token);
+                }
+              }}
+              aria-label={isLearning ? `${token}, ${ca ? "paraula en pràctica" : "word in practice"}` : undefined}
             >
               {token}
             </span>
@@ -325,9 +341,10 @@ export default function ClickableText({
           </div>
 
           {loadingDef && (
-            <div className="mt-3 space-y-2 animate-pulse" aria-label="Looking up">
-              <div className="h-6 w-2/5 rounded bg-ink-600" />
-              <div className="h-3 w-4/5 rounded bg-ink-600" />
+            <div className="mt-3 space-y-2 animate-pulse">
+              <p role="status" className="sr-only">{ca ? "Buscant…" : "Looking up…"}</p>
+              <div aria-hidden className="h-6 w-2/5 rounded bg-ink-600" />
+              <div aria-hidden className="h-3 w-4/5 rounded bg-ink-600" />
             </div>
           )}
 
@@ -375,7 +392,7 @@ export default function ClickableText({
             </div>
           )}
 
-          {saveError && <p className="mt-2 text-coral text-xs">{saveError}</p>}
+          {saveError && <p role="alert" className="mt-2 text-coral text-xs">{saveError}</p>}
 
           <div className="mt-4">
             {selectedStatus === "learning" ? (
@@ -426,9 +443,10 @@ export default function ClickableText({
           <p className="pr-6 font-medium leading-snug">{selectedSentence}</p>
 
           {loadingPhrase && (
-            <div className="mt-3 space-y-2 animate-pulse" aria-label="Explaining">
-              <div className="h-4 w-4/5 rounded bg-ink-600" />
-              <div className="h-4 w-3/5 rounded bg-ink-600" />
+            <div className="mt-3 space-y-2 animate-pulse">
+              <p role="status" className="sr-only">{ca ? "Explicant…" : "Explaining…"}</p>
+              <div aria-hidden className="h-4 w-4/5 rounded bg-ink-600" />
+              <div aria-hidden className="h-4 w-3/5 rounded bg-ink-600" />
             </div>
           )}
 
