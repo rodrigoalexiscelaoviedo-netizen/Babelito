@@ -613,6 +613,7 @@ function RoleplayChat({
         {voice.error && <p className="text-coral text-xs text-center mb-2">{voice.error}</p>}
         <div className="card flex items-end gap-2 p-2">
           <textarea
+            aria-label={learningLanguage === "ca" ? "La teva línia" : "Your line"}
             className="flex-1 resize-none bg-transparent px-2 py-2 text-paper placeholder:text-paper-faint focus:outline-none max-h-32"
             rows={1}
             placeholder={learningLanguage === "ca" ? "La teva línia… (escriu /end per retroalimentació)" : "Your line… (type /end for feedback)"}

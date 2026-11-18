@@ -1,6 +1,6 @@
 import ThemeToggle from "../components/ThemeToggle";
 import { useTranslation } from "react-i18next";
-import { useEffect, useState } from "react";
+import { cloneElement, isValidElement, useEffect, useState, type ReactElement, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { LogOut, RefreshCw, Volume2, Bell, BellOff, Download } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
@@ -465,11 +465,16 @@ export default function Profile() {
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({ label, children }: { label: string; children: ReactNode }) {
+  // La etiqueta visible no está asociada al campo: se le pasa también como aria-label al control.
+  const control =
+    isValidElement(children) && (children.type === "input" || children.type === "select" || children.type === "textarea")
+      ? cloneElement(children as ReactElement<{ "aria-label"?: string }>, { "aria-label": label })
+      : children;
   return (
     <div>
       <label className="block text-sm font-medium text-paper-muted mb-1.5">{label}</label>
-      {children}
+      {control}
     </div>
   );
 }

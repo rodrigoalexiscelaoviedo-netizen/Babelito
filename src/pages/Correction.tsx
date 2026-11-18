@@ -75,6 +75,7 @@ export default function Correction() {
       </p>
 
       <textarea
+        aria-label={learningLanguage === "ca" ? "El teu text" : "Your text"}
         className="input min-h-[160px] resize-none mb-3"
         placeholder={learningLanguage === "ca" ? "Enganxa el teu text en català aquí…" : "Paste your English text here…"}
         value={text}

@@ -192,6 +192,7 @@ export default function Onboarding() {
         : "Hobbies, work, anything. Your coach uses this to make conversations feel like yours.",
       body: (
         <textarea
+          aria-label={learningLanguage === "ca" ? "Aficions i treball" : "Hobbies and work"}
           className="input min-h-[120px] resize-none"
           placeholder={learningLanguage === "ca"
             ? "Ex: Sóc gerent de vendes, dj els cap de setmana, m'encanta el futbol i viatjar…"

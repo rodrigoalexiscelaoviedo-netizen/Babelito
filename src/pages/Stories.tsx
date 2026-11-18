@@ -190,6 +190,7 @@ export default function Stories() {
               onKeyDown={(e) => e.key === "Enter" && handleGenerate()}
             />
             <select
+              aria-label="Level"
               className="input w-24"
               value={genLevel}
               onChange={(e) => setGenLevel(e.target.value as Level)}
