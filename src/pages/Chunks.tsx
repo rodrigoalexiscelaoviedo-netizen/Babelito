@@ -224,6 +224,7 @@ function FlipCard({
         </button>
         <button
           onClick={onToggle}
+          aria-pressed={learned}
           className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition ${
             learned ? "bg-mint text-ink-900" : "bg-ink-600 text-paper-muted hover:text-paper"
           }`}

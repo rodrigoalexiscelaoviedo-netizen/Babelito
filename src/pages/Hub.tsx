@@ -130,7 +130,7 @@ export default function Hub({ id }: { id: HubId }) {
         </Link>
       )}
 
-      <div className="grid gap-3 sm:grid-cols-2 stagger">
+      <div className="hub-grid grid gap-3 sm:grid-cols-2 stagger">
         {rest.map((item) => (
           <HubCard key={item.to} item={item} token={accent.token} />
         ))}

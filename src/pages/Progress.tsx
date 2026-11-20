@@ -29,6 +29,7 @@ import { getAchievements, type AchievementWithStatus } from "../lib/achievements
 import Loader from "../components/Loader";
 import Maica from "../components/Maica";
 import LevelLadder from "../components/LevelLadder";
+import LevelHistory from "../components/LevelHistory";
 
 interface ErrRow { error_type: string }
 interface SessRow { created_at: string; duration_seconds: number }
@@ -274,6 +275,7 @@ export default function Progress() {
       {learningLanguage !== "ca" && (
         <div className="mb-6">
           <LevelLadder />
+          <LevelHistory />
         </div>
       )}
 

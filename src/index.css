@@ -171,6 +171,12 @@ body {
     transform: translateX(4px);
     color: rgb(var(--accent-rgb));
   }
+  /* Con cantidad impar de tarjetas, la última ocupa las dos columnas (no queda huérfana). */
+  @media (min-width: 640px) {
+    .hub-grid > :last-child:nth-child(odd) {
+      grid-column: 1 / -1;
+    }
+  }
   /* La tarjeta destacada lleva un halo de color en la esquina. */
   .hub-featured {
     background:

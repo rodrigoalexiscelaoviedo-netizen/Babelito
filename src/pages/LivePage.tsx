@@ -14,7 +14,7 @@ export default function LivePage() {
   const [ready, setReady] = useState<boolean | null>(() => (liveSupported() ? null : false));
 
   useEffect(() => {
-    if (ready !== null) return;
+    if (!profile || ready !== null) return;
     let cancelled = false;
     void geminiToolsAvailable().then((ok) => {
       if (!cancelled) setReady(ok);
@@ -22,7 +22,7 @@ export default function LivePage() {
     return () => {
       cancelled = true;
     };
-  }, [ready]);
+  }, [profile, ready]);
 
   if (!profile) return null;
   if (ready === null) return <Loader />;
