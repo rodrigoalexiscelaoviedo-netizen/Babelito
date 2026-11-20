@@ -1,24 +1,33 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 import { Link } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { HUB_ICONS } from "../components/hubIcons";
 import { hubById, visibleItems, type HubId } from "../lib/hubs";
+
+type VisibleItem = ReturnType<typeof visibleItems>[number];
 import { countDue, deckSize } from "../lib/srs";
 import { supabase } from "../lib/supabaseClient";
 import { scopeByLanguage } from "../lib/language";
+import { geminiToolsAvailable } from "../lib/geminiTools";
+import { liveSupported } from "../lib/liveSession";
 
-/** Cada puerta tiene su color: se reconoce dónde estás de un vistazo. Clases estáticas para Tailwind. */
-const ACCENT: Record<HubId, { solid: string; soft: string; text: string; border: string }> = {
-  speak: { solid: "bg-coral", soft: "bg-coral/10 text-coral", text: "text-coral", border: "border-coral/30" },
-  learn: { solid: "bg-sky", soft: "bg-sky/10 text-sky", text: "text-sky", border: "border-sky/30" },
-  remember: { solid: "bg-mint", soft: "bg-mint/10 text-mint", text: "text-mint", border: "border-mint/30" },
-  me: { solid: "bg-gold", soft: "bg-gold/15 text-ongold", text: "text-paper-muted", border: "border-gold/40" },
+/** Cada puerta tiene su color (token de index.css): se reconoce dónde estás de un vistazo. */
+const ACCENT: Record<HubId, { token: string; text: string }> = {
+  speak: { token: "coral", text: "text-coral" },
+  learn: { token: "sky", text: "text-sky" },
+  remember: { token: "mint", text: "text-mint" },
+  me: { token: "gold", text: "text-ongold" },
 };
+
+/** Estilo de la puerta: el color llega a la tarjeta por una variable CSS. */
+function accentStyle(token: string): CSSProperties {
+  return { ["--accent-rgb" as string]: `var(--${token})` } as CSSProperties;
+}
 
 /**
  * Página de una puerta: la herramienta principal grande ("empezá por acá") y el
- * resto como tarjetas simples. Una sola decisión a la vez.
+ * resto como tarjetas. Una sola decisión a la vez.
  */
 export default function Hub({ id }: { id: HubId }) {
   const { profile } = useAuth();
@@ -27,6 +36,7 @@ export default function Hub({ id }: { id: HubId }) {
   const ca = language === "ca";
   const [due, setDue] = useState(0);
   const [stats, setStats] = useState<{ deck: number; learning: number; known: number } | null>(null);
+  const [liveOk, setLiveOk] = useState(false);
 
   useEffect(() => {
     if (!profile || id !== "remember") return;
@@ -50,7 +60,19 @@ export default function Hub({ id }: { id: HubId }) {
     };
   }, [profile, id, language]);
 
-  const items = visibleItems(hub, language);
+  // IA Live solo aparece si el navegador la soporta y el servidor la tiene.
+  useEffect(() => {
+    if (id !== "speak" || !liveSupported()) return;
+    let cancelled = false;
+    void geminiToolsAvailable().then((ok) => {
+      if (!cancelled) setLiveOk(ok);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [id]);
+
+  const items = visibleItems(hub, language).filter((i) => !i.requiresLive || liveOk);
   const featured = items.find((i) => i.featured) ?? items[0];
   const rest = items.filter((i) => i !== featured);
   const copy = ca ? hub.ca : hub.en;
@@ -85,41 +107,63 @@ export default function Hub({ id }: { id: HubId }) {
       )}
 
       {featured && FeaturedIcon && (
-        <Link
-          to={featured.to}
-          className={`card-interactive group mb-5 flex items-center gap-4 ${accent.border} p-6`}
-        >
-          <span className={`grid h-14 w-14 shrink-0 place-items-center rounded-2xl ${accent.solid} text-white`}>
-            <FeaturedIcon size={26} />
+        <Link to={featured.to} className="hub-card hub-featured group mb-5 flex items-center gap-5 p-6" style={accentStyle(accent.token)}>
+          <span className="relative grid h-16 w-16 shrink-0 place-items-center">
+            <span className="absolute inset-0 rounded-2xl bg-[rgb(var(--accent-rgb))] opacity-30 motion-safe:animate-pulse-ring" aria-hidden />
+            <span className="hub-icon relative grid h-16 w-16 place-items-center rounded-2xl bg-[rgb(var(--accent-rgb))] text-white shadow-[0_10px_30px_-10px_rgb(var(--accent-rgb)/0.7)]">
+              <FeaturedIcon size={28} />
+            </span>
           </span>
           <span className="min-w-0 flex-1">
-            <span className={`mb-0.5 block font-mono text-[10px] uppercase tracking-widest ${accent.text}`}>{ca ? "Comença aquí" : "Start here"}</span>
-            <span className="block font-display text-xl font-bold">{featured.text.title}</span>
-            <span className="block text-sm text-paper-muted">{featured.text.desc}</span>
+            <span className={`mb-1 block font-mono text-[10px] uppercase tracking-[0.2em] ${accent.text}`}>{ca ? "Comença aquí" : "Start here"}</span>
+            <span className="block font-display text-2xl font-extrabold leading-tight">{featured.text.title}</span>
+            <span className="mt-1 block text-sm text-paper-muted">{featured.text.desc}</span>
           </span>
           {featured.dueBadge && due > 0 && (
             <span className="rounded-full bg-gold px-2.5 py-1 text-xs font-bold text-ongold" aria-label={`${due} due`}>
               {due}
             </span>
           )}
-          <ArrowRight className={`shrink-0 ${accent.text} transition group-hover:translate-x-1`} size={20} />
+          <span className="hub-arrow grid h-11 w-11 shrink-0 place-items-center rounded-full bg-[rgb(var(--accent-rgb)/0.12)] text-[rgb(var(--accent-rgb))]">
+            <ArrowRight size={20} />
+          </span>
         </Link>
       )}
 
       <div className="grid gap-3 sm:grid-cols-2 stagger">
-        {rest.map((item) => {
-          const Icon = HUB_ICONS[item.icon];
-          return (
-            <Link key={item.to} to={item.to} className="card-interactive flex items-start gap-3 p-4">
-              <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl ${accent.soft}`}>{Icon && <Icon size={18} />}</span>
-              <span className="min-w-0">
-                <span className="block font-medium">{item.text.title}</span>
-                <span className="block text-xs text-paper-muted">{item.text.desc}</span>
-              </span>
-            </Link>
-          );
-        })}
+        {rest.map((item) => (
+          <HubCard key={item.to} item={item} token={accent.token} />
+        ))}
       </div>
     </div>
+  );
+}
+
+function HubCard({ item, token }: { item: VisibleItem; token: string }) {
+  const Icon = HUB_ICONS[item.icon];
+  return (
+    <Link to={item.to} className="hub-card group flex flex-col gap-3 p-5" style={accentStyle(token)}>
+      <div className="flex items-start justify-between gap-3">
+        <span className="hub-icon grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-[rgb(var(--accent-rgb)/0.14)] text-[rgb(var(--accent-rgb))]">
+          {Icon && <Icon size={20} />}
+        </span>
+        <span className="flex items-center gap-2">
+          {item.badge && (
+            <span className="rounded bg-gold/20 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-widest text-ongold">{item.badge}</span>
+          )}
+          {item.requiresLive && (
+            <span className="relative flex h-2 w-2" aria-hidden>
+              <span className="absolute inline-flex h-full w-full rounded-full bg-mint opacity-60 motion-safe:animate-ping" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-mint" />
+            </span>
+          )}
+          <ArrowRight size={16} className="hub-arrow text-paper-faint" aria-hidden />
+        </span>
+      </div>
+      <div className="min-w-0">
+        <span className="block font-display text-lg font-bold leading-snug">{item.text.title}</span>
+        <span className="mt-0.5 block text-sm text-paper-muted">{item.text.desc}</span>
+      </div>
+    </Link>
   );
 }

@@ -21,6 +21,10 @@ export interface HubItem {
   featured?: boolean;
   /** Muestra la cantidad de repasos pendientes. */
   dueBadge?: boolean;
+  /** Solo aparece si la llamada en vivo está disponible (servidor y navegador). */
+  requiresLive?: boolean;
+  /** Etiqueta corta sobre la tarjeta (por ejemplo "beta"). */
+  badge?: string;
 }
 
 export interface HubDef {
@@ -44,8 +48,15 @@ export const HUBS: HubDef[] = [
         to: "/conversation",
         icon: "MessageCircle",
         featured: true,
-        en: { title: "Talk to your coach", desc: "A live conversation with corrections. Use Call or Live for a voice chat." },
-        ca: { title: "Parla amb el coach", desc: "Conversa en directe amb correccions." },
+        en: { title: "Chat", desc: "Write with your coach and get corrections as you go." },
+        ca: { title: "Xat", desc: "Escriu amb el coach i rep correccions." },
+      },
+      {
+        to: "/live",
+        icon: "Phone",
+        requiresLive: true,
+        badge: "beta",
+        en: { title: "IA Live", desc: "Talk out loud with your AI coach: free chat, real-life situations or a surprise call." },
       },
       {
         to: "/situations",

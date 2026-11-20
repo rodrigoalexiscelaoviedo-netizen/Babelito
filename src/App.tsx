@@ -9,6 +9,7 @@ const Onboarding = lazy(() => import("./pages/Onboarding"));
 const Diagnostic = lazy(() => import("./pages/Diagnostic"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const Conversation = lazy(() => import("./pages/Conversation"));
+const LivePage = lazy(() => import("./pages/LivePage"));
 const Chunks = lazy(() => import("./pages/Chunks"));
 const Correction = lazy(() => import("./pages/Correction"));
 const Roleplay = lazy(() => import("./pages/Roleplay"));
@@ -65,6 +66,7 @@ export default function App() {
 
         <Route path="/" element={<Shell><Dashboard /></Shell>} />
         <Route path="/conversation" element={<Shell><Conversation /></Shell>} />
+        <Route path="/live" element={<Shell><LivePage /></Shell>} />
         <Route path="/chunks" element={<Shell><Chunks /></Shell>} />
         <Route path="/correct" element={<Shell><Correction /></Shell>} />
         <Route path="/roleplay" element={<Shell><Roleplay /></Shell>} />
