@@ -1,5 +1,6 @@
 import { BRAND } from "../lib/theme";
 import XpCard from "../components/XpCard";
+import TodayTasks from "../components/TodayTasks";
 import HomeNudges from "../components/HomeNudges";
 import { awardXp, DAILY_LESSON_XP, dailyLessonRefKey } from "../lib/xp";
 import { consolidateLevel } from "../lib/leveling";
@@ -338,6 +339,8 @@ export default function Dashboard() {
 
       {profile && <HomeNudges userId={profile.id} language={learningLanguage} />}
 
+      <TodayTasks />
+
       {/* Daily practice card */}
       <div className="card p-5 mb-6">
         <div className="flex items-center justify-between mb-4">
@@ -629,11 +632,6 @@ export default function Dashboard() {
       {learningLanguage !== "ca" && <div className="mb-6"><XpCard compact /></div>}
 
       <div className="mt-2 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm">
-        {learningLanguage !== "ca" && (
-          <Link to="/plan" className="inline-flex items-center gap-2 text-paper-muted hover:text-paper">
-            <Layers size={15} /> See your plan for the week
-          </Link>
-        )}
         <Link to="/progress" className="inline-flex items-center gap-2 text-paper-muted hover:text-paper">
           <BarChart3 size={15} />
           {learningLanguage === "ca" ? "Veu el teu progrés complet" : "See your full progress"}

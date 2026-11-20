@@ -86,7 +86,7 @@ export default function HomeNudges({ userId, language }: { userId: string; langu
         const next = plan.tasks.find((t) => !t.done);
         return (
           // Un solo paso a la vez: la tarjeta abre directo la próxima tarea del plan.
-          <Link to={next ? next.to : "/plan"} className="card-interactive flex items-center gap-3 p-4">
+          <Link to={next ? next.to : "/progress"} className="card-interactive flex items-center gap-3 p-4">
             <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-mint/15 text-mint">
               <CalendarCheck size={18} />
             </span>

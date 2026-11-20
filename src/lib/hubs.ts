@@ -175,11 +175,6 @@ export const HUBS: HubDef[] = [
         ca: { title: "Progrés", desc: "El teu nivell, ratxa i estadístiques." },
       },
       {
-        to: "/plan",
-        icon: "CalendarCheck",
-        en: { title: "My plan", desc: "What to do today and this week." },
-      },
-      {
         to: "/profile",
         icon: "User",
         en: { title: "Profile & settings", desc: "Level, voice, reminders and goals." },

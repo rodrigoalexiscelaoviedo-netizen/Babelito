@@ -1,5 +1,5 @@
 import { Suspense, lazy } from "react";
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router-dom";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Layout from "./components/Layout";
 import Loader from "./components/Loader";
@@ -22,7 +22,6 @@ const Progress = lazy(() => import("./pages/Progress"));
 const Words = lazy(() => import("./pages/Words"));
 const Hub = lazy(() => import("./pages/Hub"));
 const Lens = lazy(() => import("./pages/Lens"));
-const Plan = lazy(() => import("./pages/Plan"));
 const Grammar = lazy(() => import("./pages/Grammar"));
 const GrammarLesson = lazy(() => import("./pages/GrammarLesson"));
 const Mistakes = lazy(() => import("./pages/Mistakes"));
@@ -81,7 +80,8 @@ export default function App() {
         <Route path="/remember" element={<Shell><Hub id="remember" /></Shell>} />
         <Route path="/me" element={<Shell><Hub id="me" /></Shell>} />
         <Route path="/lens" element={<Shell><Lens /></Shell>} />
-        <Route path="/plan" element={<Shell><Plan /></Shell>} />
+        {/* El plan se fusionó: hoy está en Inicio y la semana en Progreso. */}
+        <Route path="/plan" element={<Navigate to="/progress" replace />} />
         <Route path="/grammar" element={<Shell><Grammar /></Shell>} />
         <Route path="/grammar/:id" element={<Shell><GrammarLesson /></Shell>} />
         <Route path="/mistakes" element={<Shell><Mistakes /></Shell>} />

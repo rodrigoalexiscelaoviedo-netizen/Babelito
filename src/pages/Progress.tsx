@@ -30,6 +30,7 @@ import Loader from "../components/Loader";
 import Maica from "../components/Maica";
 import LevelLadder from "../components/LevelLadder";
 import LevelHistory from "../components/LevelHistory";
+import WeekGoals from "../components/WeekGoals";
 
 interface ErrRow { error_type: string }
 interface SessRow { created_at: string; duration_seconds: number }
@@ -274,6 +275,7 @@ export default function Progress() {
       <h1 className="page-title mb-6">{learningLanguage === "ca" ? "Com estàs" : "How you're doing"}</h1>
       {learningLanguage !== "ca" && (
         <div className="mb-6">
+          <WeekGoals />
           <LevelLadder />
           <LevelHistory />
         </div>

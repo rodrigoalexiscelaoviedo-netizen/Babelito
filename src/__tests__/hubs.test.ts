@@ -6,7 +6,7 @@ describe("hubs", () => {
     expect(HUBS.map((h) => h.id)).toEqual(["speak", "learn", "remember", "me"]);
     const all = HUBS.flatMap((h) => h.items.map((i) => i.to));
     expect(new Set(all).size).toBe(all.length);
-    for (const route of ["/conversation", "/situations", "/roleplay", "/sounds", "/correct", "/stories", "/reading", "/listening", "/dictation", "/lens", "/review", "/words", "/chunks", "/grammar", "/mistakes", "/progress", "/plan", "/profile"]) {
+    for (const route of ["/conversation", "/situations", "/roleplay", "/sounds", "/correct", "/stories", "/reading", "/listening", "/dictation", "/lens", "/review", "/words", "/chunks", "/grammar", "/mistakes", "/progress", "/profile"]) {
       expect(all, route).toContain(route);
     }
   });
