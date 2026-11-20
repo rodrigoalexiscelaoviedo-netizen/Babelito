@@ -68,6 +68,21 @@ export default {
           "0%, 80%, 100%": { transform: "scaleY(0.4)", opacity: "0.4" },
           "40%": { transform: "scaleY(1)", opacity: "1" },
         },
+        // Llamada en vivo: anillos que salen del orbe cuando habla el coach
+        "live-ring": {
+          "0%": { transform: "scale(0.85)", opacity: "0.8" },
+          "100%": { transform: "scale(1.45)", opacity: "0" },
+        },
+        // Llamada en vivo: respiración suave cuando te toca hablar
+        "live-breathe": {
+          "0%, 100%": { transform: "scale(1)", opacity: "0.6" },
+          "50%": { transform: "scale(1.08)", opacity: "1" },
+        },
+        // Llamada en vivo: ecualizador del coach
+        "live-bar": {
+          "0%, 100%": { height: "6px" },
+          "50%": { height: "30px" },
+        },
         // Entrada suave para cards en lista
         "card-in": {
           "0%": { opacity: "0", transform: "translateY(6px)" },
@@ -80,6 +95,9 @@ export default {
         "check-pop": "check-pop 0.35s cubic-bezier(0.34,1.56,0.64,1) both",
         "wave-dot": "wave-dot 1.2s ease-in-out infinite",
         "card-in": "card-in 0.3s ease-out both",
+        "live-ring": "live-ring 1.8s ease-out infinite",
+        "live-breathe": "live-breathe 2.4s ease-in-out infinite",
+        "live-bar": "live-bar 0.9s ease-in-out infinite",
       },
     },
   },
