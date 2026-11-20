@@ -82,3 +82,13 @@ export interface SituationProgressRow {
   completed_at: string | null;
   updated_at: string;
 }
+
+/** Tabla skill_attempts (migración 0010): un intento de lectura o escucha. */
+export interface SkillAttempt {
+  id: string;
+  user_id: string;
+  skill: "reading" | "listening";
+  correct: number;
+  total: number;
+  created_at: string;
+}

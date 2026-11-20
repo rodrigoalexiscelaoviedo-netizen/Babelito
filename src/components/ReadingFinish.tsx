@@ -6,6 +6,7 @@ import { awardXp } from "../lib/xp";
 import { localDateISO } from "../lib/dates";
 import { speak } from "../lib/speech";
 import type { VoicePrefs } from "../lib/useVoicePrefs";
+import { recordSkillAttempt } from "../lib/skillLevels";
 import type { ReadingText } from "../lib/readingTexts";
 
 export interface SavedWord {
@@ -99,6 +100,8 @@ export default function ReadingFinish({
     const amount = BASE_XP + questionsRight * QUESTION_XP + wordsRight * WORD_XP;
     setXp(amount);
     setPhase("done");
+    // Nivel de lectura: aciertos del cuestionario sobre sus preguntas.
+    if (quiz.length > 0) void recordSkillAttempt(userId, "reading", questionsRight, quiz.length);
     void awardXp(userId, {
       source: "story",
       refKey: `reading:${textKey(text.id, text.content)}:${localDateISO()}`,

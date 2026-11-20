@@ -15,6 +15,7 @@ import { speak } from "../lib/speech";
 import { useVoicePrefs } from "../lib/useVoicePrefs";
 import { useAuth } from "../context/AuthContext";
 import { awardXp, listeningXp } from "../lib/xp";
+import { recordSkillAttempt } from "../lib/skillLevels";
 import ShadowingBlock from "../components/ShadowingBlock";
 
 // Rate for native-speed playback
@@ -396,7 +397,9 @@ export function TrainView({
   useEffect(() => {
     if (!done || !profile || profile.learning_language === "ca") return;
     void awardXp(profile.id, { source: "listening", refKey: (sessionKey.current ??= `listening:${Date.now()}`), amount: listeningXp(correct), meta: { correct } });
-  }, [done, profile, correct]);
+    // Nivel de escucha: aciertos de la ronda sobre el total de patrones.
+    void recordSkillAttempt(profile.id, "listening", correct, queue.length);
+  }, [done, profile, correct, queue]);
 
   const pattern = queue[idx];
 
