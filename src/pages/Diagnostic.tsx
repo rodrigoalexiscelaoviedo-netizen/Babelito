@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Mic, Square, Volume2, X } from "lucide-react";
 import { supabase } from "../lib/supabaseClient";
+import { applyDiagnosticLevel } from "../lib/levelChange";
 import { useAuth } from "../context/AuthContext";
 import { DONT_KNOW, diagnosticFor, estimateLevel, levelFailed, needsTiebreak, tiebreakersFor, withTiebreakers, type DiagnosticQuestion } from "../lib/diagnosticQuestions";
 import type { Level, DiagnosticAnswer } from "../lib/types";
@@ -152,14 +153,7 @@ export default function Diagnostic() {
   async function finishWithLevel(level: Level) {
     if (!session) return;
     setBusy(true);
-    await supabase
-      .from("profiles")
-      .update({
-        diagnosed_level: level,
-        current_level: level,
-        diagnostic_complete: true,
-      })
-      .eq("id", session.user.id);
+    await applyDiagnosticLevel(session.user.id, level);
     await refreshProfile();
     setBusy(false);
     navigate("/", { replace: true });
@@ -393,14 +387,7 @@ export default function Diagnostic() {
         );
       }
 
-      await supabase
-        .from("profiles")
-        .update({
-          diagnosed_level: finalLvl,
-          current_level: finalLvl,
-          diagnostic_complete: true,
-        })
-        .eq("id", session.user.id);
+      await applyDiagnosticLevel(session.user.id, finalLvl);
 
       await refreshProfile();
     }
