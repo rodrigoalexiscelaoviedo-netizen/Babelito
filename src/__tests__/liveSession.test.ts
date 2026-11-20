@@ -80,4 +80,24 @@ describe("messages", () => {
     expect(p).toContain("Your weekend");
     expect(liveSystemPrompt({ level: "A1", name: "", topic: null })).toContain("Choose a friendly everyday topic");
   });
+
+  it("beginners (A1, A2) get Spanish support; B1 and up do not", () => {
+    expect(liveSystemPrompt({ level: "A1", name: "", topic: null })).toContain("explain it briefly in Spanish");
+    expect(liveSystemPrompt({ level: "A2", name: "", topic: null })).toContain("explain it briefly in Spanish");
+    expect(liveSystemPrompt({ level: "B1", name: "", topic: null })).toContain("Speak English only");
+    expect(liveSystemPrompt({ level: "B1", name: "", topic: null })).not.toContain("explain it briefly in Spanish");
+  });
+
+  it("situation mode: the coach is the caller and opens the call", () => {
+    const p = liveSystemPrompt({
+      level: "A2",
+      name: "Rodrigo",
+      topic: null,
+      situation: { title: "Dentist", coachRole: "a receptionist at a dentist's", opening: "Hi, I'm calling to confirm your appointment.", description: "Booking a dental appointment" },
+    });
+    expect(p).toContain("You are the one calling");
+    expect(p).toContain("a receptionist at a dentist's");
+    expect(p).toContain("Open the call yourself");
+    expect(p).not.toContain("Choose a friendly everyday topic");
+  });
 });

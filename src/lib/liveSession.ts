@@ -62,17 +62,52 @@ export function base64ToPcm(b64: string): Int16Array {
   return new Int16Array(bytes.buffer, 0, Math.floor(bytes.byteLength / 2));
 }
 
-export function liveSystemPrompt(opts: { level: string; name: string; topic: string | null }): string {
-  return [
-    `You are Babelito, a warm English conversation partner on a live voice call with ${opts.name || "a learner"}, a Spanish speaker at CEFR level ${opts.level}.`,
+/** Situación de llamada: el coach es quien llama y abre la conversación. */
+export interface LiveSituation {
+  title: string;
+  coachRole: string;
+  opening: string;
+  description: string;
+}
+
+/** Niveles principiantes (noveles): reciben apoyo en español. */
+export function isBeginnerLevel(level: string): boolean {
+  return level === "A1" || level === "A2";
+}
+
+export function liveSystemPrompt(opts: { level: string; name: string; topic: string | null; situation?: LiveSituation | null }): string {
+  const who = opts.name || "a learner";
+  const support = isBeginnerLevel(opts.level)
+    ? "The learner is a beginner: when a key word or idea is not clear, explain it briefly in Spanish, then go back to English. Keep Spanish to a few words per turn."
+    : "Speak English only. Use Spanish only if the learner is completely stuck, and then only one short word or phrase.";
+  const common = [
     "Speak clearly and a little slowly. Keep every turn short (1–3 sentences) and ask only one question at a time.",
     "Use vocabulary and grammar suited to the level. Never lecture.",
     "When the learner makes a mistake, naturally repeat the correct form inside your reply (a recast) and move on; only explain if they ask.",
-    "If they seem stuck or silent, offer one very short hint in Spanish, then continue in English.",
+    support,
+  ];
+
+  if (opts.situation) {
+    const s = opts.situation;
+    return [
+      `You are Babelito playing a role on a live phone call with ${who}, a Spanish speaker at CEFR level ${opts.level}.`,
+      `You are the one calling. Your role: ${s.coachRole}. Situation: ${s.description}.`,
+      `Open the call yourself, right away, with a line like: "${s.opening}". Do not wait for the learner to speak first.`,
+      "Stay in character the whole time. Do not correct the learner as a teacher; keep the conversation going naturally.",
+      ...common,
+    ].join(" ");
+  }
+
+  return [
+    `You are Babelito, a warm English conversation partner on a live voice call with ${who}, a Spanish speaker at CEFR level ${opts.level}.`,
+    ...common,
     opts.topic ? `Topic for this call: ${opts.topic}.` : "Choose a friendly everyday topic.",
     "Start by greeting them and asking a first simple question.",
   ].join(" ");
 }
+
+/** Tiempo máximo de una llamada en vivo (segundos). Live cobra por minuto. */
+export const LIVE_MAX_SECONDS = 15 * 60;
 
 export function buildSetupMessage(model: string, systemPrompt: string, voice = "Aoede") {
   return {
@@ -152,7 +187,7 @@ export class LiveSession {
   private sources = new Set<AudioBufferSourceNode>();
   private closed = false;
 
-  constructor(private readonly handlers: LiveHandlers, private readonly prompt: { level: string; name: string; topic: string | null }) {}
+  constructor(private readonly handlers: LiveHandlers, private readonly prompt: { level: string; name: string; topic: string | null; situation?: LiveSituation | null }) {}
 
   async start(): Promise<void> {
     this.handlers.onState("connecting");
