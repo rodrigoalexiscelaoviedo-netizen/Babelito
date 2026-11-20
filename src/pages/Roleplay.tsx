@@ -23,6 +23,7 @@ import {
 import { BrandDots } from "../components/Loader";
 import type { LucideIcon } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
+import { consolidateLevel } from "../lib/leveling";
 import { supabase } from "../lib/supabaseClient";
 import { askCoach, recentTurns, RetryableError } from "../lib/claude";
 import { buildRoleplayPrompt, parseErrors } from "../lib/buildSystemPrompt";
@@ -151,7 +152,7 @@ function RoleplayChat({
   onExit: () => void;
 }) {
   const { t } = useTranslation();
-  const { profile } = useAuth();
+  const { profile, refreshProfile } = useAuth();
   const learningLanguage = profile?.learning_language || "en";
   const voicePrefs = useVoicePrefs();
   const [turns, setTurns] = useState<ChatTurn[]>(
@@ -306,6 +307,10 @@ function RoleplayChat({
 
       if (sid && counts) {
         void awardSessionXp(profile.id, sid, "roleplay", userTurns, Math.round((Date.now() - startedAt) / 1000)).then(setXpEarned);
+        // Nivel al día con esta sesión (no hace falta esperar al día siguiente).
+        void consolidateLevel(profile, { force: true })
+          .then((r) => { if (r.changed) void refreshProfile(); })
+          .catch((err) => console.warn("[leveling]", err));
         const { error } = await supabase
           .from("sessions")
           .update({

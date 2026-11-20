@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { Mic, Send, Square, Loader2, Phone } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
+import { consolidateLevel } from "../lib/leveling";
 import { supabase } from "../lib/supabaseClient";
 import { askCoach, recentTurns, RetryableError } from "../lib/claude";
 import { buildConversationPrompt, parseErrors } from "../lib/buildSystemPrompt";
@@ -32,7 +33,7 @@ import CoachMessage from "../components/conversation/CoachMessage";
 import ReportPanel from "../components/conversation/ReportPanel";
 
 export default function Conversation() {
-  const { profile } = useAuth();
+  const { profile, refreshProfile } = useAuth();
   const location = useLocation();
   const voicePrefs = useVoicePrefs();
 
@@ -281,6 +282,10 @@ export default function Conversation() {
       // informa en pantalla — nunca en silencio.
       if (sid && counts) {
         void awardSessionXp(profile.id, sid, "conversation", userTurns, Math.round((Date.now() - startedAt) / 1000)).then(setXpEarned);
+        // Nivel al día con esta sesión (no hace falta esperar al día siguiente).
+        void consolidateLevel(profile, { force: true })
+          .then((r) => { if (r.changed) void refreshProfile(); })
+          .catch((err) => console.warn("[leveling]", err));
         const { error } = await supabase
           .from("sessions")
           .update({

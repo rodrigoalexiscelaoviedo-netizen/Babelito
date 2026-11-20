@@ -109,15 +109,23 @@ export function decideLevel(input: {
  * Consolidación diaria. Idempotente: si ya se consolidó hoy, no hace nada.
  * Devuelve si el nivel cambió para que la UI refresque el perfil.
  */
-export async function consolidateLevel(profile: {
-  id: string;
-  current_level: Level | null;
-  diagnosed_level: string | null;
-  level_updated_on?: string | null;
-}): Promise<{ changed: boolean; level: Level | null }> {
+/**
+ * Recalcula el nivel. Por defecto se hace una vez por día (al entrar a Inicio).
+ * Al terminar una sesión se llama con `force: true` para que el nivel se actualice
+ * con la práctica reciente, sin esperar al día siguiente.
+ */
+export async function consolidateLevel(
+  profile: {
+    id: string;
+    current_level: Level | null;
+    diagnosed_level: string | null;
+    level_updated_on?: string | null;
+  },
+  opts: { force?: boolean } = {}
+): Promise<{ changed: boolean; level: Level | null }> {
   const today = localDateISO();
   const current = (profile.current_level ?? "B1") as Level;
-  if (profile.level_updated_on === today) return { changed: false, level: current };
+  if (!opts.force && profile.level_updated_on === today) return { changed: false, level: current };
 
   const since = new Date(Date.now() - 7 * 86_400_000).toISOString();
   const [{ data: sessions }, { data: errors }, { data: items }] = await Promise.all([
