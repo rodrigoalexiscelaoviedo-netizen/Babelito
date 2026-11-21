@@ -4,8 +4,12 @@ import CoachFeedback from "../components/CoachFeedback";
 import { splitCoachReply } from "../lib/coachFormat";
 import { openingLine } from "../lib/conversationOpeners";
 import { useEffect, useRef, useState } from "react";
-import { useLocation } from "react-router-dom";
-import { Mic, Send, Square, Loader2, Phone } from "lucide-react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { Mic, Send, Square, Loader2, Drama } from "lucide-react";
+import { RoleplayChat, SCENARIO_ICONS } from "./Roleplay";
+import { SCENARIOS, SCENARIOS_CA, type Scenario } from "../lib/scenarios";
+import { useHistoryBack } from "../lib/useHistoryBack";
+import type { ResumableSession } from "../lib/useResumableSession";
 import { useAuth } from "../context/AuthContext";
 import { consolidateLevel } from "../lib/leveling";
 import { supabase } from "../lib/supabaseClient";
@@ -15,9 +19,6 @@ import {
   speechSupported,
   stopSpeech,
 } from "../lib/speech";
-import LiveCall from "../components/LiveCall";
-import { liveSupported } from "../lib/liveSession";
-import { geminiToolsAvailable } from "../lib/geminiTools";
 import { useSpeechCapture } from "../lib/useSpeechCapture";
 import { useVoicePrefs } from "../lib/useVoicePrefs";
 import type { ChatTurn, DetectedError } from "../lib/types";
@@ -35,6 +36,7 @@ import ReportPanel from "../components/conversation/ReportPanel";
 export default function Conversation() {
   const { profile, refreshProfile } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
   const voicePrefs = useVoicePrefs();
 
   const learningLanguage = profile?.learning_language || "en";
@@ -44,6 +46,15 @@ export default function Conversation() {
   // Support pre-seeded topic from Dashboard daily lesson
   const locationTopic = (location.state as { topic?: string } | null)?.topic ?? null;
   const [topic, setTopic] = useState<string | null>(locationTopic);
+  // Práctica por escenario (antes en Roleplay): llega desde Situaciones o se elige en el inicio.
+  const incoming = location.state as { scenario?: Scenario; packId?: string } | null;
+  const [scenario, setScenario] = useState<Scenario | null>(incoming?.scenario ?? null);
+  const [scenarioPackId] = useState<string | null>(incoming?.packId ?? null);
+  const [resumeScenario, setResumeScenario] = useState<ResumableSession | null>(null);
+  const { session: resumableScenario, dismiss: dismissResumableScenario } = useResumableSession(profile?.id, 48, "roleplay");
+  const scenarios = learningLanguage === "ca" ? SCENARIOS_CA : SCENARIOS;
+  const resumableScenarioMatch = resumableScenario ? scenarios.find((x) => x.title === resumableScenario.topic) : undefined;
+  useHistoryBack(scenario !== null, () => setScenario(null));
   const [turns, setTurns] = useState<ChatTurn[]>([]);
   const [input, setInput] = useState("");
   const [thinking, setThinking] = useState(false);
@@ -130,24 +141,6 @@ export default function Conversation() {
 
   const lastRole = turns[turns.length - 1]?.role;
   const lastCoachIndex = turns.map((t) => t.role).lastIndexOf("assistant");
-
-  // ── Live (voz a voz) ───────────────────────────────────────────────────────
-  // Única forma de llamada: el motor Gemini Live con modos (ver docs/DISENO-live-unificado.md).
-  // Se ofrece solo si el servidor la tiene y el navegador puede.
-  const [liveOn, setLiveOn] = useState(false);
-  const [liveReady, setLiveReady] = useState(false);
-
-  // La llamada en vivo (beta) solo se ofrece si el servidor la tiene y el navegador puede.
-  useEffect(() => {
-    if (learningLanguage === "ca" || !liveSupported()) return;
-    let cancelled = false;
-    void geminiToolsAvailable().then((ok) => {
-      if (!cancelled) setLiveReady(ok);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [learningLanguage]);
 
   // Cortar la voz al salir de la pantalla.
   useEffect(() => () => stopSpeech(), []);
@@ -340,6 +333,25 @@ export default function Conversation() {
     });
   }
 
+  if (scenario) {
+    return (
+      <RoleplayChat
+        scenario={scenario}
+        resume={resumeScenario}
+        packId={scenarioPackId}
+        key={scenario.id}
+        onExit={() => {
+          setResumeScenario(null);
+          if (scenarioPackId) {
+            navigate(`/situations/${scenarioPackId}`, { replace: true });
+            return;
+          }
+          setScenario(null);
+        }}
+      />
+    );
+  }
+
   if (report) {
     return (
       <ReportPanel
@@ -426,6 +438,59 @@ export default function Conversation() {
         >
           {learningLanguage === "ca" ? "Comença a parlar →" : "Start talking →"}
         </button>
+
+        <section className="mt-12" aria-labelledby="scenarios-title">
+          <p className="eyebrow mb-2" id="scenarios-title">
+            {learningLanguage === "ca" ? "Escenaris" : "Practise a real situation"}
+          </p>
+          <p className="text-sm text-paper-muted mb-4">
+            {learningLanguage === "ca"
+              ? "El coach fa l'altra persona. Escriu /end en qualsevol moment per obtenir la retroalimentació."
+              : "Your coach plays the other person. Type /end any time for full feedback."}
+          </p>
+          {resumableScenario && resumableScenarioMatch && (
+            <div className="card p-4 mb-4 flex flex-col sm:flex-row sm:items-center gap-3">
+              <div className="flex-1">
+                <p className="font-medium">Continue “{resumableScenarioMatch.title}”?</p>
+                <p className="text-xs text-paper-muted">{resumableScenario.messages.length} messages saved · not finished yet</p>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  className="btn-coral text-sm px-4 py-2"
+                  onClick={() => {
+                    setResumeScenario(resumableScenario);
+                    setScenario(resumableScenarioMatch);
+                  }}
+                >
+                  Continue
+                </button>
+                <button className="btn-ghost text-sm px-4 py-2" onClick={() => dismissResumableScenario()}>Start new</button>
+              </div>
+            </div>
+          )}
+          <div className="grid sm:grid-cols-2 gap-4 stagger">
+            {scenarios.map((s) => {
+              const Icon = SCENARIO_ICONS[s.icon] ?? Drama;
+              return (
+                <button
+                  key={s.id}
+                  onClick={() => {
+                    setResumeScenario(null);
+                    setScenario(s);
+                  }}
+                  className="card-interactive p-5 text-left group"
+                >
+                  <div className="flex items-center justify-between">
+                    <Icon size={24} className="text-coral" aria-hidden="true" />
+                    <span className="font-mono text-[10px] uppercase tracking-widest text-paper-faint">{s.difficulty}</span>
+                  </div>
+                  <h3 className="font-display text-lg font-bold mt-3">{s.title}</h3>
+                  <p className="text-sm text-paper-muted mt-1">{s.description}</p>
+                </button>
+              );
+            })}
+          </div>
+        </section>
       </div>
     );
   }
@@ -438,16 +503,6 @@ export default function Conversation() {
           {topic ?? "Free chat"}
         </p>
         <div className="flex items-center gap-4">
-        {learningLanguage !== "ca" && liveReady && (
-          <button
-            onClick={() => setLiveOn(true)}
-            disabled={thinking || generatingReport}
-            className="flex items-center gap-1.5 text-xs font-medium text-gold hover:text-gold/80 transition disabled:opacity-40"
-            aria-label="Start live call (beta)"
-          >
-            <Phone size={13} /> Live <span className="rounded bg-gold/20 px-1 text-[9px] uppercase">beta</span>
-          </button>
-        )}
         <button
           onClick={handleEndSession}
           disabled={generatingReport || countUserTurns(turns) === 0}
@@ -626,16 +681,6 @@ export default function Conversation() {
           </button>
         </div>
       </div>
-
-      {liveOn && profile && (
-        <LiveCall
-          userId={profile.id}
-          level={profile.current_level ?? "A2"}
-          name={profile.name ?? ""}
-          topic={topic}
-          onClose={() => setLiveOn(false)}
-        />
-      )}
 
     </div>
   );

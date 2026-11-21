@@ -1,9 +1,8 @@
-import { useHistoryBack } from "../lib/useHistoryBack";
 import { awardSessionXp } from "../lib/xp";
 import { SuggestedChunks, XpEarned } from "../components/ReportExtras";
 import { useTranslation } from "react-i18next";
 import { useEffect, useRef, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { Navigate, useLocation } from "react-router-dom";
 import {
   Send,
   Briefcase,
@@ -12,7 +11,6 @@ import {
   Wine,
   TrendingUp,
   Coffee,
-  Drama,
   Volume2,
   Pause,
   Play,
@@ -27,7 +25,7 @@ import { consolidateLevel } from "../lib/leveling";
 import { supabase } from "../lib/supabaseClient";
 import { askCoach, recentTurns, RetryableError } from "../lib/claude";
 import { buildRoleplayPrompt, parseErrors } from "../lib/buildSystemPrompt";
-import { SCENARIOS, SCENARIOS_CA, type Scenario } from "../lib/scenarios";
+import { type Scenario } from "../lib/scenarios";
 import { speak, pauseSpeech, resumeSpeech, speechSupported } from "../lib/speech";
 import { useSpeechCapture } from "../lib/useSpeechCapture";
 import { useVoicePrefs } from "../lib/useVoicePrefs";
@@ -37,9 +35,9 @@ import { MIN_USER_TURNS, countUserTurns, turnsRemaining } from "../lib/practice"
 import ShadowingBlock from "../components/ShadowingBlock";
 import { requestHint } from "../lib/hints";
 import { saveStep } from "../lib/situations";
-import { useResumableSession, type ResumableSession } from "../lib/useResumableSession";
+import type { ResumableSession } from "../lib/useResumableSession";
 
-const SCENARIO_ICONS: Record<string, LucideIcon> = {
+export const SCENARIO_ICONS: Record<string, LucideIcon> = {
   Briefcase,
   Users,
   Phone,
@@ -48,99 +46,14 @@ const SCENARIO_ICONS: Record<string, LucideIcon> = {
   Coffee,
 };
 
+/** La práctica por escenarios vive ahora en Chat. Esta ruta solo reenvía (links viejos y Situaciones). */
 export default function Roleplay() {
-  const { profile } = useAuth();
-  const learningLanguage = profile?.learning_language || "en";
-  // Si se llega desde una Situación, el escenario y su id vienen en el estado de la ruta.
   const location = useLocation();
-  const navigate = useNavigate();
-  const incoming = location.state as { scenario?: Scenario; packId?: string } | null;
-  const [packId] = useState<string | null>(incoming?.packId ?? null);
-  const [scenario, setScenario] = useState<Scenario | null>(incoming?.scenario ?? null);
-  const [resumeFrom, setResumeFrom] = useState<ResumableSession | null>(null);
-  useHistoryBack(scenario !== null, () => setScenario(null));
-
-  // Roleplay a medias (turnos guardados en sessions.messages). Se identifica el escenario por su título.
-  const { session: resumable, dismiss: dismissResumable } = useResumableSession(profile?.id, 48, "roleplay");
-  const scenarios = learningLanguage === "ca" ? SCENARIOS_CA : SCENARIOS;
-  const resumableScenario = resumable ? scenarios.find((x) => x.title === resumable.topic) : undefined;
-
-  if (!scenario) {
-    return (
-      <div className="animate-fade-up">
-        {resumable && resumableScenario && learningLanguage !== "ca" && (
-          <div className="card p-4 mb-6 flex flex-col sm:flex-row sm:items-center gap-3">
-            <div className="flex-1">
-              <p className="font-medium">Continue “{resumableScenario.title}”?</p>
-              <p className="text-xs text-paper-muted">{resumable.messages.length} messages saved · not finished yet</p>
-            </div>
-            <div className="flex gap-2">
-              <button
-                className="btn-coral text-sm px-4 py-2"
-                onClick={() => {
-                  setResumeFrom(resumable);
-                  setScenario(resumableScenario);
-                }}
-              >
-                Continue
-              </button>
-              <button className="btn-ghost text-sm px-4 py-2" onClick={() => dismissResumable()}>Start new</button>
-            </div>
-          </div>
-        )}
-        <p className="eyebrow mb-2">{learningLanguage === "ca" ? "Rol" : "Roleplay"}</p>
-        <h1 className="page-title mb-2">{learningLanguage === "ca" ? "Practica una situació real" : "Practise a real situation"}</h1>
-        <p className="text-paper-muted mb-8">
-          {learningLanguage === "ca" ? "El teu coach fa l'altra persona. Escriu " : "Your coach plays the other person. Type "}<span className="font-mono text-coral">/end</span>{" "}
-          {learningLanguage === "ca" ? "en qualsevol moment per obtenir retroalimentació completa." : "any time to get full feedback."}
-        </p>
-        <div className="grid sm:grid-cols-2 gap-4 stagger">
-          {(learningLanguage === "ca" ? SCENARIOS_CA : SCENARIOS).map((s) => {
-            const Icon = SCENARIO_ICONS[s.icon] ?? Drama;
-            return (
-              <button
-                key={s.id}
-                onClick={() => {
-                  setResumeFrom(null);
-                  setScenario(s);
-                }}
-                className="card-interactive p-5 text-left group"
-              >
-                <div className="flex items-center justify-between">
-                  <Icon size={24} className="text-coral" />
-                  <span className="font-mono text-[10px] uppercase tracking-widest text-paper-faint">
-                    {s.difficulty}
-                  </span>
-                </div>
-                <h3 className="font-display text-lg font-bold mt-3">{s.title}</h3>
-                <p className="text-sm text-paper-muted mt-1">{s.description}</p>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <RoleplayChat
-      scenario={scenario}
-      resume={resumeFrom}
-      packId={packId}
-      onExit={() => {
-        setResumeFrom(null);
-        if (packId) {
-          navigate(`/situations/${packId}`, { replace: true });
-          return;
-        }
-        setScenario(null);
-      }}
-      key={scenario.id}
-    />
-  );
+  return <Navigate to="/conversation" replace state={location.state} />;
 }
 
-function RoleplayChat({
+
+export function RoleplayChat({
   scenario,
   resume,
   packId,

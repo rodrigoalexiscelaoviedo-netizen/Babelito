@@ -56,7 +56,7 @@ describe("Speak hub", () => {
 
   it("sigue mostrando las otras herramientas de Speak", () => {
     renderSpeak();
-    for (const name of ["Situations", "Roleplay", "Pronunciation", "Fix my writing"]) {
+    for (const name of ["Situations", "Pronunciation", "Fix my writing"]) {
       expect(screen.getByRole("link", { name: new RegExp(name) })).toBeInTheDocument();
     }
   });

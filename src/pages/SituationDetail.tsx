@@ -454,7 +454,7 @@ function SpeakStep({ pack, done }: { pack: Situation; done: boolean }) {
       {done && <p className="text-sm text-mint">✓ You've completed this step. You can do it again to keep practising.</p>}
       <button
         className="btn-coral w-full"
-        onClick={() => navigate("/roleplay", { state: { scenario: toScenario(pack), packId: pack.id } })}
+        onClick={() => navigate("/conversation", { state: { scenario: toScenario(pack), packId: pack.id } })}
       >
         {done ? "Practise again" : "Start roleplay →"}
       </button>

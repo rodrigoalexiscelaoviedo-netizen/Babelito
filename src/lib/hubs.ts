@@ -64,12 +64,6 @@ export const HUBS: HubDef[] = [
         en: { title: "Situations", desc: "Airport, restaurant, interview… train one real-life situation from every angle." },
       },
       {
-        to: "/roleplay",
-        icon: "Drama",
-        en: { title: "Roleplay", desc: "Act out a scene: interviews, calls, meetings." },
-        ca: { title: "Representa una escena", desc: "Entrevistes, crides, reunions." },
-      },
-      {
         to: "/sounds",
         icon: "Mic",
         en: { title: "Pronunciation", desc: "Train the sounds that are hard for Spanish speakers." },
