@@ -2,10 +2,11 @@ import { useHistoryBack } from "../lib/useHistoryBack";
 import { awardXp, storyXp } from "../lib/xp";
 import { useTranslation } from "react-i18next";
 import { useEffect, useRef, useState } from "react";
-import { ArrowLeft, BookText, Pause, Play, Volume2 } from "lucide-react";
+import { ArrowLeft, BookText, ChevronLeft, ChevronRight, Pause, Play, Volume2 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabaseClient";
 import ShadowingBlock from "../components/ShadowingBlock";
+import { splitSentences } from "../lib/sentences";
 import type { Level } from "../lib/types";
 import { LEVELS, categoryLabel, presentCategories, readingMinutes, sortForLearner, storyCategory, type StoryCategory } from "../lib/storyLibrary";
 import {
@@ -308,6 +309,48 @@ export default function Stories() {
 
 // ─── Story Reader ─────────────────────────────────────────────────────────────
 
+/** Shadowing por oración: elegís una oración, la escuchás, la repetís y pasás a la siguiente. */
+function SentenceShadowing({ text, lang }: { text: string; lang: string }) {
+  const sentences = splitSentences(text);
+  const [index, setIndex] = useState(0);
+  if (sentences.length === 0) return null;
+  const current = sentences[Math.min(index, sentences.length - 1)];
+  const last = sentences.length - 1;
+  return (
+    <section aria-label="Shadowing por oración" className="card p-4">
+      <div className="flex items-center justify-between mb-2">
+        <p className="eyebrow">Shadowing · {index + 1} / {sentences.length}</p>
+        <div className="flex gap-1">
+          <button
+            type="button"
+            onClick={() => setIndex((i) => Math.max(0, i - 1))}
+            disabled={index === 0}
+            aria-label="Oración anterior"
+            className="grid h-8 w-8 place-items-center rounded-lg text-paper-muted hover:text-paper disabled:opacity-30 transition"
+          >
+            <ChevronLeft size={16} />
+          </button>
+          <button
+            type="button"
+            onClick={() => setIndex((i) => Math.min(last, i + 1))}
+            disabled={index >= last}
+            aria-label="Oración siguiente"
+            className="grid h-8 w-8 place-items-center rounded-lg text-paper-muted hover:text-paper disabled:opacity-30 transition"
+          >
+            <ChevronRight size={16} />
+          </button>
+        </div>
+      </div>
+      <p className="text-sm mb-3 leading-relaxed">{current}</p>
+      {/* La key reinicia el bloque (grabación y puntaje) al cambiar de oración. */}
+      <ShadowingBlock key={index} text={current} lang={lang} label="Repetí esta oración" />
+      <p className="text-[11px] text-paper-faint mt-2">
+        Práctica: no cuenta para tu nivel todavía.
+      </p>
+    </section>
+  );
+}
+
 function StoryReader({
   story,
   onBack,
@@ -443,13 +486,9 @@ function StoryReader({
         />
       </div>
 
-      {/* Shadowing block — first sentence of story */}
+      {/* Shadowing: practicá la historia oración por oración */}
       <div className="pt-3">
-        <ShadowingBlock
-          text={story.content.match(/[^.!?]*[.!?]/)?.[0]?.trim() ?? story.content.split(" ").slice(0, 10).join(" ")}
-          lang={voicePrefs.voiceAccent ?? "en-GB"}
-          label="Shadowing practice"
-        />
+        <SentenceShadowing text={story.content} lang={voicePrefs.voiceAccent ?? "en-GB"} />
       </div>
 
       {/* CTA */}
