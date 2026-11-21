@@ -104,6 +104,11 @@ export const HUBS: HubDef[] = [
         ca: { title: "Escolta", desc: "Entén la parla ràpida i natural." },
       },
       {
+        to: "/news",
+        icon: "Newspaper",
+        en: { title: "AI news", desc: "What is new in AI tools, with examples and where to read more." },
+      },
+      {
         to: "/dictation",
         icon: "Keyboard",
         en: { title: "Dictation", desc: "Listen and type what you hear. The sentences you miss go to Review." },

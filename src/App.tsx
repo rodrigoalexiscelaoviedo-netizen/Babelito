@@ -13,6 +13,7 @@ const LivePage = lazy(() => import("./pages/LivePage"));
 const Chunks = lazy(() => import("./pages/Chunks"));
 const Correction = lazy(() => import("./pages/Correction"));
 const Roleplay = lazy(() => import("./pages/Roleplay"));
+const News = lazy(() => import("./pages/News"));
 const Reading = lazy(() => import("./pages/Reading"));
 const Stories = lazy(() => import("./pages/Stories"));
 const Sounds = lazy(() => import("./pages/Sounds"));
@@ -69,6 +70,7 @@ export default function App() {
         <Route path="/chunks" element={<Shell><Chunks /></Shell>} />
         <Route path="/correct" element={<Shell><Correction /></Shell>} />
         <Route path="/roleplay" element={<Shell><Roleplay /></Shell>} />
+        <Route path="/news" element={<Shell><News /></Shell>} />
         <Route path="/reading" element={<Shell><Reading /></Shell>} />
         <Route path="/stories" element={<Shell><Stories /></Shell>} />
         <Route path="/sounds" element={<Shell><Sounds /></Shell>} />
