@@ -101,3 +101,21 @@ describe("messages", () => {
     expect(p).not.toContain("Choose a friendly everyday topic");
   });
 });
+
+import { describeStartError } from "../lib/liveSession";
+
+describe("describeStartError", () => {
+  it("explains a blocked microphone instead of showing the raw browser text", () => {
+    const e = Object.assign(new Error("Permission denied"), { name: "NotAllowedError" });
+    expect(describeStartError(e)).toMatch(/Microphone access is blocked/);
+  });
+  it("explains a missing microphone", () => {
+    expect(describeStartError({ name: "NotFoundError" })).toMatch(/couldn't find a microphone/);
+  });
+  it("keeps the message of other errors", () => {
+    expect(describeStartError(new Error("boom"))).toBe("boom");
+  });
+  it("has a fallback for unknown values", () => {
+    expect(describeStartError(null)).toMatch(/couldn't start/);
+  });
+});

@@ -75,6 +75,21 @@ export function isBeginnerLevel(level: string): boolean {
   return level === "A1" || level === "A2";
 }
 
+/** Mensaje claro para el usuario según por qué no arrancó la llamada. */
+export function describeStartError(e: unknown): string {
+  const name = typeof e === "object" && e !== null && "name" in e ? String((e as { name: unknown }).name) : "";
+  if (name === "NotAllowedError" || name === "SecurityError") {
+    return "Microphone access is blocked. Allow it in your browser's site settings (the lock icon next to the address) and try again.";
+  }
+  if (name === "NotFoundError" || name === "OverconstrainedError") {
+    return "We couldn't find a microphone. Connect one and try again.";
+  }
+  if (name === "NotReadableError") {
+    return "The microphone is being used by another app. Close it and try again.";
+  }
+  return e instanceof Error && e.message ? e.message : "We couldn't start the live call. Try again in a moment.";
+}
+
 export function liveSystemPrompt(opts: { level: string; name: string; topic: string | null; situation?: LiveSituation | null }): string {
   const who = opts.name || "a learner";
   const support = isBeginnerLevel(opts.level)
@@ -202,12 +217,12 @@ export class LiveSession {
       this.ws = new WebSocket(`${WS_URL}?access_token=${encodeURIComponent(token)}`);
       this.ws.onopen = () => this.ws?.send(JSON.stringify(buildSetupMessage(model, liveSystemPrompt(this.prompt))));
       this.ws.onmessage = (ev) => void this.onMessage(ev.data);
-      this.ws.onerror = () => this.fail("No se pudo conectar con la conversación en vivo.");
+      this.ws.onerror = () => this.fail("We couldn't reach the live service. Check your connection and try again.");
       this.ws.onclose = (ev) => {
-        if (!this.closed) this.fail(ev.reason || "La conversación en vivo se cerró.");
+        if (!this.closed) this.fail(ev.reason || "The live call was closed by the service. Try again.");
       };
     } catch (e) {
-      this.fail(e instanceof Error ? e.message : "No se pudo iniciar la conversación en vivo.");
+      this.fail(describeStartError(e));
     }
   }
 
