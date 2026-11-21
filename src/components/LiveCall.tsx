@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { createPortal } from "react-dom";
 import { ArrowLeft, Loader2, Mic, MessageCircle, Phone, PhoneOff, RotateCcw, Sparkles, Clock } from "lucide-react";
 import { LiveSession, LIVE_MAX_SECONDS, type LiveSituation } from "../lib/liveSession";
 import { SITUATIONS } from "../lib/situationsData";
@@ -13,19 +14,29 @@ type State = "pick" | "connecting" | "live" | "ended" | "error";
  * Selector de modo (charla libre, situación o sorpresa), llamada con orbe animado,
  * tope de 15 minutos y resumen al colgar.
  */
-export default function LiveCall({
-  userId,
-  level,
-  name,
-  topic,
-  onClose,
-}: {
+type LiveCallProps = {
   userId: string;
   level: string;
   name: string;
   topic: string | null;
   onClose: () => void;
-}) {
+};
+
+/**
+ * Se dibuja directo en <body>: así la pantalla completa no queda encerrada dentro
+ * de la página (una animación de entrada en un ancestro la recortaría).
+ */
+export default function LiveCall(props: LiveCallProps) {
+  return createPortal(<LiveCallView {...props} />, document.body);
+}
+
+function LiveCallView({
+  userId,
+  level,
+  name,
+  topic,
+  onClose,
+}: LiveCallProps) {
   const [choice, setChoice] = useState<Choice | null>(null);
   const [state, setState] = useState<State>("pick");
   const [detail, setDetail] = useState("");
