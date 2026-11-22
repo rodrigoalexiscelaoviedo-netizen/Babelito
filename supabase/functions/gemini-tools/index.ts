@@ -5,6 +5,7 @@
  *  - "audio":  feedback de pronunciación o transcripción a partir de una grabación.
  *  - "vision": explica una foto (menú, cartel, etiqueta…) con vocabulario útil.
  *  - "live-token": credencial temporal (un solo uso) para la conversación en tiempo real.
+ *  - "live-report": informe de profesor nativo al terminar una llamada en vivo (solo texto).
  *
  * La clave de Gemini nunca llega al navegador. Cada llamada descuenta de la cuota
  * diaria del coach (mismo contador que claude-proxy).
@@ -63,12 +64,12 @@ async function callGemini(model: string, body: unknown): Promise<{ ok: boolean; 
 }
 
 /** Llama al modelo principal y, si está saturado, al de respaldo. Devuelve el texto o null. */
-async function generate(parts: unknown[], system: string): Promise<{ text: string | null; status: number }> {
+async function generate(parts: unknown[], system: string, maxTokens = 1200): Promise<{ text: string | null; status: number }> {
   const body = {
     systemInstruction: { parts: [{ text: system }] },
     contents: [{ role: "user", parts }],
     // Sin "razonamiento": es una tarea simple y ese razonamiento se comía el presupuesto de salida (JSON cortado).
-    generationConfig: { temperature: 0.4, maxOutputTokens: 1200, responseMimeType: "application/json", thinkingConfig: { thinkingBudget: 0 } },
+    generationConfig: { temperature: 0.4, maxOutputTokens: maxTokens, responseMimeType: "application/json", thinkingConfig: { thinkingBudget: 0 } },
   };
   let r = await callGemini(MODEL, body);
   if (!r.ok && [429, 500, 502, 503, 504].includes(r.status)) r = await callGemini(MODEL_FALLBACK, body);
@@ -108,7 +109,7 @@ Deno.serve(async (req) => {
   // Sondeo barato (sin gastar cuota): ¿están disponibles las funciones?
   if (payload.probe === true) return json({ ok: true, modes: ["audio", "vision", "live-token"] }, 200, cors);
 
-  if (mode !== "audio" && mode !== "vision" && mode !== "live-token") return json({ error: "Invalid mode" }, 400, cors);
+  if (mode !== "audio" && mode !== "vision" && mode !== "live-token" && mode !== "live-report") return json({ error: "Invalid mode" }, 400, cors);
 
   // Validación de entrada ANTES de gastar cuota.
   const level = LEVELS.has(String(payload.level)) ? String(payload.level) : "A2";
@@ -127,6 +128,22 @@ Deno.serve(async (req) => {
         ? `You transcribe short English speech by a Spanish-speaking learner (level ${level}). Write exactly the words you hear, even if they are mispronounced or grammatically wrong. Reply ONLY with JSON: {"transcript": "..."}. If you hear nothing intelligible, use an empty string.`
         : `You are a kind, precise English pronunciation coach for a Spanish-speaking learner (level ${level}). The learner tried to say: "${reference}". Listen to the audio. Reply ONLY with JSON: {"transcript":"what you actually heard","summary":"one encouraging sentence in simple English","tips":[{"word":"the word","problem":"what sounded different, in Spanish, one short sentence","fix":"how to move lips/tongue to fix it, in Spanish, one short sentence"}]}. Give at most 3 tips about the most important problems, none if it was good. Never invent problems you did not hear.`;
     parts = [{ inlineData: { mimeType: mime, data } }, { text: task === "transcribe" ? "Transcribe this." : "Give pronunciation feedback." }];
+  } else if (mode === "live-report") {
+    // Informe de profesor nativo al colgar una llamada en vivo. Solo usa lo que dijo el alumno.
+    const transcript = clean(payload.transcript, 12000);
+    if (!transcript) return json({ error: "Missing transcript" }, 400, cors);
+    const corrections = Array.isArray(payload.corrections)
+      ? payload.corrections.slice(0, 40).map((c) => JSON.stringify(c).slice(0, 400)).join("\n")
+      : "";
+    const beginner = level === "A1" || level === "A2";
+    system = [
+      `You are a very experienced native English teacher (British, CELTA-trained, 20 years teaching adult learners) writing the end-of-call report for a Spanish-speaking learner at CEFR level ${level}.`,
+      "Be honest, specific and warm. Base everything ONLY on what the learner actually said in the transcript; quote short exact phrases from the learner. Do not invent mistakes.",
+      beginner ? "Write all explanations in Spanish, with English examples." : "Write the explanations in simple English.",
+      'Reply ONLY with JSON: {"overall": "2-3 sentences: how the call went and the learner real level today", "levelNote": "one sentence: is the learner at this level, above or below, and why", "strengths": ["up to 3 items. Quote a learner phrase ONLY if it is grammatically correct; never quote anything that contains an error. If nothing was correct, praise effort or confidence in general terms without quoting"], "priorities": [{"issue": "short name", "youSaid": "exact short quote from the learner", "better": "natural correct version", "why": "one short explanation the learner can act on"}], "vocabulary": [{"en": "useful word or phrase", "es": "meaning"}], "nextSteps": ["up to 3 concrete practice actions for the next call"]}.',
+      "priorities: at most 3, most important first. vocabulary: at most 5 words they needed but did not have. If the transcript is too short to judge, say so in overall and keep the lists short.",
+    ].join(" ");
+    parts = [{ text: `Transcript of the call (L = learner, C = coach):\n${transcript}\n\nCorrections already given during the call:\n${corrections || "none"}` }];
   } else if (mode === "vision") {
     const data = clean(payload.image, MAX_IMAGE_B64 + 1);
     const mime = clean(payload.mimeType, 40);
@@ -159,7 +176,7 @@ Deno.serve(async (req) => {
     return json({ token: name, model: LIVE_MODEL, expiresInSeconds: 1200 }, 200, cors);
   }
 
-  const out = await generate(parts, system);
+  const out = await generate(parts, system, mode === "live-report" ? 2200 : 1200);
   if (!out.text) {
     const retryable = [429, 500, 502, 503, 504].includes(out.status);
     return json({ error: "El coach no pudo procesarlo. Inténtalo de nuevo.", retryable }, retryable ? 503 : 502, cors);

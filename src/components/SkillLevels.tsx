@@ -89,7 +89,11 @@ export default function SkillLevels() {
               />
             </div>
             <p className="mt-1 text-[11px] text-paper-faint">
-              {e.accuracy === null ? "—" : `${Math.round(e.accuracy * 100)}% · ${e.attempts} attempt${e.attempts === 1 ? "" : "s"}`}
+              {e.accuracy === null
+                ? "—"
+                : `${Math.round(e.accuracy * 100)}% · ${e.attempts} attempt${e.attempts === 1 ? "" : "s"}${
+                    e.attempts < MIN_SKILL_ATTEMPTS ? " · early read, not your level yet" : ""
+                  }`}
             </p>
           </li>
         ))}

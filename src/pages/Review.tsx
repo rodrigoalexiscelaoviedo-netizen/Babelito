@@ -152,8 +152,7 @@ export default function Review() {
   if (phase === "loading") {
     return (
       <div className="mx-auto max-w-md pt-16 text-center">
-        <Loader />
-        <p className="mt-4 text-sm text-paper-muted">Preparing your review…</p>
+        <Loader label="Preparing your review…" />
       </div>
     );
   }

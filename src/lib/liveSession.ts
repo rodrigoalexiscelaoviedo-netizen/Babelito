@@ -9,6 +9,7 @@
  * del micrófono y la reproducción requieren un navegador real.
  */
 import { getLiveToken } from "./geminiTools";
+import { examinerSystemPrompt, normalizeExaminerRating, SUBMIT_RATING_TOOL, type ExaminerLang, type ExaminerRating } from "./placementExaminer";
 
 export const LIVE_INPUT_RATE = 16000;
 export const LIVE_OUTPUT_RATE = 24000;
@@ -98,7 +99,7 @@ export function liveSystemPrompt(opts: { level: string; name: string; topic: str
   const common = [
     "Speak clearly and a little slowly. Keep every turn short (1–3 sentences) and ask only one question at a time.",
     "Use vocabulary and grammar suited to the level. Never lecture.",
-    "When the learner makes a mistake, naturally repeat the correct form inside your reply (a recast) and move on; only explain if they ask.",
+    "When the learner makes a clear mistake (grammar, a wrong word, or an unnatural phrase; never pronunciation), do this in order: first call the log_correction tool with the correction; then say one very short tip out loud, starting with 'Quick tip:' and one simple sentence; then answer what they said and ask one question. At most one tip per turn. Do not explain more unless they ask.",
     support,
   ];
 
@@ -124,7 +125,30 @@ export function liveSystemPrompt(opts: { level: string; name: string; topic: str
 /** Tiempo máximo de una llamada en vivo (segundos). Live cobra por minuto. */
 export const LIVE_MAX_SECONDS = 15 * 60;
 
-export function buildSetupMessage(model: string, systemPrompt: string, voice = "Aoede") {
+/** Herramienta que el coach llama en cuanto detecta un error del alumno, antes de responder. */
+export const LOG_CORRECTION_TOOL = {
+  name: "log_correction",
+  description:
+    "Call this BEFORE you reply, each time the learner makes a clear mistake (grammar, wrong word, unnatural phrase). Never for pronunciation.",
+  parameters: {
+    type: "OBJECT",
+    properties: {
+      original: { type: "STRING", description: "What the learner said, a short exact quote" },
+      correction: { type: "STRING", description: "The correct, natural version" },
+      explanation: { type: "STRING", description: "One short, simple reason" },
+    },
+    required: ["original", "correction", "explanation"],
+  },
+};
+
+/** Corrección en vivo que la IA registró durante la llamada. */
+export interface LiveCorrection {
+  original: string;
+  correction: string;
+  explanation: string;
+}
+
+export function buildSetupMessage(model: string, systemPrompt: string, voice = "Aoede", tools: object[] = [LOG_CORRECTION_TOOL]) {
   return {
     setup: {
       model: model.startsWith("models/") ? model : `models/${model}`,
@@ -135,8 +159,15 @@ export function buildSetupMessage(model: string, systemPrompt: string, voice = "
       systemInstruction: { parts: [{ text: systemPrompt }] },
       inputAudioTranscription: {},
       outputAudioTranscription: {},
+      tools: [{ functionDeclarations: tools }],
     },
   };
+}
+
+export interface LiveToolCall {
+  id: string;
+  name: string;
+  args: Record<string, unknown>;
 }
 
 export type LiveEvent =
@@ -146,12 +177,14 @@ export type LiveEvent =
   | { type: "interrupted" }
   | { type: "heard"; text: string }
   | { type: "said"; text: string }
+  | { type: "toolCall"; calls: LiveToolCall[] }
   | { type: "unknown" };
 
 /** Convierte un mensaje del servidor en uno o más eventos simples. */
 export function parseServerMessage(raw: unknown): LiveEvent[] {
   const m = raw as {
     setupComplete?: unknown;
+    toolCall?: { functionCalls?: Array<{ id?: string; name?: string; args?: Record<string, unknown> }> };
     serverContent?: {
       modelTurn?: { parts?: Array<{ inlineData?: { data?: string; mimeType?: string } }> };
       turnComplete?: boolean;
@@ -163,6 +196,12 @@ export function parseServerMessage(raw: unknown): LiveEvent[] {
   if (!m || typeof m !== "object") return [{ type: "unknown" }];
   const events: LiveEvent[] = [];
   if (m.setupComplete !== undefined) events.push({ type: "setup" });
+  if (m.toolCall?.functionCalls?.length) {
+    events.push({
+      type: "toolCall",
+      calls: m.toolCall.functionCalls.map((c) => ({ id: c.id ?? "", name: c.name ?? "", args: c.args ?? {} })),
+    });
+  }
   const sc = m.serverContent;
   if (sc) {
     for (const p of sc.modelTurn?.parts ?? []) {
@@ -191,6 +230,15 @@ export interface LiveHandlers {
   onHeard?: (text: string) => void;
   onSaid?: (text: string) => void;
   onSpeaking?: (speaking: boolean) => void;
+  onCorrection?: (c: LiveCorrection) => void;
+  /** Solo en modo examinador: la calificación final, o null si llegó mal formada. */
+  onRating?: (r: ExaminerRating | null) => void;
+}
+
+/** Normaliza los argumentos de log_correction (la IA puede omitir campos). */
+export function normalizeCorrection(args: Record<string, unknown>): LiveCorrection {
+  const s = (v: unknown, max: number) => (typeof v === "string" ? v.trim().slice(0, max) : "");
+  return { original: s(args.original, 160), correction: s(args.correction, 160), explanation: s(args.explanation, 240) };
 }
 
 export class LiveSession {
@@ -202,7 +250,15 @@ export class LiveSession {
   private sources = new Set<AudioBufferSourceNode>();
   private closed = false;
 
-  constructor(private readonly handlers: LiveHandlers, private readonly prompt: { level: string; name: string; topic: string | null; situation?: LiveSituation | null }) {}
+  /**
+   * `examiner` cambia la sesión a modo examinador (test de nivel): otro prompt y solo la
+   * herramienta submit_rating. Sin él, es la conversación normal de IA Live.
+   */
+  constructor(
+    private readonly handlers: LiveHandlers,
+    private readonly prompt: { level: string; name: string; topic: string | null; situation?: LiveSituation | null },
+    private readonly examiner: { lang: ExaminerLang } | null = null
+  ) {}
 
   async start(): Promise<void> {
     this.handlers.onState("connecting");
@@ -215,7 +271,10 @@ export class LiveSession {
       await this.ctx.resume();
 
       this.ws = new WebSocket(`${WS_URL}?access_token=${encodeURIComponent(token)}`);
-      this.ws.onopen = () => this.ws?.send(JSON.stringify(buildSetupMessage(model, liveSystemPrompt(this.prompt))));
+      const setup = this.examiner
+        ? buildSetupMessage(model, examinerSystemPrompt(this.examiner.lang), "Aoede", [SUBMIT_RATING_TOOL])
+        : buildSetupMessage(model, liveSystemPrompt(this.prompt));
+      this.ws.onopen = () => this.ws?.send(JSON.stringify(setup));
       this.ws.onmessage = (ev) => void this.onMessage(ev.data);
       this.ws.onerror = () => this.fail("We couldn't reach the live service. Check your connection and try again.");
       this.ws.onclose = (ev) => {
@@ -239,12 +298,26 @@ export class LiveSession {
         this.handlers.onState("live");
         // El coach saluda primero.
         this.ws?.send(JSON.stringify({ realtimeInput: { text: "Hello! Please start the call." } }));
-      } else if (ev.type === "audio") this.play(ev.pcm);
+      } else if (ev.type === "toolCall") this.handleToolCalls(ev.calls);
+      else if (ev.type === "audio") this.play(ev.pcm);
       else if (ev.type === "interrupted") this.stopPlayback();
       else if (ev.type === "heard") this.handlers.onHeard?.(ev.text);
       else if (ev.type === "said") this.handlers.onSaid?.(ev.text);
       else if (ev.type === "turnComplete") this.handlers.onSpeaking?.(false);
     }
+  }
+
+  private handleToolCalls(calls: LiveToolCall[]) {
+    for (const c of calls) {
+      if (c.name === "log_correction") this.handlers.onCorrection?.(normalizeCorrection(c.args));
+      if (c.name === "submit_rating") this.handlers.onRating?.(normalizeExaminerRating(c.args));
+    }
+    // El modelo espera confirmación para seguir hablando.
+    this.ws?.send(
+      JSON.stringify({
+        toolResponse: { functionResponses: calls.map((c) => ({ id: c.id, name: c.name, response: { result: "logged" } })) },
+      })
+    );
   }
 
   private async startMic() {

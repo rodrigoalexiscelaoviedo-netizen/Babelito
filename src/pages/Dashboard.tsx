@@ -328,7 +328,7 @@ export default function Dashboard() {
       />
       <header className="mb-8 flex items-start justify-between gap-4">
         <div className="flex-1 min-w-0">
-          <p className="eyebrow mb-2">{greeting}</p>
+          <p className="eyebrow mb-2">{new Date().toLocaleDateString(learningLanguage === "ca" ? "ca-ES" : "en-GB", { weekday: "long", day: "numeric", month: "long" })}</p>
           <h1 className="page-title">
             {greeting}, {firstName}.
           </h1>

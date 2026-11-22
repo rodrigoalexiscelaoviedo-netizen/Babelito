@@ -50,9 +50,10 @@ export default function LevelLadder() {
       {ladder.readiness !== null && ladder.next && (
         <div className="mt-3">
           <div className="mb-1 flex justify-between text-[11px] text-paper-faint">
-            <span>Readiness for {ladder.next}</span>
+            <span>Score for {ladder.next}</span>
             <span>
               {ladder.readiness}% · needs {ladder.needed}%
+              {ladder.goals.some((g) => g.id === "sessions" && !g.met) ? " · level moves after 3 practice days this week" : ""}
             </span>
           </div>
           <div className="relative h-2 rounded-full bg-ink-600">

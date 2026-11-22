@@ -106,7 +106,7 @@ export const HUBS: HubDef[] = [
       {
         to: "/news",
         icon: "Newspaper",
-        en: { title: "AI news", desc: "What is new in AI tools, with examples and where to read more." },
+        en: { title: "AI news", desc: "Recent AI release notes, summarised, with a link to each full note." },
       },
       {
         to: "/dictation",

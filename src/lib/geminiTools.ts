@@ -163,6 +163,67 @@ export async function explainPhoto(imageBase64: string, level: string): Promise<
   return normalizePhoto(result);
 }
 
+// ── Informe de una llamada en vivo ──────────────────────────────────────────────
+
+export interface LiveCorrectionItem {
+  original: string;
+  correction: string;
+  explanation: string;
+}
+
+export interface LiveReportPriority {
+  issue: string;
+  youSaid: string;
+  better: string;
+  why: string;
+}
+
+export interface LiveReport {
+  overall: string;
+  levelNote: string;
+  strengths: string[];
+  priorities: LiveReportPriority[];
+  vocabulary: PhotoItem[];
+  nextSteps: string[];
+}
+
+/** Normaliza el informe de la IA (pura, testeada). Null si no trae nada útil. */
+export function normalizeLiveReport(raw: unknown): LiveReport | null {
+  const r = raw as Record<string, unknown> | null;
+  if (!r || typeof r !== "object") return null;
+  const list = (v: unknown, max: number) =>
+    Array.isArray(v) ? v.map((x) => str(x, 240)).filter(Boolean).slice(0, max) : [];
+  const priorities: LiveReportPriority[] = Array.isArray(r.priorities)
+    ? r.priorities
+        .map((p) => {
+          const x = p as Record<string, unknown>;
+          return { issue: str(x?.issue, 80), youSaid: str(x?.youSaid, 200), better: str(x?.better, 200), why: str(x?.why, 240) };
+        })
+        .filter((p) => p.issue && (p.better || p.why))
+        .slice(0, 3)
+    : [];
+  const out: LiveReport = {
+    overall: str(r.overall, 500),
+    levelNote: str(r.levelNote, 240),
+    strengths: list(r.strengths, 3),
+    priorities,
+    vocabulary: items(r.vocabulary, 5),
+    nextSteps: list(r.nextSteps, 3),
+  };
+  return out.overall || out.priorities.length || out.strengths.length ? out : null;
+}
+
+/** Pide al coach el informe de la llamada que acaba de terminar. */
+export async function liveReport(input: { transcript: string; corrections: LiveCorrectionItem[]; level: string }): Promise<LiveReport | null> {
+  const { result } = await call<{ result: unknown }>({
+    mode: "live-report",
+    transcript: input.transcript,
+    corrections: input.corrections,
+    level: input.level,
+  });
+  return normalizeLiveReport(result);
+}
+
 /** Credencial temporal de un solo uso para la conversación en tiempo real. */
 export async function getLiveToken(): Promise<{ token: string; model: string }> {
   return call<{ token: string; model: string }>({ mode: "live-token" });

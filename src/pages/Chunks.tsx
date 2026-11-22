@@ -212,7 +212,7 @@ function FlipCard({
           }`}
           title={inDeck ? "Already in your deck" : "Add to oral review deck"}
         >
-          <Layers size={13} /> {inDeck ? "In deck" : "Review"}
+          <Layers size={13} /> {inDeck ? "In your review" : "Add to review"}
         </button>
         <div className="flex-1" />
         <button

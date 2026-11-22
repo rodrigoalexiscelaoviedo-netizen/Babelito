@@ -27,6 +27,13 @@ interface Props {
 
 type State = "idle" | "speaking" | "recording" | "processing" | "result" | "tip-loading" | "tip";
 
+/** Explica en una frase qué pasó con una palabra (puntaje de Azure). */
+function describeWordError(errorType: string, score: number): string {
+  if (errorType === "Omission") return "you skipped this word";
+  if (errorType === "Mispronunciation") return score >= 80 ? "almost there, a bit off" : "pronounced differently, say it again slowly";
+  return score >= 80 ? "clear" : "a bit weak, repeat it";
+}
+
 const SHORT_WORDS = new Set(["a", "an", "the", "to", "of", "in", "on", "at", "or", "is", "it", "as", "be", "by", "do", "so", "up", "no", "he", "we", "me", "my"]);
 
 export default function ShadowingBlock({ text, lang, label = "Listen & repeat", onResult }: Props) {
@@ -49,6 +56,7 @@ export default function ShadowingBlock({ text, lang, label = "Listen & repeat", 
   const [tip, setTip] = useState("");
   const [drillPhrase, setDrillPhrase] = useState("");
   const [saved, setSaved] = useState(false);
+  const [wordIdx, setWordIdx] = useState<number | null>(null);
   const [error, setError] = useState("");
   // Puntaje real (Azure). null = no disponible o todavía calculando.
   const [score, setScore] = useState<PronunciationScore | null>(null);
@@ -138,6 +146,7 @@ export default function ShadowingBlock({ text, lang, label = "Listen & repeat", 
     setVoiceFb(null);
     setVoiceFbError("");
     setTip("");
+    setWordIdx(null);
     setState("recording");
     // Audio en paralelo al reconocimiento, para el puntaje real (solo inglés).
     captureRef.current?.cancel();
@@ -154,8 +163,8 @@ export default function ShadowingBlock({ text, lang, label = "Listen & repeat", 
       setState("processing");
       const capture = (await capturePromise) ?? captureRef.current;
       captureRef.current = null;
-      if (!spokenText.trim()) {
-        capture?.cancel();
+      const hasText = spokenText.trim().length > 0;
+      if (!hasText && !capture) {
         setError(
           errorCode === "not-allowed" || errorCode === "service-not-allowed"
             ? "Microphone blocked — enable the permission in your browser."
@@ -166,6 +175,7 @@ export default function ShadowingBlock({ text, lang, label = "Listen & repeat", 
         setState("idle");
         return;
       }
+      // Si el navegador no entendió nada pero hay audio, Azure igual lo puntúa.
       const cmp = comparePhrases(spokenText, text);
       setSpoken(spokenText);
       setResult(cmp);
@@ -182,10 +192,14 @@ export default function ShadowingBlock({ text, lang, label = "Listen & repeat", 
           .then((sc) => {
             setScore(sc);
             if (sc) onResult?.({ ok: cmp.incorrect.length === 0, score: sc.overall });
+            if (!hasText && !sc) {
+              setError("Nothing detected — speak a little louder and try again.");
+              setState("idle");
+            }
           })
           .finally(() => setScoring(false));
       }
-      if (profile && cmp.incorrect.length > 0) {
+      if (profile && hasText && cmp.incorrect.length > 0) {
         const toSave = cmp.incorrect.filter(
           (w) => w.length > 3 && !SHORT_WORDS.has(w.toLowerCase())
         );
@@ -220,6 +234,7 @@ export default function ShadowingBlock({ text, lang, label = "Listen & repeat", 
 
   function handleRetry() {
     setState("idle");
+    setWordIdx(null);
     setSpoken("");
     setResult(null);
     setTip("");
@@ -253,17 +268,42 @@ export default function ShadowingBlock({ text, lang, label = "Listen & repeat", 
           {voiceRec.interim || "Listening…"}
         </p>
       ) : state === "result" && result ? (
-        <div className="flex flex-wrap gap-1.5">
-          {result.tokens.map((t, i) => (
-            <span
-              key={i}
-              className={`font-medium text-sm ${
-                useAzureTones ? TONE_CLASS[wordTone(azureWords[i])] : t.ok ? "text-mint" : "text-coral underline decoration-wavy"
-              }`}
-            >
-              {t.word}
-            </span>
-          ))}
+        <div className="space-y-2">
+          <div className="flex flex-wrap gap-1.5">
+            {result.tokens.map((t, i) => {
+              const aw = useAzureTones ? azureWords[i] : null;
+              const active = wordIdx === i;
+              const cls = aw
+                ? TONE_CLASS[wordTone(aw)]
+                : t.ok
+                ? "text-mint"
+                : "text-coral underline decoration-wavy";
+              return (
+                <button
+                  type="button"
+                  key={i}
+                  disabled={!aw}
+                  onClick={() => setWordIdx(active ? null : i)}
+                  aria-pressed={aw ? active : undefined}
+                  aria-label={aw ? `${t.word}: ${aw.score} out of 100` : t.word}
+                  className={`rounded px-0.5 font-medium text-sm ${cls} ${active ? "bg-ink-600" : ""} ${aw ? "cursor-pointer" : "cursor-default"}`}
+                >
+                  {t.word}
+                </button>
+              );
+            })}
+          </div>
+          {useAzureTones && wordIdx !== null && azureWords[wordIdx] && (
+            <p className="text-xs text-paper-muted">
+              <strong className="text-paper">{result.tokens[wordIdx].word}</strong>: {azureWords[wordIdx].score}/100 ·{" "}
+              {describeWordError(azureWords[wordIdx].errorType, azureWords[wordIdx].score)}
+            </p>
+          )}
+          <p className="text-[11px] text-paper-faint">
+            {useAzureTones
+              ? "Green: clear · Yellow: almost · Red: fix it. Tap a word for its score."
+              : "Green: heard clearly · Red: not heard clearly. Turn on the mic for a real pronunciation score."}
+          </p>
         </div>
       ) : (
         <p className="text-sm font-medium leading-snug text-paper">{text}</p>
@@ -290,6 +330,12 @@ export default function ShadowingBlock({ text, lang, label = "Listen & repeat", 
 
       {spoken && state !== "idle" && state !== "recording" && (
         <p className="text-xs text-paper-faint italic">You said: "{spoken}"</p>
+      )}
+
+      {state === "idle" && !error && (
+        <p className="text-[11px] text-paper-faint">
+          Listen, then tap Record and say the sentence. Tap Done when you finish: you'll see which words to improve.
+        </p>
       )}
 
       {error && <p className="text-xs text-coral">{error}</p>}
@@ -378,7 +424,7 @@ export default function ShadowingBlock({ text, lang, label = "Listen & repeat", 
             onClick={handleWhy}
             className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-ink-600 hover:bg-ink-500 text-paper-muted hover:text-paper text-xs transition"
           >
-            Why?
+            What to fix
           </button>
         )}
 
@@ -403,7 +449,7 @@ export default function ShadowingBlock({ text, lang, label = "Listen & repeat", 
             onClick={handleRetry}
             className="text-xs text-paper-faint hover:text-paper transition ml-auto"
           >
-            Reset
+            Start over
           </button>
         )}
       </div>

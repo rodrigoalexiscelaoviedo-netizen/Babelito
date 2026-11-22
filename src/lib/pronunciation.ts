@@ -60,17 +60,41 @@ function normalise(w: string): string {
 
 /** Compares spoken text to target phrase word by word. */
 export function comparePhrases(spoken: string, target: string): CompareResult {
-  const targetWords = target.trim().split(/\s+/);
-  const spokenWords = spoken.trim().split(/\s+/);
+  const targetWords = target.trim().split(/\s+/).filter(Boolean);
+  const spokenWords = spoken.trim() ? spoken.trim().split(/\s+/) : [];
+  const t = targetWords.map(normalise);
+  const s = spokenWords.map(normalise);
+
+  // Alineación por subsecuencia común más larga: si el reconocimiento se come
+  // o inventa una palabra, solo esa queda mal, no todas las que vienen después.
+  const n = t.length;
+  const m = s.length;
+  const dp: number[][] = Array.from({ length: n + 1 }, () => new Array<number>(m + 1).fill(0));
+  for (let i = n - 1; i >= 0; i--) {
+    for (let j = m - 1; j >= 0; j--) {
+      dp[i][j] = t[i] !== "" && t[i] === s[j] ? dp[i + 1][j + 1] + 1 : Math.max(dp[i + 1][j], dp[i][j + 1]);
+    }
+  }
+  const matched = new Array<boolean>(n).fill(false);
+  let i = 0;
+  let j = 0;
+  while (i < n && j < m) {
+    if (t[i] !== "" && t[i] === s[j]) {
+      matched[i] = true;
+      i++;
+      j++;
+    } else if (dp[i + 1][j] >= dp[i][j + 1]) {
+      i++;
+    } else {
+      j++;
+    }
+  }
 
   const correct: string[] = [];
   const incorrect: string[] = [];
   const tokens: { word: string; ok: boolean }[] = [];
-
-  targetWords.forEach((word, i) => {
-    const norm = normalise(word);
-    const spokenNorm = normalise(spokenWords[i] ?? "");
-    const ok = norm === spokenNorm;
+  targetWords.forEach((word, k) => {
+    const ok = matched[k] || t[k] === "";
     tokens.push({ word, ok });
     if (ok) correct.push(word);
     else incorrect.push(word);

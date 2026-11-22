@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Bell, CalendarCheck, MessageCircle, X } from "lucide-react";
+import { Bell, MessageCircle, X } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { buildPlan, loadPlanInput, type Plan } from "../lib/plan";
 import { useResumableSession } from "../lib/useResumableSession";
@@ -82,29 +82,6 @@ export default function HomeNudges({ userId, language }: { userId: string; langu
         </Link>
       )}
 
-      {plan && !ca && (() => {
-        const next = plan.tasks.find((t) => !t.done);
-        return (
-          // Un solo paso a la vez: la tarjeta abre directo la próxima tarea del plan.
-          <Link to={next ? next.to : "/progress"} className="card-interactive flex items-center gap-3 p-4">
-            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-mint/15 text-mint">
-              <CalendarCheck size={18} />
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="block text-[10px] font-mono uppercase tracking-widest text-mint">
-                {next ? `Up next · ${plan.doneToday}/${plan.tasks.length} done today` : "Today's plan complete 🎉"}
-              </span>
-              <span className="block font-medium">{next ? next.title : "See your week and level progress"}</span>
-              {next && (
-                <span className="block truncate text-xs text-paper-muted">
-                  About {next.minutes} min · {next.detail}
-                </span>
-              )}
-            </span>
-            <span className="text-mint">→</span>
-          </Link>
-        );
-      })()}
 
       {canAskPush && (
         <div className="card flex items-center gap-3 p-4">
