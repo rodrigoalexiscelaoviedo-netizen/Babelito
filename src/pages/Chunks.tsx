@@ -10,18 +10,23 @@ import ShadowingBlock from "../components/ShadowingBlock";
 import Loader from "../components/Loader";
 import { addToReview } from "../lib/srs";
 import { scopeByLanguage } from "../lib/language";
+import { tFor } from "../i18n";
 
-const CATEGORY_LABELS: Record<string, string> = {
-  meetings: "Meetings",
-  opinion: "Opinions",
-  clarification: "Clarifying",
-  email: "Emails",
-  presentation: "Presentations",
-  buytime: "Buying time",
+type T = ReturnType<typeof tFor>;
+
+const CATEGORY_KEYS: Record<string, string> = {
+  meetings: "chunks.catMeetings",
+  opinion: "chunks.catOpinion",
+  clarification: "chunks.catClarification",
+  email: "chunks.catEmail",
+  presentation: "chunks.catPresentation",
+  buytime: "chunks.catBuytime",
 };
 
 export default function Chunks() {
   const { profile } = useAuth();
+  const lang = profile?.learning_language || "en";
+  const t = tFor(lang);
   const [chunks, setChunks] = useState<Chunk[]>([]);
   const [learned, setLearned] = useState<Set<number>>(new Set());
   const [inDeck, setInDeck] = useState<Set<number>>(new Set());
@@ -81,23 +86,23 @@ export default function Chunks() {
 
   if (loading) return <Loader />;
 
-  const categories = ["all", ...Object.keys(CATEGORY_LABELS)];
+  const categories = ["all", ...Object.keys(CATEGORY_KEYS)];
   const filtered = cat === "all" ? chunks : chunks.filter((c) => c.category === cat);
 
-  if (drill) return <DrillMode chunks={filtered} onExit={() => setDrill(false)} />;
+  if (drill) return <DrillMode chunks={filtered} onExit={() => setDrill(false)} t={t} lang={lang} />;
 
   return (
     <div className="animate-fade-up">
       <header className="flex items-end justify-between mb-6">
         <div>
-          <p className="eyebrow mb-2">Chunks library</p>
-          <h1 className="page-title">Ready-made expressions</h1>
+          <p className="eyebrow mb-2">{t("chunks.eyebrow")}</p>
+          <h1 className="page-title">{t("chunks.title")}</h1>
           <p className="text-paper-muted mt-1">
-            {learned.size} / {chunks.length} learned
+            {t("chunks.learnedCount", { a: learned.size, b: chunks.length })}
           </p>
         </div>
         <button className="btn-mint" onClick={() => setDrill(true)}>
-          <Dumbbell size={16} /> Drill
+          <Dumbbell size={16} /> {t("chunks.drill")}
         </button>
       </header>
 
@@ -119,7 +124,7 @@ export default function Chunks() {
               cat === c ? "bg-coral text-ink-900" : "bg-ink-600 text-paper-muted hover:text-paper"
             }`}
           >
-            {c === "all" ? "All" : CATEGORY_LABELS[c]}
+            {c === "all" ? t("chunks.all") : t(CATEGORY_KEYS[c])}
           </button>
         ))}
       </div>
@@ -130,6 +135,8 @@ export default function Chunks() {
           <FlipCard
             key={c.id}
             chunk={c}
+            t={t}
+            lang={lang}
             learned={learned.has(c.id)}
             inDeck={inDeck.has(c.id)}
             onToggle={() => toggleLearned(c.id)}
@@ -143,26 +150,31 @@ export default function Chunks() {
 
 function FlipCard({
   chunk,
+  t,
+  lang,
   learned,
   inDeck,
   onToggle,
   onAddReview,
 }: {
   chunk: Chunk;
+  t: T;
+  lang: string;
   learned: boolean;
   inDeck: boolean;
   onToggle: () => void;
   onAddReview: () => void;
 }) {
   const voicePrefs = useVoicePrefs();
-  const [face, setFace] = useState(0); // 0 eng, 1 spa, 2 example, 3 british
+  const accentFallback = lang === "ca" ? "ca-ES" : "en-GB";
+  const [face, setFace] = useState(0); // 0 target, 1 source, 2 example, 3 variant
   const [showShadow, setShowShadow] = useState(false);
 
   const faces = [
-    { tag: "English", body: chunk.english },
-    { tag: "Español", body: chunk.spanish },
-    { tag: "Example", body: chunk.example ?? "—" },
-    { tag: "British", body: chunk.british_version ?? "—" },
+    { tag: t("chunks.tagTarget"), body: chunk.english },
+    { tag: t("chunks.tagSource"), body: chunk.spanish },
+    { tag: t("chunks.tagExample"), body: chunk.example ?? "—" },
+    { tag: t("chunks.tagVariant"), body: chunk.british_version ?? "—" },
   ];
   const f = faces[face];
 
@@ -171,7 +183,7 @@ function FlipCard({
     speak(chunk.english, {
       voiceName: voicePrefs.voiceName ?? undefined,
       rate: voicePrefs.voiceRate,
-      lang: voicePrefs.voiceAccent ?? "en-GB",
+      lang: voicePrefs.voiceAccent ?? accentFallback,
     });
   }
 
@@ -192,9 +204,9 @@ function FlipCard({
         <button
           onClick={handleListen}
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-ink-600 hover:bg-ink-500 text-xs font-medium text-paper transition"
-          aria-label="Listen"
+          aria-label={t("chunks.listen")}
         >
-          <Volume2 size={13} className="text-coral" /> Listen
+          <Volume2 size={13} className="text-coral" /> {t("chunks.listen")}
         </button>
         <button
           onClick={() => setShowShadow((s) => !s)}
@@ -202,7 +214,7 @@ function FlipCard({
             showShadow ? "bg-mint/20 text-mint" : "bg-ink-600 hover:bg-ink-500 text-paper"
           }`}
         >
-          <Mic size={13} /> {showShadow ? "Hide" : "Repeat"}
+          <Mic size={13} /> {showShadow ? t("chunks.hide") : t("chunks.repeat")}
         </button>
         <button
           onClick={(e) => { e.stopPropagation(); onAddReview(); }}
@@ -210,15 +222,15 @@ function FlipCard({
           className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition ${
             inDeck ? "bg-gold/20 text-gold cursor-default" : "bg-ink-600 hover:bg-ink-500 text-paper"
           }`}
-          title={inDeck ? "Already in your deck" : "Add to oral review deck"}
+          title={inDeck ? t("chunks.inDeck") : t("chunks.addDeck")}
         >
-          <Layers size={13} /> {inDeck ? "In your review" : "Add to review"}
+          <Layers size={13} /> {inDeck ? t("chunks.inReview") : t("chunks.addReview")}
         </button>
         <div className="flex-1" />
         <button
           onClick={() => setFace((face + 1) % faces.length)}
           className="text-paper-faint hover:text-paper transition"
-          aria-label="Flip"
+          aria-label={t("chunks.flip")}
         >
           <RotateCcw size={15} />
         </button>
@@ -229,7 +241,7 @@ function FlipCard({
             learned ? "bg-mint text-ink-900" : "bg-ink-600 text-paper-muted hover:text-paper"
           }`}
         >
-          <Check size={13} /> {learned ? "Learned" : "Mark"}
+          <Check size={13} /> {learned ? t("chunks.learned") : t("chunks.mark")}
         </button>
       </div>
 
@@ -237,8 +249,8 @@ function FlipCard({
       {showShadow && (
         <ShadowingBlock
           text={chunk.english}
-          lang={voicePrefs.voiceAccent ?? "en-GB"}
-          label="Listen & repeat"
+          lang={voicePrefs.voiceAccent ?? accentFallback}
+          label={t("chunks.listenRepeat")}
         />
       )}
     </div>
@@ -246,12 +258,13 @@ function FlipCard({
 }
 
 /** Modo drill: muestra el español, el usuario escribe el inglés y se autoevalúa. */
-function DrillMode({ chunks, onExit }: { chunks: Chunk[]; onExit: () => void }) {
+function DrillMode({ chunks, onExit, t, lang }: { chunks: Chunk[]; onExit: () => void; t: T; lang: string }) {
   const [i, setI] = useState(0);
   const [reveal, setReveal] = useState(false);
   const [guess, setGuess] = useState("");
   const [score, setScore] = useState(0);
   const [done, setDone] = useState(false);
+  const accentFallback = lang === "ca" ? "ca-ES" : "en-GB";
 
   const pool = chunks.length ? chunks : [];
   const c = pool[i];
@@ -259,13 +272,13 @@ function DrillMode({ chunks, onExit }: { chunks: Chunk[]; onExit: () => void }) 
   if (!c || done) {
     return (
       <div className="animate-fade-up max-w-md mx-auto text-center pt-12">
-        <p className="eyebrow mb-3">Drill complete</p>
+        <p className="eyebrow mb-3">{t("chunks.drillComplete")}</p>
         <div className="font-display text-6xl font-extrabold text-mint mb-2">
           {score}/{pool.length}
         </div>
-        <p className="text-paper-muted mb-8">Nice work. Repetition is how chunks stick.</p>
+        <p className="text-paper-muted mb-8">{t("chunks.drillNice")}</p>
         <button className="btn-coral w-full" onClick={onExit}>
-          Back to library
+          {t("chunks.backLibrary")}
         </button>
       </div>
     );
@@ -283,23 +296,24 @@ function DrillMode({ chunks, onExit }: { chunks: Chunk[]; onExit: () => void }) 
     <div className="animate-fade-up max-w-lg mx-auto">
       <div className="flex items-center justify-between mb-6">
         <p className="eyebrow">
-          Drill {i + 1} / {pool.length}
+          {t("chunks.drillProgress", { i: i + 1, n: pool.length })}
         </p>
         <button className="text-sm text-paper-muted hover:text-paper" onClick={onExit}>
-          Exit
+          {t("chunks.exit")}
         </button>
       </div>
 
       <div className="card p-6 mb-4">
         <span className="font-mono text-[10px] uppercase tracking-widest text-paper-faint">
-          Say this in English
+          {t("chunks.sayThis")}
         </span>
         <p className="font-display text-2xl font-semibold mt-2">{c.spanish}</p>
       </div>
 
       <textarea
         className="input min-h-[80px] resize-none mb-3"
-        placeholder="Type the English chunk…" aria-label="Type the English chunk…"
+        placeholder={t("chunks.typeChunk")}
+        aria-label={t("chunks.typeChunk")}
         value={guess}
         onChange={(e) => setGuess(e.target.value)}
         disabled={reveal}
@@ -307,25 +321,25 @@ function DrillMode({ chunks, onExit }: { chunks: Chunk[]; onExit: () => void }) 
 
       {!reveal ? (
         <button className="btn-coral w-full" onClick={() => setReveal(true)}>
-          Reveal answer
+          {t("chunks.reveal")}
         </button>
       ) : (
         <div className="animate-fade-up space-y-3">
           <div className="card border-mint/40 p-4">
-            <span className="font-mono text-[10px] uppercase tracking-widest text-mint">Answer</span>
+            <span className="font-mono text-[10px] uppercase tracking-widest text-mint">{t("chunks.answer")}</span>
             <p className="font-display text-lg font-semibold mt-1">{c.english}</p>
             {c.british_version && (
-              <p className="text-sm text-paper-muted mt-1">British: {c.british_version}</p>
+              <p className="text-sm text-paper-muted mt-1">{t("chunks.britishLine", { v: c.british_version })}</p>
             )}
           </div>
           {/* Shadowing in drill reveal */}
-          <ShadowingBlock text={c.english} label="Say it now" />
+          <ShadowingBlock text={c.english} label={t("chunks.sayNow")} lang={accentFallback} />
           <div className="grid grid-cols-2 gap-3">
             <button className="btn-ghost" onClick={() => next(false)}>
-              Missed it
+              {t("chunks.missed")}
             </button>
             <button className="btn-mint" onClick={() => next(true)}>
-              Got it
+              {t("chunks.got")}
             </button>
           </div>
         </div>

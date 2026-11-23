@@ -2,44 +2,17 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabaseClient";
 import { useAuth } from "../context/AuthContext";
+import { tFor } from "../i18n";
 
-function getGoalsForLanguage(lang: "en" | "ca") {
-  if (lang === "ca") {
-    return [
-      { key: "work", label: "Treball i reunions", emoji: "💼" },
-      { key: "career", label: "Millor feina", emoji: "🚀" },
-      { key: "travel", label: "Viatjar", emoji: "✈️" },
-      { key: "exams", label: "Exàmens / certificat", emoji: "🎓" },
-      { key: "general", label: "Fluïdesa general", emoji: "💬" },
-    ];
-  }
-  return [
-    { key: "work", label: "Work & meetings", emoji: "💼" },
-    { key: "career", label: "Get a better job", emoji: "🚀" },
-    { key: "travel", label: "Travel", emoji: "✈️" },
-    { key: "exams", label: "Exams / certificate", emoji: "🎓" },
-    { key: "general", label: "General fluency", emoji: "💬" },
-  ];
-}
+const GOAL_KEYS = [
+  { key: "work", emoji: "💼" },
+  { key: "career", emoji: "🚀" },
+  { key: "travel", emoji: "✈️" },
+  { key: "exams", emoji: "🎓" },
+  { key: "general", emoji: "💬" },
+] as const;
 
-function getLevelsForLanguage(lang: "en" | "ca") {
-  if (lang === "ca") {
-    return [
-      { key: "A1", label: "Acabo de començar" },
-      { key: "A2", label: "Frases bàsiques" },
-      { key: "B1", label: "Em defenc" },
-      { key: "B2", label: "Força còmode" },
-      { key: "C1", label: "Força avançat" },
-    ];
-  }
-  return [
-    { key: "A1", label: "Just starting" },
-    { key: "A2", label: "Basic phrases" },
-    { key: "B1", label: "I get by" },
-    { key: "B2", label: "Fairly comfortable" },
-    { key: "C1", label: "Quite advanced" },
-  ];
-}
+const LEVEL_KEYS = ["A1", "A2", "B1", "B2", "C1"] as const;
 
 const VARIANTS = [
   { key: "British", label: "British 🇬🇧" },
@@ -64,6 +37,8 @@ export default function Onboarding() {
   const [variant, setVariant] = useState("British");
   const [interests, setInterests] = useState("");
   const [busy, setBusy] = useState(false);
+  // Antes de elegir idioma la pantalla sigue al que se toca; después, al elegido.
+  const t = tFor(learningLanguage ?? "en");
 
   async function finish() {
     if (!session || !learningLanguage) return;
@@ -85,12 +60,8 @@ export default function Onboarding() {
 
   const steps = [
     {
-      title: learningLanguage === "ca"
-        ? "Quin idioma vols aprendre?"
-        : "What do you want to learn?",
-      sub: learningLanguage === "ca"
-        ? "Ho pots canviar més tard a Configuració."
-        : "You can switch this later in Settings.",
+      title: t("onboarding.langTitle"),
+      sub: t("onboarding.langSub"),
       body: (
         <div className="grid grid-cols-2 gap-3">
           {LANGUAGES.map((l) => (
@@ -109,15 +80,11 @@ export default function Onboarding() {
       canNext: !!learningLanguage,
     },
     {
-      title: learningLanguage === "ca"
-        ? "Per què estàs aprenent català?"
-        : "Why are you learning English?",
-      sub: learningLanguage === "ca"
-        ? "Això forma els temes que el teu coach proposa."
-        : "This shapes the topics your coach brings up.",
+      title: t("onboarding.goalTitle"),
+      sub: t("onboarding.goalSub"),
       body: (
         <div className="grid sm:grid-cols-2 gap-3">
-          {getGoalsForLanguage(learningLanguage || "en").map((g) => (
+          {GOAL_KEYS.map((g) => (
             <button
               key={g.key}
               onClick={() => setGoal(g.key)}
@@ -126,7 +93,7 @@ export default function Onboarding() {
               }`}
             >
               <span className="text-2xl">{g.emoji}</span>
-              <span className="font-medium">{g.label}</span>
+              <span className="font-medium">{t(`onboarding.goals.${g.key}`)}</span>
             </button>
           ))}
         </div>
@@ -134,24 +101,20 @@ export default function Onboarding() {
       canNext: !!goal,
     },
     {
-      title: learningLanguage === "ca"
-        ? "Com t'avalues tu mateix en català?"
-        : "How would you rate your English right now?",
-      sub: learningLanguage === "ca"
-        ? "És una sensació — ho mesurarem bé més tard."
-        : "Just a gut feeling — we'll measure it properly next.",
+      title: t("onboarding.levelTitle"),
+      sub: t("onboarding.levelSub"),
       body: (
         <div className="flex flex-col gap-2">
-          {getLevelsForLanguage(learningLanguage || "en").map((l) => (
+          {LEVEL_KEYS.map((key) => (
             <button
-              key={l.key}
-              onClick={() => setLevel(l.key)}
+              key={key}
+              onClick={() => setLevel(key)}
               className={`card flex items-center justify-between px-4 py-3.5 text-left transition ${
-                level === l.key ? "ring-2 ring-coral border-coral" : "hover:border-ink-500"
+                level === key ? "ring-2 ring-coral border-coral" : "hover:border-ink-500"
               }`}
             >
-              <span className="font-medium">{l.label}</span>
-              <span className="font-mono text-xs text-paper-muted">{l.key}</span>
+              <span className="font-medium">{t(`onboarding.levels.${key}`)}</span>
+              <span className="font-mono text-xs text-paper-muted">{key}</span>
             </button>
           ))}
         </div>
@@ -159,12 +122,9 @@ export default function Onboarding() {
       canNext: !!level,
     },
     {
-      title: learningLanguage === "ca"
-        ? "Quin accent vols?"
-        : "Which accent do you want to sound like?",
-      sub: learningLanguage === "ca"
-        ? "El teu coach usarà aquest variant."
-        : "Your coach will lean into this variant.",
+      title: t("onboarding.accentTitle"),
+      sub: t("onboarding.accentSub"),
+      // El acento británico/americano es solo para inglés.
       skip: learningLanguage === "ca",
       body: (
         <div className="grid grid-cols-2 gap-3">
@@ -184,19 +144,13 @@ export default function Onboarding() {
       canNext: !!variant,
     },
     {
-      title: learningLanguage === "ca"
-        ? "De quin tema t'encanta parlar?"
-        : "What do you love talking about?",
-      sub: learningLanguage === "ca"
-        ? "Aficions, treball, el que sigui. El teu coach usa això per fer que les converses semblin teves."
-        : "Hobbies, work, anything. Your coach uses this to make conversations feel like yours.",
+      title: t("onboarding.interestsTitle"),
+      sub: t("onboarding.interestsSub"),
       body: (
         <textarea
-          aria-label={learningLanguage === "ca" ? "Aficions i treball" : "Hobbies and work"}
+          aria-label={t("onboarding.interestsAria")}
           className="input min-h-[120px] resize-none"
-          placeholder={learningLanguage === "ca"
-            ? "Ex: Sóc gerent de vendes, dj els cap de setmana, m'encanta el futbol i viatjar…"
-            : "e.g. I'm a sales manager, I DJ on weekends, I love football and travelling…"}
+          placeholder={t("onboarding.interestsPlaceholder")}
           value={interests}
           onChange={(e) => setInterests(e.target.value)}
         />
@@ -223,9 +177,7 @@ export default function Onboarding() {
           ))}
         </div>
 
-        <p className="eyebrow mb-2">
-          {learningLanguage === "ca" ? "Pas" : "Step"} {step + 1} {learningLanguage === "ca" ? "de" : "of"} {steps.length}
-        </p>
+        <p className="eyebrow mb-2">{t("onboarding.stepOf", { i: step + 1, n: steps.length })}</p>
         <h1 className="page-title mb-1">{current.title}</h1>
         <p className="text-paper-muted mb-7">{current.sub}</p>
 
@@ -237,13 +189,11 @@ export default function Onboarding() {
             onClick={() => setStep((s) => Math.max(0, s - 1))}
             disabled={step === 0}
           >
-            {learningLanguage === "ca" ? "Enrere" : "Back"}
+            {t("onboarding.back")}
           </button>
           {isLast ? (
             <button className="btn-coral" onClick={finish} disabled={!current.canNext || busy}>
-              {busy
-                ? (learningLanguage === "ca" ? "Guardant…" : "Saving…")
-                : (learningLanguage === "ca" ? "Fes la prova de nivell →" : "Take the level test →")}
+              {busy ? t("onboarding.saving") : t("onboarding.takeTest")}
             </button>
           ) : (
             <button
@@ -251,7 +201,7 @@ export default function Onboarding() {
               onClick={() => setStep((s) => s + 1)}
               disabled={!current.canNext}
             >
-              {learningLanguage === "ca" ? "Continua" : "Continue"}
+              {t("onboarding.next")}
             </button>
           )}
         </div>

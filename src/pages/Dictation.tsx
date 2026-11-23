@@ -8,12 +8,14 @@ import { awardXp } from "../lib/xp";
 import { diffWords, pickSentences, type DiffResult } from "../lib/dictation";
 import { addToReview } from "../lib/srs";
 import { lookupPhrase } from "../lib/dictionary";
+import { tFor } from "../i18n";
 
 const ROUND_SIZE = 6;
 
 export default function Dictation() {
   const { profile } = useAuth();
   const prefs = useVoicePrefs();
+  const t = tFor(profile?.learning_language || "en");
   const [round, setRound] = useState(0);
   const sentences = useMemo(
     () => pickSentences(profile?.current_level, ROUND_SIZE),
@@ -42,14 +44,15 @@ export default function Dictation() {
   // Reproduce la frase al aparecer cada ejercicio.
   useEffect(() => {
     if (!target || result) return;
-    const t = setTimeout(() => play(), 350);
-    return () => clearTimeout(t);
+    const tm = setTimeout(() => play(), 350);
+    return () => clearTimeout(tm);
     // play depende de preferencias que no deben reiniciar la lectura.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [target]);
 
   useEffect(() => () => stopSpeech(), []);
 
+  // Las frases de dictado solo existen en inglés: en catalán no hay banco todavía.
   if (profile?.learning_language === "ca") return <Navigate to="/" replace />;
 
   const finished = i >= sentences.length;
@@ -108,31 +111,31 @@ export default function Dictation() {
 
   if (finished) {
     const avg = scores.length ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
-    const verdict = avg >= 90 ? "Your ear is sharp." : avg >= 70 ? "Good. You catch most of it." : avg >= 50 ? "Getting there: replay and listen for the small words." : "Keep going: slow mode helps a lot.";
+    const verdict = avg >= 90 ? t("dictation.verdict90") : avg >= 70 ? t("dictation.verdict70") : avg >= 50 ? t("dictation.verdict50") : t("dictation.verdictLow");
     return (
       <div className="animate-fade-up mx-auto max-w-md pt-10 text-center">
-        <p className="eyebrow mb-2">Dictation</p>
+        <p className="eyebrow mb-2">{t("dictation.eyebrow")}</p>
         <p className={`font-display text-6xl font-extrabold ${avg >= 80 ? "text-mint" : "text-gold"}`}>{avg}%</p>
-        <p className="mt-1 text-paper-muted">average accuracy over {scores.length} sentences</p>
+        <p className="mt-1 text-paper-muted">{t("dictation.avgAccuracy", { n: scores.length })}</p>
         <p className="mt-2 text-sm text-paper">{verdict}</p>
-        {xp !== null && <p className="mt-2 text-sm text-mint">+{xp} XP</p>}
+        {xp !== null && <p className="mt-2 text-sm text-mint">{t("dictation.xpGain", { n: xp })}</p>}
 
         {missed.length > 0 && (
           <div className="card mt-6 p-4 text-left">
-            <p className="eyebrow mb-1">Worth practising again</p>
-            <p className="mb-3 text-xs text-paper-muted">Add them to your Review and you will hear and say them again in a few days.</p>
+            <p className="eyebrow mb-1">{t("dictation.worthAgain")}</p>
+            <p className="mb-3 text-xs text-paper-muted">{t("dictation.worthAgainSub")}</p>
             <ul className="space-y-2">
               {missed.map((m) => (
                 <li key={m} className="flex items-center gap-3 text-sm">
                   <span className="flex-1">{m}</span>
                   <button
                     onClick={() => practise(m)}
-                    aria-label={`Practise: ${m}`}
+                    aria-label={t("dictation.practiseAria", { s: m })}
                     disabled={!!saved[m]}
                     className={`flex shrink-0 items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-medium transition ${saved[m] === "done" ? "bg-gold/20 text-gold" : "bg-ink-600 hover:bg-ink-500"}`}
                   >
                     {saved[m] === "done" ? <Check size={13} className="animate-check-pop" /> : <Plus size={13} />}
-                    {saved[m] === "done" ? "Added" : saved[m] === "saving" ? "…" : "Practise"}
+                    {saved[m] === "done" ? t("dictation.added") : saved[m] === "saving" ? "…" : t("dictation.practise")}
                   </button>
                 </li>
               ))}
@@ -142,11 +145,11 @@ export default function Dictation() {
 
         <div className="mt-6 flex flex-col gap-2">
           <button className="btn-coral w-full" onClick={again}>
-            New round
+            {t("dictation.newRound")}
           </button>
           {Object.values(saved).includes("done") && (
             <button className="flex w-full items-center justify-center gap-2 rounded-xl bg-ink-600 py-2.5 text-sm font-medium transition hover:bg-ink-500" onClick={() => navigate("/review")}>
-              <Layers size={16} className="text-coral" /> Go to Review
+              <Layers size={16} className="text-coral" /> {t("dictation.goReview")}
             </button>
           )}
         </div>
@@ -156,13 +159,11 @@ export default function Dictation() {
 
   return (
     <div className="animate-fade-up mx-auto max-w-xl">
-      <p className="eyebrow mb-2">Dictation</p>
-      <h1 className="page-title mb-1">Listen and write</h1>
-      <p className="mb-1 text-paper-muted">
-        Goal: catch every word, even the small ones. Listen as many times as you need, then type exactly what you hear.
-      </p>
+      <p className="eyebrow mb-2">{t("dictation.eyebrow")}</p>
+      <h1 className="page-title mb-1">{t("dictation.title")}</h1>
+      <p className="mb-1 text-paper-muted">{t("dictation.goal")}</p>
       <div className="mb-6">
-        <p className="sr-only">{`Sentence ${i + 1} of ${sentences.length}`}</p>
+        <p className="sr-only">{t("dictation.sentenceOf", { i: i + 1, n: sentences.length })}</p>
         <div aria-hidden className="flex items-center gap-1.5">
           {sentences.map((_, k) => (
             <span key={k} className={`h-1.5 flex-1 rounded-full transition-colors ${k < i ? "bg-mint" : k === i ? "bg-coral" : "bg-ink-600"}`} />
@@ -172,18 +173,18 @@ export default function Dictation() {
 
       <div className="card space-y-4 p-5">
         <div className="flex flex-wrap items-center gap-2">
-          <button onClick={() => play()} className="btn-coral flex items-center gap-1.5 text-sm" aria-label="Play sentence">
-            <Volume2 size={15} /> Play
+          <button onClick={() => play()} className="btn-coral flex items-center gap-1.5 text-sm" aria-label={t("dictation.playAria")}>
+            <Volume2 size={15} /> {t("dictation.play")}
           </button>
-          <button onClick={() => play(true)} className="btn-ghost text-sm" aria-label="Play slowly">
-            🐢 Slow
+          <button onClick={() => play(true)} className="btn-ghost text-sm" aria-label={t("dictation.slowAria")}>
+            {t("dictation.slow")}
           </button>
         </div>
 
         <textarea
-          aria-label="What you heard"
+          aria-label={t("dictation.heardAria")}
           className="min-h-[5rem] w-full resize-none rounded-xl border border-ink-600 bg-ink-800 p-3 text-paper placeholder:text-paper-faint focus:border-coral focus:outline-none"
-          placeholder="Type what you hear…"
+          placeholder={t("dictation.typePlaceholder")}
           value={typed}
           onChange={(e) => setTyped(e.target.value)}
           readOnly={!!result}
@@ -201,27 +202,27 @@ export default function Dictation() {
         {result ? (
           <div className="space-y-3">
             <p className="flex flex-wrap gap-x-1.5 gap-y-1 text-base">
-              {result.tokens.map((t, k) => (
-                <span key={k} className={t.ok ? "font-medium text-mint" : "font-medium text-coral underline decoration-wavy"}>
-                  <span className="sr-only">{t.ok ? "" : "not correct: "}</span>
-                  {t.word}
+              {result.tokens.map((tk, k) => (
+                <span key={k} className={tk.ok ? "font-medium text-mint" : "font-medium text-coral underline decoration-wavy"}>
+                  <span className="sr-only">{tk.ok ? "" : t("dictation.notCorrect")}</span>
+                  {tk.word}
                 </span>
               ))}
             </p>
-            {result.extra.length > 0 && <p className="text-xs text-paper-muted">Extra words: {result.extra.join(", ")}</p>}
+            {result.extra.length > 0 && <p className="text-xs text-paper-muted">{t("dictation.extraWords", { w: result.extra.join(", ") })}</p>}
             <p role="status" className="flex items-center gap-1.5 text-sm text-paper-muted">
-              {result.accuracy === 100 && <Check aria-hidden size={14} className="text-mint animate-check-pop" />} {result.accuracy}% correct
+              {result.accuracy === 100 && <Check aria-hidden size={14} className="text-mint animate-check-pop" />} {t("dictation.pctCorrect", { n: result.accuracy })}
             </p>
             <button onClick={() => play()} className="flex items-center gap-1.5 text-sm text-paper-faint transition hover:text-coral">
-              <Volume2 size={14} /> Hear it again
+              <Volume2 size={14} /> {t("dictation.hearAgain")}
             </button>
             <button className="btn-coral w-full" onClick={next}>
-              {i + 1 < sentences.length ? "Next sentence" : "See result"}
+              {i + 1 < sentences.length ? t("dictation.nextSentence") : t("dictation.seeResult")}
             </button>
           </div>
         ) : (
           <button className="btn-coral w-full" onClick={check} disabled={!typed.trim()}>
-            Check
+            {t("dictation.check")}
           </button>
         )}
       </div>

@@ -7,10 +7,12 @@ import { speak, stopSpeech } from "../lib/speech";
 import { addToReview } from "../lib/srs";
 import ShadowingBlock from "../components/ShadowingBlock";
 import { explainPhoto, geminiToolsAvailable, photoToJpegBase64, type PhotoResult } from "../lib/geminiTools";
+import { tFor } from "../i18n";
 
 export default function Lens() {
   const { profile } = useAuth();
   const prefs = useVoicePrefs();
+  const t = tFor(profile?.learning_language || "en");
   const inputRef = useRef<HTMLInputElement>(null);
   const [available, setAvailable] = useState<boolean | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
@@ -37,6 +39,7 @@ export default function Lens() {
     };
   }, [preview]);
 
+  // La explicación de la foto la genera el servidor en inglés: en catalán todavía no hay prompt.
   if (profile?.learning_language === "ca") return <Navigate to="/" replace />;
 
   const say = (text: string) => speak(text, { voiceName: prefs.voiceName ?? undefined, rate: prefs.voiceRate, lang: prefs.voiceAccent });
@@ -52,10 +55,10 @@ export default function Lens() {
     try {
       const b64 = await photoToJpegBase64(file);
       const r = await explainPhoto(b64, profile.current_level ?? "A2");
-      if (!r) setError("I could not read anything useful in this photo. Try a closer, brighter one.");
+      if (!r) setError(t("lens.noReadable"));
       setResult(r);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not analyse the photo.");
+      setError(e instanceof Error ? e.message : t("lens.analyseFail"));
     } finally {
       setLoading(false);
     }
@@ -69,31 +72,29 @@ export default function Lens() {
       ...result.phrases.map((p) => addToReview(profile.id, { item_type: "chunk", content: p.en, prompt: p.es, source_ref: "lens" }, lang)),
     ];
     const res = await Promise.all(jobs);
-    setSaved(`${res.filter((r) => r === "added").length} new item(s) added to your review.`);
+    setSaved(t("lens.addedCount", { n: res.filter((r) => r === "added").length }));
   }
 
   return (
     <div className="animate-fade-up mx-auto max-w-2xl">
-      <p className="eyebrow mb-2">Photo helper</p>
-      <h1 className="page-title mb-2">Point, shoot, understand</h1>
-      <p className="mb-6 text-paper-muted">
-        Take a photo of a menu, a sign, a label or a ticket. The coach explains it in simple English and gives you the words and phrases you need.
-      </p>
+      <p className="eyebrow mb-2">{t("lens.eyebrow")}</p>
+      <h1 className="page-title mb-2">{t("lens.title")}</h1>
+      <p className="mb-6 text-paper-muted">{t("lens.intro")}</p>
 
       {available === false ? (
-        <div className="card p-5 text-sm text-paper-muted">This feature is not available right now. Try again later.</div>
+        <div className="card p-5 text-sm text-paper-muted">{t("lens.unavailable")}</div>
       ) : (
         <>
           <input ref={inputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => void onFile(e.target.files?.[0])} />
           <button className="btn-coral flex w-full items-center justify-center gap-2" onClick={() => inputRef.current?.click()} disabled={loading || available === null}>
-            {loading ? <Loader2 size={16} className="animate-spin" /> : <Camera size={16} />} {loading ? "Reading the photo…" : "Take or choose a photo"}
+            {loading ? <Loader2 size={16} className="animate-spin" /> : <Camera size={16} />} {loading ? t("lens.reading") : t("lens.takePhoto")}
           </button>
         </>
       )}
 
       {error && <p className="mt-4 text-sm text-coral">{error}</p>}
 
-      {preview && <img src={preview} alt="Your photo" className="mt-5 max-h-64 w-full rounded-xl object-contain bg-ink-800" />}
+      {preview && <img src={preview} alt={t("lens.photoAlt")} className="mt-5 max-h-64 w-full rounded-xl object-contain bg-ink-800" />}
 
       {result && (
         <div className="mt-6 space-y-5">
@@ -103,14 +104,14 @@ export default function Lens() {
             {result.summaryEs && <p className="mt-2 text-sm text-paper-muted">{result.summaryEs}</p>}
             {result.summary && (
               <button onClick={() => say(result.summary)} className="mt-3 flex items-center gap-1.5 text-xs text-paper-muted transition hover:text-coral">
-                <Volume2 size={13} /> Listen
+                <Volume2 size={13} /> {t("lens.listen")}
               </button>
             )}
           </section>
 
           {result.vocabulary.length > 0 && (
             <section>
-              <h2 className="mb-2 font-display text-lg font-bold">Words from the photo</h2>
+              <h2 className="mb-2 font-display text-lg font-bold">{t("lens.wordsFromPhoto")}</h2>
               <div className="flex flex-wrap gap-2">
                 {result.vocabulary.map((v) => (
                   <button key={v.en} onClick={() => say(v.en)} className="flex items-center gap-1.5 rounded-full bg-ink-700 px-3 py-1.5 text-sm transition hover:bg-ink-600">
@@ -125,12 +126,12 @@ export default function Lens() {
 
           {result.phrases.length > 0 && (
             <section>
-              <h2 className="mb-2 font-display text-lg font-bold">Useful things to say</h2>
+              <h2 className="mb-2 font-display text-lg font-bold">{t("lens.usefulThings")}</h2>
               <ul className="space-y-2">
                 {result.phrases.map((p, i) => (
                   <li key={p.en} className="card p-3">
                     <div className="flex items-start gap-3">
-                      <button onClick={() => say(p.en)} className="mt-0.5 text-paper-faint transition hover:text-coral" aria-label={`Listen: ${p.en}`}>
+                      <button onClick={() => say(p.en)} className="mt-0.5 text-paper-faint transition hover:text-coral" aria-label={t("lens.listenAria", { s: p.en })}>
                         <Volume2 size={16} />
                       </button>
                       <div className="min-w-0 flex-1">
@@ -138,12 +139,12 @@ export default function Lens() {
                         <p className="text-xs text-paper-muted">{p.es}</p>
                       </div>
                       <button onClick={() => setOpen(open === i ? null : i)} className="flex shrink-0 items-center gap-1 text-xs text-paper-muted hover:text-paper" aria-expanded={open === i}>
-                        Say it {open === i ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+                        {t("lens.sayIt")} {open === i ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
                       </button>
                     </div>
                     {open === i && (
                       <div className="mt-3">
-                        <ShadowingBlock text={p.en} label="Listen & repeat" />
+                        <ShadowingBlock text={p.en} label={t("lens.listenRepeat")} />
                       </div>
                     )}
                   </li>
@@ -155,7 +156,7 @@ export default function Lens() {
           {(result.vocabulary.length > 0 || result.phrases.length > 0) && (
             <div>
               <button className="btn-ghost w-full" onClick={saveAll}>
-                Add everything to my review
+                {t("lens.addAll")}
               </button>
               {saved && <p className="mt-2 text-center text-xs text-mint">✓ {saved}</p>}
             </div>

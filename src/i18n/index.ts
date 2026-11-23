@@ -29,4 +29,17 @@ i18n.on("languageChanged", (lng) => {
   if (typeof document !== "undefined") document.documentElement.lang = lng;
 });
 
+/**
+ * Traductor fijo al idioma que se aprende (no depende del estado global de i18next).
+ * Úsalo en pantallas que muestran el idioma del perfil: `const t = tFor(profile?.learning_language)`.
+ */
+export function tFor(learningLanguage?: string | null) {
+  return i18n.getFixedT(uiLang(learningLanguage));
+}
+
+/** Locale para fechas y números según el idioma de la interfaz. */
+export function dateLocale(learningLanguage?: string | null): string {
+  return uiLang(learningLanguage) === "ca" ? "ca-ES" : "en";
+}
+
 export default i18n;

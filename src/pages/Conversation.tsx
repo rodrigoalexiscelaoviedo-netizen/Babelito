@@ -32,6 +32,7 @@ import { requestHint } from "../lib/hints";
 import { useResumableSession } from "../lib/useResumableSession";
 import CoachMessage from "../components/conversation/CoachMessage";
 import ReportPanel from "../components/conversation/ReportPanel";
+import { tFor } from "../i18n";
 
 export default function Conversation() {
   const { profile, refreshProfile } = useAuth();
@@ -40,6 +41,7 @@ export default function Conversation() {
   const voicePrefs = useVoicePrefs();
 
   const learningLanguage = profile?.learning_language || "en";
+  const tr = tFor(learningLanguage);
 
   const TOPICS = PICKER_TOPICS[learningLanguage === "ca" ? "ca" : "en"];
 
@@ -140,7 +142,7 @@ export default function Conversation() {
   }, [turns, thinking]);
 
   const lastRole = turns[turns.length - 1]?.role;
-  const lastCoachIndex = turns.map((t) => t.role).lastIndexOf("assistant");
+  const lastCoachIndex = turns.map((turn) => turn.role).lastIndexOf("assistant");
 
   // Cortar la voz al salir de la pantalla.
   useEffect(() => () => stopSpeech(), []);
@@ -211,10 +213,10 @@ export default function Conversation() {
       if (sid) {
         if (errorTypes.length) {
           await supabase.from("errors").insert(
-            errorTypes.map((t) => ({
+            errorTypes.map((et) => ({
               user_id: profile.id,
               session_id: sid,
-              error_type: t,
+              error_type: et,
               original_text: text.trim(),
             }))
           );
@@ -234,9 +236,9 @@ export default function Conversation() {
         // Remove the optimistic user turn from the list — user will retry
         setTurns((prev) => prev.slice(0, -1));
       } else {
-        setTurns((t) => [
-          ...t,
-          { role: "assistant", content: `⚠️ ${e instanceof Error ? e.message : "Connection error."}` },
+        setTurns((prev) => [
+          ...prev,
+          { role: "assistant", content: `⚠️ ${e instanceof Error ? e.message : tr("conversation.connectionError")}` },
         ]);
       }
     } finally {
@@ -277,7 +279,7 @@ export default function Conversation() {
         void awardSessionXp(profile.id, sid, "conversation", userTurns, Math.round((Date.now() - startedAt) / 1000)).then(setXpEarned);
         // Nivel al día con esta sesión (no hace falta esperar al día siguiente).
         void consolidateLevel(profile, { force: true })
-          .then((r) => { if (r.changed) void refreshProfile(); })
+          .then((res) => { if (res.changed) void refreshProfile(); })
           .catch((err) => console.warn("[leveling]", err));
         const { error } = await supabase
           .from("sessions")
@@ -288,7 +290,7 @@ export default function Conversation() {
           })
           .eq("id", sid);
         if (error) {
-          setReportError(`No se pudo registrar la sesión: ${error.message}`);
+          setReportError(tr("roleplay.saveFail", { m: error.message }));
         }
       }
 
@@ -298,7 +300,7 @@ export default function Conversation() {
         if (newly.length > 0) setNewAchievements(newly);
       });
     } catch (e) {
-      setReportError(e instanceof Error ? e.message : "Could not generate report.");
+      setReportError(e instanceof Error ? e.message : tr("roleplay.reportFail"));
     } finally {
       setGeneratingReport(false);
     }
@@ -306,7 +308,7 @@ export default function Conversation() {
 
   async function getHint() {
     if (!profile || turns.length === 0) return;
-    const last = [...turns].reverse().find((t) => t.role === "assistant")?.content ?? "";
+    const last = [...turns].reverse().find((turn) => turn.role === "assistant")?.content ?? "";
     setHintLoading(true);
     try {
       setHintText(
@@ -382,39 +384,33 @@ export default function Conversation() {
   if (turns.length === 0) {
     return (
       <div className="animate-fade-up max-w-2xl mx-auto">
-        {resumable && learningLanguage !== "ca" && (
+        {resumable && (
           <div className="card p-4 mb-6 flex flex-col sm:flex-row sm:items-center gap-3">
             <div className="flex-1">
-              <p className="font-medium">Continue your last conversation?</p>
-              <p className="text-xs text-paper-muted">{resumable.messages.length} messages saved · not finished yet</p>
+              <p className="font-medium">{tr("conversation.resumeQ")}</p>
+              <p className="text-xs text-paper-muted">{tr("conversation.savedMsgs", { n: resumable.messages.length })}</p>
             </div>
             <div className="flex gap-2">
-              <button className="btn-coral text-sm px-4 py-2" onClick={resumeSession}>Continue</button>
-              <button className="btn-ghost text-sm px-4 py-2" onClick={() => dismissResumable()}>Start new</button>
+              <button className="btn-coral text-sm px-4 py-2" onClick={resumeSession}>{tr("conversation.continue")}</button>
+              <button className="btn-ghost text-sm px-4 py-2" onClick={() => dismissResumable()}>{tr("conversation.startNew")}</button>
             </div>
           </div>
         )}
-        <p className="eyebrow mb-2">
-          {learningLanguage === "ca" ? "Conversa en directe" : "Live conversation"}
-        </p>
-        <h1 className="page-title mb-2">
-          {learningLanguage === "ca" ? "De quin tema volem parlar?" : "What should we talk about?"}
-        </h1>
+        <p className="eyebrow mb-2">{tr("conversation.eyebrowLive")}</p>
+        <h1 className="page-title mb-2">{tr("conversation.titleLive")}</h1>
         <p className="text-paper-muted mb-8">
-          {learningLanguage === "ca"
-            ? `Tria un tema o simplement comença. El teu coach s'adapta al teu ${profile?.current_level ?? "nivell"} i observa els errors que tens tendència a cometre.`
-            : `Pick a topic or just start. Your coach adapts to your ${profile?.current_level ?? "level"} and watches the mistakes you tend to make.`}
+          {tr("conversation.introLive", { level: profile?.current_level ?? "" })}
         </p>
         <div className="grid sm:grid-cols-2 gap-3 mb-8">
-          {TOPICS.map((t) => (
+          {TOPICS.map((tp) => (
             <button
-              key={t}
-              onClick={() => setTopic(t)}
+              key={tp}
+              onClick={() => setTopic(tp)}
               className={`card px-4 py-4 text-left font-medium transition ${
-                topic === t ? "ring-2 ring-coral border-coral" : "hover:border-ink-500"
+                topic === tp ? "ring-2 ring-coral border-coral" : "hover:border-ink-500"
               }`}
             >
-              {t}
+              {tp}
             </button>
           ))}
           {/* Show daily topic if it's not in the list */}
@@ -427,7 +423,7 @@ export default function Conversation() {
             >
               {locationTopic}
               <span className="ml-2 text-xs text-coral font-mono">
-                · {learningLanguage === "ca" ? "tema d'avui" : "today's topic"}
+                · {tr("conversation.todayTopic")}
               </span>
             </button>
           )}
@@ -436,23 +432,19 @@ export default function Conversation() {
           className="btn-coral w-full"
           onClick={startConversation}
         >
-          {learningLanguage === "ca" ? "Comença a parlar →" : "Start talking →"}
+          {tr("conversation.startTalking")}
         </button>
 
         <section className="mt-12" aria-labelledby="scenarios-title">
           <p className="eyebrow mb-2" id="scenarios-title">
-            {learningLanguage === "ca" ? "Escenaris" : "Practise a real situation"}
+            {tr("conversation.scenariosEyebrow")}
           </p>
-          <p className="text-sm text-paper-muted mb-4">
-            {learningLanguage === "ca"
-              ? "El coach fa l'altra persona. Escriu /end en qualsevol moment per obtenir la retroalimentació."
-              : "Your coach plays the other person. Type /end any time for full feedback."}
-          </p>
+          <p className="text-sm text-paper-muted mb-4">{tr("conversation.scenariosIntro")}</p>
           {resumableScenario && resumableScenarioMatch && (
             <div className="card p-4 mb-4 flex flex-col sm:flex-row sm:items-center gap-3">
               <div className="flex-1">
-                <p className="font-medium">Continue “{resumableScenarioMatch.title}”?</p>
-                <p className="text-xs text-paper-muted">{resumableScenario.messages.length} messages saved · not finished yet</p>
+                <p className="font-medium">{tr("conversation.continueScenario", { t: resumableScenarioMatch.title })}</p>
+                <p className="text-xs text-paper-muted">{tr("conversation.savedMsgs", { n: resumableScenario.messages.length })}</p>
               </div>
               <div className="flex gap-2">
                 <button
@@ -462,9 +454,9 @@ export default function Conversation() {
                     setScenario(resumableScenarioMatch);
                   }}
                 >
-                  Continue
+                  {tr("conversation.continue")}
                 </button>
-                <button className="btn-ghost text-sm px-4 py-2" onClick={() => dismissResumableScenario()}>Start new</button>
+                <button className="btn-ghost text-sm px-4 py-2" onClick={() => dismissResumableScenario()}>{tr("conversation.startNew")}</button>
               </div>
             </div>
           )}
@@ -495,12 +487,14 @@ export default function Conversation() {
     );
   }
 
+  const left = turnsRemaining(turns);
+
   return (
     <div className="flex flex-col h-[calc(100vh-7rem)] md:h-[calc(100vh-5rem)] max-w-2xl mx-auto">
       {/* Header with end button */}
       <div className="flex items-center justify-between mb-2">
         <p className="text-xs text-paper-muted font-mono uppercase tracking-widest">
-          {topic ?? "Free chat"}
+          {topic ?? tr("conversation.freeChat")}
         </p>
         <div className="flex items-center gap-4">
         <button
@@ -511,10 +505,10 @@ export default function Conversation() {
           {generatingReport ? (
             <span className="flex items-center gap-2">
               <BrandDots />
-              {learningLanguage === "ca" ? "Generant informe…" : "Generating report…"}
+              {tr("conversation.generatingReport")}
             </span>
           ) : (
-            learningLanguage === "ca" ? "Finalitza i veu l'informe →" : "Finish & see report →"
+            tr("conversation.finishReport")
           )}
         </button>
         </div>
@@ -522,40 +516,34 @@ export default function Conversation() {
 
       {/* Estado real de registro — el usuario siempre sabe si esto va a contar */}
       <div className="mb-2 text-right">
-        {turnsRemaining(turns) > 0 ? (
+        {left > 0 ? (
           <p className="text-[11px] text-paper-faint">
-            {learningLanguage === "ca"
-              ? `Te ${turnsRemaining(turns) === 1 ? "falta" : "falten"} ${turnsRemaining(turns)} ${turnsRemaining(turns) === 1 ? "intercanvi" : "intercanvis"} perquè aquesta sessió compti`
-              : `${turnsRemaining(turns)} more ${turnsRemaining(turns) === 1 ? "exchange" : "exchanges"} to count this session`}
+            {tr(left === 1 ? "conversation.exchangesLeftOne" : "conversation.exchangesLeftMany", { n: left })}
           </p>
         ) : (
-          <p className="text-[11px] text-mint">
-            {learningLanguage === "ca"
-              ? "✓ Aquesta sessió comptarà per a la teva racha"
-              : "✓ This session counts towards your streak"}
-          </p>
+          <p className="text-[11px] text-mint">{tr("conversation.countsStreak")}</p>
         )}
       </div>
       {reportError && <p className="text-coral text-xs mb-2">{reportError}</p>}
 
       <div ref={scrollRef} className="flex-1 overflow-y-auto pr-1 space-y-4">
-        {turns.map((t, i) => {
-          if (t.role === "user") {
+        {turns.map((turn, i) => {
+          if (turn.role === "user") {
             return (
               <div key={i} className="flex justify-end">
                 <div data-role="user" className="max-w-[85%] rounded-xl2 bg-coral px-4 py-3 text-ink-900">
-                  {t.content}
+                  {turn.content}
                 </div>
               </div>
             );
           }
-          const reply = splitCoachReply(t.content);
+          const reply = splitCoachReply(turn.content);
           const isLastCoach = i === lastCoachIndex;
           return (
             <div key={i} className="flex flex-col items-start">
               <div data-role="assistant" className="card max-w-[85%] whitespace-pre-wrap rounded-xl2 px-4 py-3 leading-relaxed">
                 <CoachMessage
-                  text={t.content}
+                  text={turn.content}
                   variant={profile?.english_variant ?? "British"}
                   voicePrefs={voicePrefs}
                 />
@@ -571,16 +559,12 @@ export default function Conversation() {
         {retryText && !thinking && (
           <div className="flex justify-start">
             <div className="card px-4 py-3 border-gold/30 max-w-[85%]">
-              <p className="text-sm text-paper-muted mb-2">
-                {learningLanguage === "ca"
-                  ? "El coach té molta demanda ara mateix. Prova de nou."
-                  : "El coach está con mucha demanda ahora mismo. Prueba de nuevo."}
-              </p>
+              <p className="text-sm text-paper-muted mb-2">{tr("conversation.coachBusy")}</p>
               <button
                 className="flex items-center gap-1.5 text-xs font-medium text-gold hover:text-gold/80 transition"
-                onClick={() => { const t = retryText; setRetryText(null); send(t); }}
+                onClick={() => { const rt = retryText; setRetryText(null); send(rt); }}
               >
-                <Loader2 size={12} /> {learningLanguage === "ca" ? "Reintenta" : "Reintentar"}
+                <Loader2 size={12} /> {tr("roleplay.retry")}
               </button>
             </div>
           </div>
@@ -592,7 +576,7 @@ export default function Conversation() {
             <div className="card max-w-[80%] px-3 py-2.5 border-gold/30">
               {hintText ? (
                 <>
-                  <p className="text-[10px] text-gold font-mono uppercase tracking-widest mb-1">💡 Hint</p>
+                  <p className="text-[10px] text-gold font-mono uppercase tracking-widest mb-1">💡 {tr("roleplay.hint")}</p>
                   <p className="text-sm text-paper-muted">{hintText}</p>
                 </>
               ) : (
@@ -602,9 +586,7 @@ export default function Conversation() {
                   className="flex items-center gap-2 text-xs text-paper-faint hover:text-gold transition disabled:opacity-60"
                 >
                   {hintLoading ? <BrandDots /> : <span>💡</span>}
-                  {hintLoading
-                    ? (learningLanguage === "ca" ? "Obtenint pista…" : "Getting hint…")
-                    : (learningLanguage === "ca" ? "Necessites una pista?" : "Need a hint?")}
+                  {hintLoading ? tr("roleplay.gettingHint") : tr("roleplay.needHint")}
                 </button>
               )}
             </div>
@@ -636,12 +618,10 @@ export default function Conversation() {
         {voice.error && <p className="text-coral text-xs text-center mb-2">{voice.error}</p>}
         <div className="card flex items-end gap-2 p-2">
           <textarea
-            aria-label={learningLanguage === "ca" ? "Missatge" : "Message"}
+            aria-label={tr("conversation.messageAria")}
             className="flex-1 resize-none bg-transparent px-2 py-2 text-paper placeholder:text-paper-faint focus:outline-none max-h-32"
             rows={1}
-            placeholder={learningLanguage === "ca"
-              ? "Escriu en català… o toca el mic"
-              : "Type in English… or tap the mic"}
+            placeholder={tr("conversation.placeholder")}
             value={displayValue}
             readOnly={listening}
             onChange={(e) => setInput(e.target.value)}
@@ -657,15 +637,15 @@ export default function Conversation() {
               <button
                 onClick={toggleMic}
                 className="flex items-center gap-1.5 px-3 h-10 rounded-xl bg-coral text-ink-900 font-semibold text-sm transition"
-                aria-label={learningLanguage === "ca" ? "Fet — stop recording" : "Listo — stop recording"}
+                aria-label={tr("roleplay.stopRec")}
               >
-                <Square size={15} /> {learningLanguage === "ca" ? "Fet" : "Listo"}
+                <Square size={15} /> {tr("roleplay.done")}
               </button>
             ) : (
               <button
                 onClick={toggleMic}
                 className="grid h-10 w-10 place-items-center rounded-xl bg-ink-600 text-paper hover:bg-ink-500 transition"
-                aria-label="Start recording"
+                aria-label={tr("roleplay.startRec")}
               >
                 <Mic size={18} />
               </button>
@@ -675,7 +655,7 @@ export default function Conversation() {
             onClick={() => send(input)}
             disabled={!input.trim() || thinking}
             className="grid h-10 w-10 place-items-center rounded-xl bg-coral text-ink-900 hover:bg-coral-soft disabled:opacity-40 transition"
-            aria-label="Send"
+            aria-label={tr("roleplay.send")}
           >
             <Send size={17} />
           </button>
@@ -685,4 +665,3 @@ export default function Conversation() {
     </div>
   );
 }
-

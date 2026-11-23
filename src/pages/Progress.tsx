@@ -32,6 +32,7 @@ import LevelLadder from "../components/LevelLadder";
 import LevelHistory from "../components/LevelHistory";
 import WeekGoals from "../components/WeekGoals";
 import SkillLevels from "../components/SkillLevels";
+import { dateLocale, tFor } from "../i18n";
 
 interface ErrRow { error_type: string }
 interface SessRow { created_at: string; duration_seconds: number }
@@ -176,6 +177,8 @@ function WeekBar({ label, value, max, color }: { label: string; value: number; m
 export default function Progress() {
   const { profile } = useAuth();
   const learningLanguage = profile?.learning_language || "en";
+  const t = tFor(learningLanguage);
+  const loc = dateLocale(learningLanguage);
   const [loading, setLoading] = useState(true);
   const [errs, setErrs] = useState<ErrRow[]>([]);
   const [sessions, setSessions] = useState<SessRow[]>([]);
@@ -240,7 +243,7 @@ export default function Progress() {
     d.setDate(d.getDate() - i);
     const key = d.toDateString();
     days.push({
-      day: d.toLocaleDateString("en", { weekday: "short" }).slice(0, 2),
+      day: d.toLocaleDateString(loc, { weekday: "short" }).slice(0, 2),
       sessions: sessions.filter((s) => new Date(s.created_at).toDateString() === key).length,
     });
   }
@@ -265,95 +268,93 @@ export default function Progress() {
   const streakMilestone = streak < 7 ? 7 : streak < 30 ? 30 : 100;
   const streakSub =
     streak >= 100
-      ? "🏆 Centurion"
+      ? t("progress.centurion")
       : streak >= 30
-      ? `${streakMilestone - streak} to next`
-      : `${streakMilestone - streak} to ${streakMilestone}d`;
+        ? t("progress.nextMilestone", { n: streakMilestone - streak })
+        : t("progress.toMilestone", { n: streakMilestone - streak, m: streakMilestone });
 
   return (
     <div className="animate-fade-up">
-      <p className="eyebrow mb-2">{learningLanguage === "ca" ? "El teu progrés" : "Your progress"}</p>
-      <h1 className="page-title mb-6">{learningLanguage === "ca" ? "Com estàs" : "How you're doing"}</h1>
-      {learningLanguage !== "ca" && (
-        <div className="mb-6">
-          <SkillLevels />
-          <WeekGoals />
-          <LevelLadder />
-          <LevelHistory />
-        </div>
-      )}
+      <p className="eyebrow mb-2">{t("progress.eyebrow")}</p>
+      <h1 className="page-title mb-6">{t("progress.title")}</h1>
+      <div className="mb-6">
+        <SkillLevels />
+        <WeekGoals />
+        <LevelLadder />
+        <LevelHistory />
+      </div>
 
       <div className="mb-8"><XpCard /></div>
 
       {/* ── Ring stats ─────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-3 lg:grid-cols-6 gap-3 mb-8">
         <RingStat
-          label={learningLanguage === "ca" ? "Racha" : "Streak"}
+          label={t("progress.streak")}
           value={streak}
           max={streakMilestone}
-          unit={learningLanguage === "ca" ? "dies" : "days"}
+          unit={t("progress.days")}
           sub={freezes > 0 ? `❄️ ${freezes}` : streakSub}
           color={BRAND.coral}
         />
         <RingStat
-          label={learningLanguage === "ca" ? "Sessions" : "Sessions"}
+          label={t("progress.sessions")}
           value={sessions.length}
           max={Math.max(50, sessions.length)}
-          unit={learningLanguage === "ca" ? "total" : "total"}
+          unit={t("progress.total")}
           color={BRAND.mint}
         />
         <RingStat
-          label={learningLanguage === "ca" ? "Minuts" : "Minutes"}
+          label={t("progress.minutes")}
           value={totalMinutes}
           max={Math.max(120, totalMinutes)}
-          unit={learningLanguage === "ca" ? "min" : "min"}
+          unit={t("progress.min")}
           color={BRAND.gold}
         />
         <RingStat
-          label={learningLanguage === "ca" ? "Baralla de revisió" : "Review deck"}
+          label={t("progress.reviewDeck")}
           value={deck}
           max={50}
-          unit={learningLanguage === "ca" ? "cartes" : "cards"}
-          sub={deck >= 50 ? (learningLanguage === "ca" ? "Objectiu aconseguit!" : "Goal reached!") : `${50 - deck} ${learningLanguage === "ca" ? "a 50" : "to 50"}`}
+          unit={t("progress.cards")}
+          sub={deck >= 50 ? t("progress.goalReached") : t("progress.toGoal", { n: 50 - deck })}
           color={BRAND.coral}
         />
         <RingStat
-          label={learningLanguage === "ca" ? "Vocabulari" : "Vocabulary"}
+          label={t("progress.vocabulary")}
           value={vocabTotal}
           max={Math.max(100, vocabTotal)}
-          unit={learningLanguage === "ca" ? "paraules" : "words"}
-          sub={`${vocabKnown} ${learningLanguage === "ca" ? "sabudes" : "known"}`}
+          unit={t("progress.words")}
+          sub={t("progress.knownCount", { n: vocabKnown })}
           color={BRAND.mint}
         />
         <RingStat
-          label={learningLanguage === "ca" ? "Històries" : "Stories"}
+          label={t("progress.stories")}
           value={storyProg.length}
           max={Math.max(10, storyProg.length)}
-          unit={learningLanguage === "ca" ? "fetes" : "done"}
+          unit={t("progress.done")}
           color={BRAND.gold}
         />
       </div>
 
       {/* ── Weekly summary ─────────────────────────────────────────────────── */}
       <div className="card p-5 mb-6">
-        <h3 className="font-display font-bold mb-1">{learningLanguage === "ca" ? "La teva setmana" : "Your week"}</h3>
-        <p className="text-sm text-paper-muted mb-4">{learningLanguage === "ca" ? "Últims 7 dies d'un cop d'ull." : "Last 7 days at a glance."}</p>
+        <h3 className="font-display font-bold mb-1">{t("progress.yourWeek")}</h3>
+        <p className="text-sm text-paper-muted mb-4">{t("progress.weekSub")}</p>
         <div className="space-y-3">
-          <WeekBar label={learningLanguage === "ca" ? "Dies actius" : "Active days"} value={weekActiveDays} max={7} color={BRAND.coral} />
-          <WeekBar label={learningLanguage === "ca" ? "Sessions" : "Sessions"} value={weekSessions} max={7} color={BRAND.mint} />
-          <WeekBar label={learningLanguage === "ca" ? "Minuts" : "Minutes"} value={weekMinutes} max={60} color={BRAND.gold} />
-          <WeekBar label={learningLanguage === "ca" ? "Paraules noves" : "New words"} value={weekWords} max={20} color={BRAND.mint} />
+          <WeekBar label={t("progress.activeDays")} value={weekActiveDays} max={7} color={BRAND.coral} />
+          <WeekBar label={t("progress.sessions")} value={weekSessions} max={7} color={BRAND.mint} />
+          <WeekBar label={t("progress.minutes")} value={weekMinutes} max={60} color={BRAND.gold} />
+          <WeekBar label={t("progress.newWords")} value={weekWords} max={20} color={BRAND.mint} />
         </div>
         {weekActiveDays === 7 && (
-          <p className="text-xs text-mint mt-3 text-center font-medium">{learningLanguage === "ca" ? "🔥 Setmana perfecta — 7/7 dies actius!" : "🔥 Perfect week — 7/7 active days!"}</p>
+          <p className="text-xs text-mint mt-3 text-center font-medium">{t("progress.perfectWeek")}</p>
         )}
       </div>
 
       {/* ── Achievements gallery ────────────────────────────────────────────── */}
       <div className="card p-5 mb-6">
-        <h3 className="font-display font-bold mb-1">{learningLanguage === "ca" ? "Assoliments" : "Achievements"}</h3>
+        <h3 className="font-display font-bold mb-1">{t("progress.achievements")}</h3>
         <p className="text-sm text-paper-muted mb-4">
-          {achievements.filter((a) => a.unlocked).length} / {achievements.length} {learningLanguage === "ca" ? "desbloqueats" : "unlocked"}
+          {t("progress.unlockedCount", { a: achievements.filter((a) => a.unlocked).length, b: achievements.length })}
         </p>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {achievements.map((a) => (
@@ -373,7 +374,7 @@ export default function Progress() {
               </p>
               {a.unlocked && a.unlocked_at ? (
                 <p className="text-[10px] text-paper-faint">
-                  {new Date(a.unlocked_at).toLocaleDateString("en", { day: "numeric", month: "short" })}
+                  {new Date(a.unlocked_at).toLocaleDateString(loc, { day: "numeric", month: "short" })}
                 </p>
               ) : (
                 <p className="text-[10px] text-paper-faint leading-tight">{a.hint}</p>
@@ -385,28 +386,22 @@ export default function Progress() {
 
       {/* ── Vocabulary card ─────────────────────────────────────────────────── */}
       <div className="card p-5 mb-6">
-        <h3 className="font-display font-bold mb-1">{learningLanguage === "ca" ? "Vocabulari" : "Vocabulary"}</h3>
-        <p className="text-sm text-paper-muted mb-4">{learningLanguage === "ca" ? "Paraules que has registrat mentre llegia." : "Words you've tracked while reading."}</p>
+        <h3 className="font-display font-bold mb-1">{t("progress.vocabulary")}</h3>
+        <p className="text-sm text-paper-muted mb-4">{t("progress.vocabSub")}</p>
         {vocabTotal === 0 ? (
           <div className="empty-state">
             <Maica mood="curious" size="md" className="mb-1" />
-            <p className="empty-state-title">
-              {learningLanguage === "ca" ? "Sense paraules aún" : "No words yet"}
-            </p>
-            <p className="empty-state-sub">
-              {learningLanguage === "ca"
-                ? "Explora el mòdul de lectura i fes clic en les paraules que no coneixes per guardar-les."
-                : "Explore the reading module and click the words you don't know to save them."}
-            </p>
+            <p className="empty-state-title">{t("progress.noWords")}</p>
+            <p className="empty-state-sub">{t("progress.noWordsSub")}</p>
             <Link to="/reading" className="btn-mint mt-1 text-sm px-4 py-2">
-              {learningLanguage === "ca" ? "Anar a Lectura" : "Go to Reading"} <ArrowRight size={14} />
+              {t("progress.goReading")} <ArrowRight size={14} />
             </Link>
           </div>
         ) : (
           <div className="flex items-center gap-6">
             <div>
               <p className="font-display text-3xl font-bold">{vocabTotal}</p>
-              <p className="text-xs text-paper-muted mt-0.5">{learningLanguage === "ca" ? "paraules totals" : "total words"}</p>
+              <p className="text-xs text-paper-muted mt-0.5">{t("progress.totalWords")}</p>
             </div>
             <div className="flex-1 h-3 bg-ink-600 rounded-full overflow-hidden">
               <div
@@ -416,7 +411,7 @@ export default function Progress() {
             </div>
             <div className="text-right">
               <p className="font-display text-3xl font-bold text-mint">{vocabKnown}</p>
-              <p className="text-xs text-paper-muted mt-0.5">{learningLanguage === "ca" ? "sabudes" : "known"}</p>
+              <p className="text-xs text-paper-muted mt-0.5">{t("progress.known")}</p>
             </div>
           </div>
         )}
@@ -424,34 +419,28 @@ export default function Progress() {
 
       {/* ── Activity chart ──────────────────────────────────────────────────── */}
       <div className="card p-5 mb-6">
-        <h3 className="font-display font-bold mb-4">{learningLanguage === "ca" ? "Últims 14 dies" : "Last 14 days"}</h3>
+        <h3 className="font-display font-bold mb-4">{t("progress.last14")}</h3>
         <ActivityArea data={days} height={160} />
       </div>
 
       {/* ── Session reports ─────────────────────────────────────────────────── */}
       <div className="card p-5 mb-6">
-        <h3 className="font-display font-bold mb-1">{learningLanguage === "ca" ? "Informes de sessió recents" : "Recent session reports"}</h3>
-        <p className="text-sm text-paper-muted mb-4">{learningLanguage === "ca" ? "Generat per IA després de cada conversa o representació de rol." : "AI-generated after each conversation or roleplay."}</p>
+        <h3 className="font-display font-bold mb-1">{t("progress.reportsTitle")}</h3>
+        <p className="text-sm text-paper-muted mb-4">{t("progress.reportsSub")}</p>
         {reports.length === 0 ? (
           <div className="empty-state">
             <Maica mood="curious" size="md" className="mb-1" />
-            <p className="empty-state-title">
-              {learningLanguage === "ca" ? "Sense informes ainda" : "No reports yet"}
-            </p>
-            <p className="empty-state-sub">
-              {learningLanguage === "ca"
-                ? "Termina una conversa o representació de rol i el teu coach generarà un informe detallat."
-                : "Complete a conversation or roleplay and your coach will generate a detailed report."}
-            </p>
+            <p className="empty-state-title">{t("progress.noReports")}</p>
+            <p className="empty-state-sub">{t("progress.noReportsSub")}</p>
             <Link to="/conversation" className="btn-coral mt-1 text-sm px-4 py-2">
-              {learningLanguage === "ca" ? "Parlar amb el coach" : "Talk to the coach"} <ArrowRight size={14} />
+              {t("progress.talkCoach")} <ArrowRight size={14} />
             </Link>
           </div>
         ) : (
           <div className="space-y-2">
             {reports.map((r) => {
               const isOpen = expandedReport === r.id;
-              const date = new Date(r.created_at).toLocaleDateString("en", {
+              const date = new Date(r.created_at).toLocaleDateString(loc, {
                 day: "numeric",
                 month: "short",
                 hour: "2-digit",
@@ -464,7 +453,7 @@ export default function Progress() {
                     className="w-full flex items-center justify-between px-4 py-3 hover:bg-ink-700 transition"
                   >
                     <div className="text-left">
-                      <p className="text-sm font-medium capitalize">{r.kind} session</p>
+                      <p className="text-sm font-medium capitalize">{t("progress.sessionKind", { kind: r.kind })}</p>
                       <p className="text-xs text-paper-muted">{date}</p>
                     </div>
                     {isOpen ? <ChevronUp size={16} className="text-paper-faint" /> : <ChevronDown size={16} className="text-paper-faint" />}
@@ -474,7 +463,7 @@ export default function Progress() {
                       <p className="text-sm text-paper-muted leading-relaxed">{r.summary}</p>
                       {r.did_well.length > 0 && (
                         <div>
-                          <p className="text-xs text-mint uppercase tracking-widest font-mono mb-1">{learningLanguage === "ca" ? "Va anar bé" : "Did well"}</p>
+                          <p className="text-xs text-mint uppercase tracking-widest font-mono mb-1">{t("progress.didWell")}</p>
                           <ul className="space-y-0.5">
                             {r.did_well.map((item, i) => (
                               <li key={i} className="text-sm flex gap-2">
@@ -486,7 +475,7 @@ export default function Progress() {
                       )}
                       {r.key_errors.length > 0 && (
                         <div>
-                          <p className="text-xs text-coral uppercase tracking-widest font-mono mb-1">{learningLanguage === "ca" ? "Errors claus" : "Key errors"}</p>
+                          <p className="text-xs text-coral uppercase tracking-widest font-mono mb-1">{t("progress.keyErrors")}</p>
                           <div className="space-y-1.5">
                             {r.key_errors.map((e, i) => (
                               <div key={i} className="text-sm">
@@ -499,7 +488,7 @@ export default function Progress() {
                       )}
                       {r.suggested_chunks.length > 0 && (
                         <div>
-                          <p className="text-xs text-gold uppercase tracking-widest font-mono mb-1">{learningLanguage === "ca" ? "Fragments suggerits" : "Suggested chunks"}</p>
+                          <p className="text-xs text-gold uppercase tracking-widest font-mono mb-1">{t("progress.suggestedChunks")}</p>
                           <ul className="space-y-0.5">
                             {r.suggested_chunks.map((chunk, i) => (
                               <li key={i} className="font-mono text-xs text-paper-muted">"{chunk}"</li>
@@ -518,17 +507,15 @@ export default function Progress() {
 
       {/* ── Top errors ──────────────────────────────────────────────────────── */}
       <div className="card p-5">
-        <h3 className="font-display font-bold mb-1">{learningLanguage === "ca" ? "En què treballar" : "What to work on"}</h3>
-        <p className="text-sm text-paper-muted mb-4">{learningLanguage === "ca" ? "Els teus errors més freqüents — alimenten al teu coach." : "Your most frequent mistakes — these feed your coach."}</p>
+        <h3 className="font-display font-bold mb-1">{t("progress.workOn")}</h3>
+        <p className="text-sm text-paper-muted mb-4">{t("progress.workOnSub")}</p>
         {topErrors.length === 0 ? (
           <div className="empty-state">
             <Maica mood="curious" size="md" className="mb-1" />
-            <p className="empty-state-title">¡Todo limpio por ahora!</p>
-            <p className="empty-state-sub">
-              Tus errores aparecen aquí después de practicar con el coach. Empieza una conversación.
-            </p>
+            <p className="empty-state-title">{t("progress.allClear")}</p>
+            <p className="empty-state-sub">{t("progress.allClearSub")}</p>
             <Link to="/conversation" className="btn-ghost mt-1 text-sm px-4 py-2">
-              Conversar con el coach <ArrowRight size={14} />
+              {t("progress.talkNow")} <ArrowRight size={14} />
             </Link>
           </div>
         ) : (

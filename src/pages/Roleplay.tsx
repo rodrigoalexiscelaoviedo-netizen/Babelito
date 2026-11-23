@@ -1,6 +1,5 @@
 import { awardSessionXp } from "../lib/xp";
 import { SuggestedChunks, XpEarned } from "../components/ReportExtras";
-import { useTranslation } from "react-i18next";
 import { useEffect, useRef, useState } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import {
@@ -36,6 +35,7 @@ import ShadowingBlock from "../components/ShadowingBlock";
 import { requestHint } from "../lib/hints";
 import { saveStep } from "../lib/situations";
 import type { ResumableSession } from "../lib/useResumableSession";
+import { tFor } from "../i18n";
 
 export const SCENARIO_ICONS: Record<string, LucideIcon> = {
   Briefcase,
@@ -64,9 +64,10 @@ export function RoleplayChat({
   packId?: string | null;
   onExit: () => void;
 }) {
-  const { t } = useTranslation();
   const { profile, refreshProfile } = useAuth();
   const learningLanguage = profile?.learning_language || "en";
+  const isCa = learningLanguage === "ca";
+  const tr = tFor(learningLanguage);
   const voicePrefs = useVoicePrefs();
   const [turns, setTurns] = useState<ChatTurn[]>(
     resume?.messages.length ? resume.messages : [{ role: "assistant", content: scenario.opening }]
@@ -174,7 +175,7 @@ export function RoleplayChat({
     speak(text, {
       voiceName: voicePrefs.voiceName ?? undefined,
       rate: voicePrefs.voiceRate,
-      lang: voicePrefs.voiceAccent || (profile?.english_variant === "American" ? "en-US" : "en-GB"),
+      lang: voicePrefs.voiceAccent || (isCa ? "ca-ES" : profile?.english_variant === "American" ? "en-US" : "en-GB"),
     });
     setActiveSpeakIdx(index);
     setPaused(false);
@@ -192,7 +193,7 @@ export function RoleplayChat({
 
   async function getHint() {
     if (!profile || turns.length === 0) return;
-    const last = [...turns].reverse().find((t) => t.role === "assistant")?.content ?? "";
+    const last = [...turns].reverse().find((turn) => turn.role === "assistant")?.content ?? "";
     setHintLoading(true);
     try {
       setHintText(
@@ -222,7 +223,7 @@ export function RoleplayChat({
         void awardSessionXp(profile.id, sid, "roleplay", userTurns, Math.round((Date.now() - startedAt) / 1000)).then(setXpEarned);
         // Nivel al día con esta sesión (no hace falta esperar al día siguiente).
         void consolidateLevel(profile, { force: true })
-          .then((r) => { if (r.changed) void refreshProfile(); })
+          .then((res) => { if (res.changed) void refreshProfile(); })
           .catch((err) => console.warn("[leveling]", err));
         const { error } = await supabase
           .from("sessions")
@@ -234,7 +235,7 @@ export function RoleplayChat({
           })
           .eq("id", sid);
         if (error) {
-          setReportError(`No se pudo registrar la sesión: ${error.message}`);
+          setReportError(tr("roleplay.saveFail", { m: error.message }));
         }
         // Misión de una Situación: este paso queda hecho.
         if (packId) void saveStep(profile.id, packId, { roleplay: true });
@@ -243,7 +244,7 @@ export function RoleplayChat({
       setReportCounted(counts);
       setReport(r);
     } catch (e) {
-      setReportError(e instanceof Error ? e.message : "Could not generate report.");
+      setReportError(e instanceof Error ? e.message : tr("roleplay.reportFail"));
     } finally {
       setGeneratingReport(false);
     }
@@ -281,10 +282,10 @@ export function RoleplayChat({
           .eq("id", sid);
         if (errorTypes.length)
           await supabase.from("errors").insert(
-            errorTypes.map((t) => ({
+            errorTypes.map((et) => ({
               user_id: profile.id,
               session_id: sid,
-              error_type: t,
+              error_type: et,
               original_text: text.trim(),
             }))
           );
@@ -294,9 +295,9 @@ export function RoleplayChat({
         setRetryText(text.trim());
         setTurns((prev) => prev.slice(0, -1));
       } else {
-        setTurns((t) => [
-          ...t,
-          { role: "assistant", content: `⚠️ ${e instanceof Error ? e.message : "Error."}` },
+        setTurns((prev) => [
+          ...prev,
+          { role: "assistant", content: `⚠️ ${e instanceof Error ? e.message : tr("roleplay.errGeneric")}` },
         ]);
       }
     } finally {
@@ -305,28 +306,23 @@ export function RoleplayChat({
   }
 
   if (report) {
-    const learningLanguage = profile?.learning_language || "en";
     return (
       <div className="animate-fade-up max-w-xl mx-auto">
         <div className="flex items-center justify-between mb-6">
           <div>
-            <p className="eyebrow mb-1">{learningLanguage === "ca" ? "Informe de sessió" : "Session report"} · {scenario.title}</p>
-            <h1 className="font-display text-2xl font-extrabold">{learningLanguage === "ca" ? "Com ha anat" : "How it went"}</h1>
+            <p className="eyebrow mb-1">{tr("roleplay.reportEyebrow")} · {scenario.title}</p>
+            <h1 className="font-display text-2xl font-extrabold">{tr("roleplay.howWent")}</h1>
             <div className="mt-2"><XpEarned amount={xpEarned} learningLanguage={learningLanguage} /></div>
           </div>
-          <button onClick={onExit} aria-label={t("common.close")} className="text-paper-muted hover:text-paper">
+          <button onClick={onExit} aria-label={tr("common.close")} className="text-paper-muted hover:text-paper">
             <X size={20} />
           </button>
         </div>
 
         {!reportCounted && (
           <div className="card p-4 mb-4 border-gold/40">
-            <p className="text-sm text-gold font-medium mb-1">{learningLanguage === "ca" ? "Aquesta sessió no s'ha registrat" : "This session wasn't saved"}</p>
-            <p className="text-xs text-paper-muted">
-              {learningLanguage === "ca"
-                ? `Ha estat massa curta: calen almenys ${MIN_USER_TURNS} intercanvis perquè compti. L'informe de sota segueix sent vàlid.`
-                : `Too short: you need at least ${MIN_USER_TURNS} exchanges for it to count towards your streak. The report below is still valid.`}
-            </p>
+            <p className="text-sm text-gold font-medium mb-1">{tr("roleplay.notSaved")}</p>
+            <p className="text-xs text-paper-muted">{tr("roleplay.tooShort", { n: MIN_USER_TURNS })}</p>
           </div>
         )}
         {reportError && (
@@ -341,7 +337,7 @@ export function RoleplayChat({
 
         {report.did_well.length > 0 && (
           <div className="card p-5 mb-4 border-mint/20">
-            <p className="eyebrow text-mint mb-3">{learningLanguage === "ca" ? "El que vas fer bé" : "What you did well"}</p>
+            <p className="eyebrow text-mint mb-3">{tr("roleplay.didWell")}</p>
             <ul className="space-y-1.5">
               {report.did_well.map((item, i) => (
                 <li key={i} className="flex items-start gap-2 text-sm">
@@ -355,7 +351,7 @@ export function RoleplayChat({
 
         {report.key_errors.length > 0 && (
           <div className="card p-5 mb-4 border-coral/20">
-            <p className="eyebrow text-coral mb-3">{learningLanguage === "ca" ? "Errors claus" : "Key errors"}</p>
+            <p className="eyebrow text-coral mb-3">{tr("roleplay.keyErrors")}</p>
             <div className="space-y-3">
               {report.key_errors.map((e, i) => (
                 <div key={i} className="text-sm">
@@ -371,18 +367,18 @@ export function RoleplayChat({
           chunks={report.suggested_chunks}
           userId={profile?.id}
           learningLanguage={learningLanguage}
-          title={learningLanguage === "ca" ? "Fragments que pots usar la pròxima vegada" : "Chunks you could use next time"}
+          title={tr("roleplay.chunksNext")}
         />
 
-        <p className="text-xs text-paper-faint text-center mb-4">
-          {learningLanguage === "ca" ? "Escrit pel teu coach d’IA" : "Written by your AI coach"}
-        </p>
+        <p className="text-xs text-paper-faint text-center mb-4">{tr("roleplay.writtenBy")}</p>
         <button className="btn-coral w-full" onClick={onExit}>
-          {learningLanguage === "ca" ? "Torna als escenaris" : packId ? "Back to the situation" : "Back to scenarios"}
+          {packId ? tr("roleplay.backSituation") : tr("roleplay.backScenarios")}
         </button>
       </div>
     );
   }
+
+  const left = turnsRemaining(turns);
 
   return (
     <div className="flex flex-col h-[calc(100vh-7rem)] md:h-[calc(100vh-5rem)] max-w-2xl mx-auto">
@@ -390,7 +386,7 @@ export function RoleplayChat({
         <div className="min-w-0">
           <p className="eyebrow truncate">{scenario.title}</p>
           <p className="truncate text-sm text-paper-muted">
-            {learningLanguage === "ca" ? "Parles amb" : "You're talking to"}: {scenario.coach_role}
+            {tr("roleplay.talkingTo")}: {scenario.coach_role}
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-3 whitespace-nowrap">
@@ -401,79 +397,77 @@ export function RoleplayChat({
             className="flex items-center gap-1.5 text-xs text-paper-muted hover:text-coral transition disabled:opacity-40"
           >
             {generatingReport ? (
-              <span className="flex items-center gap-2"><BrandDots /> {learningLanguage === "ca" ? "Generant…" : "Generating…"}</span>
+              <span className="flex items-center gap-2"><BrandDots /> {tr("roleplay.generating")}</span>
             ) : (
-              learningLanguage === "ca" ? "Finalitza i veu l'informe →" : "End & report →"
+              tr("roleplay.endReport")
             )}
           </button>
           <button className="text-sm text-paper-muted hover:text-paper" onClick={onExit}>
-            {learningLanguage === "ca" ? "Sortir" : "Leave"}
+            {tr("roleplay.leave")}
           </button>
         </div>
       </div>
 
       {/* Estado real de registro */}
       <div className="mb-2 text-right">
-        {turnsRemaining(turns) > 0 ? (
+        {left > 0 ? (
           <p className="text-[11px] text-paper-faint">
-            {learningLanguage === "ca"
-              ? `Et ${turnsRemaining(turns) === 1 ? "falta" : "falten"} ${turnsRemaining(turns)} ${turnsRemaining(turns) === 1 ? "intercanvi" : "intercanvis"} perquè aquesta sessió compti`
-              : `${turnsRemaining(turns)} more ${turnsRemaining(turns) === 1 ? "exchange" : "exchanges"} to count this session`}
+            {tr(left === 1 ? "roleplay.exchangesLeftOne" : "roleplay.exchangesLeftMany", { n: left })}
           </p>
         ) : (
-          <p className="text-[11px] text-mint">{learningLanguage === "ca" ? "✓ Aquesta sessió comptarà per a la teva ratxa" : "✓ This session counts towards your streak"}</p>
+          <p className="text-[11px] text-mint">{tr("roleplay.countsStreak")}</p>
         )}
       </div>
 
       <div ref={scrollRef} className="flex-1 overflow-y-auto pr-1 space-y-4">
-        {turns.map((t, i) => (
-          <div key={i} className={`flex ${t.role === "user" ? "justify-end" : "justify-start"}`}>
+        {turns.map((turn, i) => (
+          <div key={i} className={`flex ${turn.role === "user" ? "justify-end" : "justify-start"}`}>
             <div
               className={`max-w-[85%] rounded-xl2 px-4 py-3 ${
-                t.role === "user" ? "bg-coral text-ink-900" : "card"
+                turn.role === "user" ? "bg-coral text-ink-900" : "card"
               }`}
             >
-              {t.role === "assistant" ? (
+              {turn.role === "assistant" ? (
                 <div>
                   <div className="flex justify-end gap-1.5 mb-1">
                     {activeSpeakIdx === i && (
                       <button
                         onClick={handlePauseResume}
                         className="text-paper-faint hover:text-mint transition"
-                        aria-label={paused ? (learningLanguage === "ca" ? "Reprendre" : "Resume") : (learningLanguage === "ca" ? "Pausar" : "Pause")}
+                        aria-label={paused ? tr("roleplay.resume") : tr("roleplay.pause")}
                       >
                         {paused ? <Play size={14} /> : <Pause size={14} />}
                       </button>
                     )}
                     <button
-                      onClick={() => handleSpeak(t.content, i)}
+                      onClick={() => handleSpeak(turn.content, i)}
                       className="text-paper-faint hover:text-coral transition"
-                      aria-label={learningLanguage === "ca" ? "Llegir en veu alta" : "Read aloud"}
+                      aria-label={tr("roleplay.readAloud")}
                     >
                       <Volume2 size={15} />
                     </button>
                     <button
                       onClick={() => setShadowIdx(shadowIdx === i ? null : i)}
                       className={`transition ${shadowIdx === i ? "text-mint" : "text-paper-faint hover:text-mint"}`}
-                      aria-label={learningLanguage === "ca" ? "Repetir aquesta línia" : "Shadow this line"}
-                      title={learningLanguage === "ca" ? "Repetir aquesta línia" : "Repeat this line"}
+                      aria-label={tr("roleplay.shadowLine")}
+                      title={tr("roleplay.repeatLine")}
                     >
                       <Mic size={14} />
                     </button>
                   </div>
-                  <p className="whitespace-pre-wrap leading-relaxed">{t.content}</p>
+                  <p className="whitespace-pre-wrap leading-relaxed">{turn.content}</p>
                   {shadowIdx === i && (
                     <div className="mt-3">
                       <ShadowingBlock
-                        text={t.content.match(/[^.!?]*[.!?]/)?.[0]?.trim() ?? t.content.split(" ").slice(0, 10).join(" ")}
-                        lang={voicePrefs.voiceAccent ?? "en-GB"}
-                        label={learningLanguage === "ca" ? "Repetir aquesta línia" : "Repeat this line"}
+                        text={turn.content.match(/[^.!?]*[.!?]/)?.[0]?.trim() ?? turn.content.split(" ").slice(0, 10).join(" ")}
+                        lang={voicePrefs.voiceAccent ?? (isCa ? "ca-ES" : "en-GB")}
+                        label={tr("roleplay.repeatLine")}
                       />
                     </div>
                   )}
                 </div>
               ) : (
-                <p className="whitespace-pre-wrap leading-relaxed">{t.content}</p>
+                <p className="whitespace-pre-wrap leading-relaxed">{turn.content}</p>
               )}
             </div>
           </div>
@@ -481,14 +475,12 @@ export function RoleplayChat({
         {retryText && !thinking && (
           <div className="flex justify-start">
             <div className="card px-4 py-3 border-gold/30">
-              <p className="text-sm text-paper-muted mb-2">
-                El coach está con mucha demanda ahora mismo. Prueba de nuevo.
-              </p>
+              <p className="text-sm text-paper-muted mb-2">{tr("roleplay.coachBusy")}</p>
               <button
                 className="flex items-center gap-1.5 text-xs font-medium text-gold hover:text-gold/80 transition"
-                onClick={() => { const t = retryText; setRetryText(null); send(t); }}
+                onClick={() => { const rt = retryText; setRetryText(null); send(rt); }}
               >
-                <BrandDots /> Reintentar
+                <BrandDots /> {tr("roleplay.retry")}
               </button>
             </div>
           </div>
@@ -500,7 +492,7 @@ export function RoleplayChat({
             <div className="card max-w-[80%] px-3 py-2.5 border-gold/30">
               {hintText ? (
                 <>
-                  <p className="text-[10px] text-gold font-mono uppercase tracking-widest mb-1">💡 Hint</p>
+                  <p className="text-[10px] text-gold font-mono uppercase tracking-widest mb-1">💡 {tr("roleplay.hint")}</p>
                   <p className="text-sm text-paper-muted">{hintText}</p>
                 </>
               ) : (
@@ -510,7 +502,7 @@ export function RoleplayChat({
                   className="flex items-center gap-2 text-xs text-paper-faint hover:text-gold transition disabled:opacity-60"
                 >
                   {hintLoading ? <BrandDots /> : <span>💡</span>}
-                  {hintLoading ? (learningLanguage === "ca" ? "Obtenint pista…" : "Getting hint…") : (learningLanguage === "ca" ? "Necessites una pista?" : "Need a hint?")}
+                  {hintLoading ? tr("roleplay.gettingHint") : tr("roleplay.needHint")}
                 </button>
               )}
             </div>
@@ -531,10 +523,10 @@ export function RoleplayChat({
         {voice.error && <p className="text-coral text-xs text-center mb-2">{voice.error}</p>}
         <div className="card flex items-end gap-2 p-2">
           <textarea
-            aria-label={learningLanguage === "ca" ? "La teva línia" : "Your line"}
+            aria-label={tr("roleplay.yourLine")}
             className="flex-1 resize-none bg-transparent px-2 py-2 text-paper placeholder:text-paper-faint focus:outline-none max-h-32"
             rows={1}
-            placeholder={learningLanguage === "ca" ? "La teva línia… (escriu /end per retroalimentació)" : "Your line… (type /end for feedback)"}
+            placeholder={tr("roleplay.linePlaceholder")}
             value={displayValue}
             readOnly={listening}
             onChange={(e) => {
@@ -557,15 +549,15 @@ export function RoleplayChat({
               <button
                 onClick={toggleMic}
                 className="flex items-center gap-1.5 px-3 h-10 rounded-xl bg-coral text-ink-900 font-semibold text-sm transition"
-                aria-label={learningLanguage === "ca" ? "Fet — detenir gravació" : "Listo — stop recording"}
+                aria-label={tr("roleplay.stopRec")}
               >
-                <Square size={15} /> {learningLanguage === "ca" ? "Fet" : "Listo"}
+                <Square size={15} /> {tr("roleplay.done")}
               </button>
             ) : (
               <button
                 onClick={toggleMic}
                 className="grid h-10 w-10 place-items-center rounded-xl bg-ink-600 text-paper hover:bg-ink-500 transition"
-                aria-label={learningLanguage === "ca" ? "Iniciar gravació" : "Start recording"}
+                aria-label={tr("roleplay.startRec")}
               >
                 <Mic size={18} />
               </button>
@@ -574,7 +566,7 @@ export function RoleplayChat({
           <button
             onClick={() => send(input)}
             disabled={!input.trim() || thinking}
-            aria-label={learningLanguage === "ca" ? "Envia" : "Send"}
+            aria-label={tr("roleplay.send")}
             className="grid h-10 w-10 place-items-center rounded-xl bg-coral text-ink-900 hover:bg-coral-soft disabled:opacity-40 transition"
           >
             <Send size={17} />

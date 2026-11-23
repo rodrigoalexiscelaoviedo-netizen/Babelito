@@ -3,6 +3,7 @@ import { Link, Navigate } from "react-router-dom";
 import { Check, Target } from "lucide-react";
 import { SITUATION_ICONS } from "../components/situationIcons";
 import { useAuth } from "../context/AuthContext";
+import { tFor } from "../i18n";
 import {
   SITUATIONS,
   STEP_ORDER,
@@ -17,6 +18,7 @@ const LEVEL_FILTERS = ["All", "A1", "A2", "B1", "B2"] as const;
 
 export default function Situations() {
   const { profile } = useAuth();
+  const t = tFor(profile?.learning_language || "en");
   const [progress, setProgress] = useState<Record<string, SituationProgress>>({});
   const [level, setLevel] = useState<(typeof LEVEL_FILTERS)[number]>("All");
 
@@ -38,19 +40,19 @@ export default function Situations() {
 
   const doneCount = SITUATIONS.filter((s) => isComplete(progress[s.id]?.steps)).length;
 
-  // Versión catalana pendiente: se vuelve a Inicio.
+  // Versión catalana pendiente (contenido de situaciones solo en inglés): se vuelve a Inicio.
   if (profile?.learning_language === "ca") return <Navigate to="/" replace />;
 
   return (
     <div className="animate-fade-up">
-      <p className="eyebrow mb-2">Situations</p>
-      <h1 className="page-title mb-2">Train for real life</h1>
+      <p className="eyebrow mb-2">{t("situations.eyebrow")}</p>
+      <h1 className="page-title mb-2">{t("situations.title")}</h1>
       <p className="text-paper-muted mb-6">
-        Pick a situation and work on it from every angle: key phrases, a model dialogue, a quiz and a live roleplay with your coach.
-        {doneCount > 0 && ` · ${doneCount}/${SITUATIONS.length} completed`}
+        {t("situations.intro")}
+        {doneCount > 0 && t("situations.doneCount", { a: doneCount, b: SITUATIONS.length })}
       </p>
 
-      <div className="mb-6 flex flex-wrap gap-2" role="group" aria-label="Filter by level">
+      <div className="mb-6 flex flex-wrap gap-2" role="group" aria-label={t("situations.filterLevel")}>
         {LEVEL_FILTERS.map((l) => (
           <button
             key={l}
@@ -60,7 +62,7 @@ export default function Situations() {
               level === l ? "bg-coral text-ink-900" : "bg-ink-700 text-paper-muted hover:text-paper"
             }`}
           >
-            {l}
+            {l === "All" ? t("situations.all") : l}
           </button>
         ))}
       </div>
@@ -90,12 +92,12 @@ export default function Situations() {
                 <span className={`text-[11px] font-medium ${done ? "text-mint" : "text-paper-faint"}`}>
                   {done ? (
                     <span className="inline-flex items-center gap-1">
-                      <Check size={12} /> Done
+                      <Check size={12} /> {t("situations.done")}
                     </span>
                   ) : n > 0 ? (
                     `${n}/4`
                   ) : (
-                    "Start"
+                    t("situations.start")
                   )}
                 </span>
               </div>

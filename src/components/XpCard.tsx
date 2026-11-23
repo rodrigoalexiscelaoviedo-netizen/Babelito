@@ -67,7 +67,7 @@ export default function XpCard({ compact = false }: { compact?: boolean }) {
     }
   }, [total, profile?.id]);
 
-  if (!profile || profile.learning_language === "ca") return null;
+  if (!profile) return null;
 
   if (total === null) {
     return (

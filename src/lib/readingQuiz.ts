@@ -75,17 +75,26 @@ function writeCache(key: string, quiz: QuizQuestion[]) {
   }
 }
 
-export async function loadReadingQuiz(id: string, content: string, level: string): Promise<QuizQuestion[]> {
-  const key = textKey(id, content);
+export async function loadReadingQuiz(id: string, content: string, level: string, lang: "en" | "ca" = "en"): Promise<QuizQuestion[]> {
+  // El caché del inglés conserva su clave; el catalán tiene la suya para no mezclar idiomas.
+  const key = lang === "ca" ? `ca-${textKey(id, content)}` : textKey(id, content);
   const cached = readCache(key);
   if (cached) return cached;
 
-  const raw = await askCoach({
-    json: true,
-    system: `You write reading-comprehension questions for a Spanish-speaking learner of English at level ${level}.
+  const system =
+    lang === "ca"
+      ? `Escrius preguntes de comprensió lectora per a una persona de parla castellana que aprèn català, nivell ${level}.
+Fes servir català senzill (nivell ${level} o més fàcil). Respon NOMÉS amb un únic objecte JSON vàlid, sense markdown:
+{"questions":[{"q":"...","options":["...","...","..."],"answer":0}]}
+Escriu exactament 3 preguntes sobre les idees principals o detalls clau del text. Cada pregunta té exactament 3 opcions curtes i només una és correcta. "answer" és l'índex (0 a 2) de l'opció correcta. Mai no preguntis opinions.`
+      : `You write reading-comprehension questions for a Spanish-speaking learner of English at level ${level}.
 Use simple English (level ${level} or easier). Respond ONLY with a single valid JSON object, no markdown:
 {"questions":[{"q":"...","options":["...","...","..."],"answer":0}]}
-Write exactly 3 questions about the main ideas or key details of the text. Each question has exactly 3 short options and only one is correct. "answer" is the index (0 to 2) of the correct option. Never ask for opinions.`,
+Write exactly 3 questions about the main ideas or key details of the text. Each question has exactly 3 short options and only one is correct. "answer" is the index (0 to 2) of the correct option. Never ask for opinions.`;
+
+  const raw = await askCoach({
+    json: true,
+    system: system,
     messages: [{ role: "user", content: content.slice(0, MAX_TEXT_CHARS) }],
     maxTokens: 700,
     temperature: 0.3,

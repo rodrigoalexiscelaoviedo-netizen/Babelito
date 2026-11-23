@@ -17,6 +17,9 @@ import { useAuth } from "../context/AuthContext";
 import { awardXp, listeningXp } from "../lib/xp";
 import { recordSkillAttempt } from "../lib/skillLevels";
 import ShadowingBlock from "../components/ShadowingBlock";
+import { tFor } from "../i18n";
+
+type T = ReturnType<typeof tFor>;
 
 // Rate for native-speed playback
 const NATIVE_RATE = 1.2;
@@ -82,6 +85,7 @@ export default function Listening() {
   const voicePrefs = useVoicePrefs();
   const learningLanguage = profile?.learning_language || "en";
   const isCatalan = learningLanguage === "ca";
+  const t = tFor(learningLanguage);
   const patterns = isCatalan ? CATALAN_PATTERNS : PATTERNS;
   const [view, setView] = useState<View>("list");
   const [detail, setDetail] = useState<LinkingLike | null>(null);
@@ -93,7 +97,7 @@ export default function Listening() {
     speak(pattern.spoken, {
       voiceName: voicePrefs.voiceName ?? undefined,
       rate: NATIVE_RATE,
-      lang: pattern.lang ?? voicePrefs.voiceAccent ?? "en-GB",
+      lang: pattern.lang ?? voicePrefs.voiceAccent ?? (isCatalan ? "ca-ES" : "en-GB"),
     });
   }
 
@@ -101,7 +105,8 @@ export default function Listening() {
     return (
       <DetailView
         pattern={detail}
-        learningLanguage={learningLanguage}
+        t={t}
+        isCatalan={isCatalan}
         voicePrefs={voicePrefs}
         playSpoken={playSpoken}
         onBack={() => setView("list")}
@@ -115,7 +120,8 @@ export default function Listening() {
         key={trainKey}
         onRestart={() => setTrainKey((k) => k + 1)}
         patterns={patterns}
-        learningLanguage={learningLanguage}
+        t={t}
+        isCatalan={isCatalan}
         voicePrefs={voicePrefs}
         playSpoken={playSpoken}
         onBack={() => setView("list")}
@@ -126,9 +132,8 @@ export default function Listening() {
   return (
     <ListView
       patterns={patterns}
+      t={t}
       isCatalan={isCatalan}
-      learningLanguage={learningLanguage}
-      voicePrefs={voicePrefs}
       playSpoken={playSpoken}
       onSelect={(p) => {
         setDetail(p);
@@ -143,16 +148,15 @@ export default function Listening() {
 
 function ListView({
   patterns,
+  t,
   isCatalan,
-  learningLanguage,
   playSpoken,
   onSelect,
   onTrain,
 }: {
   patterns: LinkingLike[];
+  t: T;
   isCatalan: boolean;
-  learningLanguage: string;
-  voicePrefs: ReturnType<typeof useVoicePrefs>;
   playSpoken: (p: LinkingLike, e?: React.MouseEvent) => void;
   onSelect: (p: LinkingLike) => void;
   onTrain: () => void;
@@ -165,52 +169,48 @@ function ListView({
   return (
     <div className="animate-fade-up">
       <header className="mb-6">
-        <p className="eyebrow mb-2">{learningLanguage === "ca" ? "Escoltar" : "Listening"}</p>
-        <h1 className="page-title">{learningLanguage === "ca" ? "Escoltar" : "Understand fast English"}</h1>
-        <p className="text-paper-muted mt-1">
-          {isCatalan
-            ? "Entrena la teva orella per al català parlat ràpid."
-            : "Natives don't say word by word: \"want to\" turns into \"wanna\". Learn these patterns and fast speech stops being a blur."}
-        </p>
+        <p className="eyebrow mb-2">{t("listening.eyebrow")}</p>
+        <h1 className="page-title">{t("listening.title")}</h1>
+        <p className="text-paper-muted mt-1">{t("listening.intro")}</p>
       </header>
 
       {!isCatalan && (
         <div className="card mb-8 border-coral/30 bg-gradient-to-br from-ink-700 to-ink-800 p-5">
           <ol className="mb-4 grid gap-3 text-sm sm:grid-cols-3">
             {[
-              ["1", "Listen", "Hear a phrase at native speed"],
-              ["2", "Pick", "Choose what was really said"],
-              ["3", "Say it", "Repeat it and get a score"],
-            ].map(([n, t, d]) => (
+              ["1", t("listening.step1Title"), t("listening.step1Desc")],
+              ["2", t("listening.step2Title"), t("listening.step2Desc")],
+              ["3", t("listening.step3Title"), t("listening.step3Desc")],
+            ].map(([n, title, d]) => (
               <li key={n} className="flex items-start gap-3">
                 <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-coral/15 font-mono text-xs font-bold text-coral">{n}</span>
                 <span>
-                  <span className="block font-medium">{t}</span>
+                  <span className="block font-medium">{title}</span>
                   <span className="block text-xs text-paper-muted">{d}</span>
                 </span>
               </li>
             ))}
           </ol>
           <button className="btn-coral flex w-full items-center justify-center gap-2" onClick={onTrain}>
-            <Headphones size={16} /> Train my ear · about 2 min
+            <Headphones size={16} /> {t("listening.trainBtn")}
           </button>
-          <p className="mt-2 text-center text-xs text-paper-faint">Or browse the patterns below and learn them one by one.</p>
+          <p className="mt-2 text-center text-xs text-paper-faint">{t("listening.browseHint")}</p>
         </div>
       )}
       {isCatalan && (
         <button className="btn-coral mb-6 flex items-center gap-2" onClick={onTrain}>
-          <Headphones size={16} /> Entrena la meva orella
+          <Headphones size={16} /> {t("listening.trainBtn")}
         </button>
       )}
 
       {/* Type filter */}
       <div className="flex flex-wrap gap-2 mb-6">
         <TypeChip active={activeType === "all"} onClick={() => setActiveType("all")}>
-          {learningLanguage === "ca" ? "Tots" : "All"}
+          {t("listening.all")}
         </TypeChip>
-        {ALL_TYPES.map((t) => (
-          <TypeChip key={t} active={activeType === t} onClick={() => setActiveType(t)}>
-            {TYPE_LABELS[t]}
+        {ALL_TYPES.map((type) => (
+          <TypeChip key={type} active={activeType === type} onClick={() => setActiveType(type)}>
+            {TYPE_LABELS[type]}
           </TypeChip>
         ))}
       </div>
@@ -227,7 +227,7 @@ function ListView({
             </div>
             <div className="grid sm:grid-cols-2 gap-3">
               {group.map((p) => (
-                <PatternCard key={p.id} pattern={p} playSpoken={playSpoken} onSelect={onSelect} />
+                <PatternCard key={p.id} pattern={p} t={t} playSpoken={playSpoken} onSelect={onSelect} />
               ))}
             </div>
           </section>
@@ -261,10 +261,12 @@ function TypeChip({
 
 function PatternCard({
   pattern,
+  t,
   playSpoken,
   onSelect,
 }: {
   pattern: LinkingLike;
+  t: T;
   playSpoken: (p: LinkingLike, e?: React.MouseEvent) => void;
   onSelect: (p: LinkingLike) => void;
 }) {
@@ -281,7 +283,7 @@ function PatternCard({
       <button
         onClick={(e) => playSpoken(pattern, e)}
         className="absolute right-3 top-3 text-paper-faint transition hover:text-coral"
-        aria-label={`Listen at native speed: ${pattern.spoken}`}
+        aria-label={t("listening.listenNativeAria", { s: pattern.spoken })}
       >
         <Volume2 size={15} aria-hidden />
       </button>
@@ -293,13 +295,15 @@ function PatternCard({
 
 function DetailView({
   pattern,
-  learningLanguage,
+  t,
+  isCatalan,
   voicePrefs,
   playSpoken,
   onBack,
 }: {
   pattern: LinkingLike;
-  learningLanguage: string;
+  t: T;
+  isCatalan: boolean;
   voicePrefs: ReturnType<typeof useVoicePrefs>;
   playSpoken: (p: LinkingLike, e?: React.MouseEvent) => void;
   onBack: () => void;
@@ -310,7 +314,7 @@ function DetailView({
         onClick={onBack}
         className="flex items-center gap-1.5 text-sm text-paper-muted hover:text-paper transition mb-6"
       >
-        <ArrowLeft size={16} /> {learningLanguage === "ca" ? "Tots els patrons" : "All patterns"}
+        <ArrowLeft size={16} /> {t("listening.allPatterns")}
       </button>
 
       <h1 className="sr-only">{TYPE_LABELS[pattern.type]}</h1>
@@ -321,11 +325,11 @@ function DetailView({
         </span>
         <div className="space-y-2 mb-4">
           <div>
-            <p className="text-xs text-paper-muted mb-0.5">{learningLanguage === "ca" ? "Escrit" : "Written"}</p>
+            <p className="text-xs text-paper-muted mb-0.5">{t("listening.written")}</p>
             <p className="font-display text-xl font-semibold">{pattern.written}</p>
           </div>
           <div>
-            <p className="text-xs text-paper-muted mb-0.5">{learningLanguage === "ca" ? "Parlat (velocitat nativa)" : "Spoken (native speed)"}</p>
+            <p className="text-xs text-paper-muted mb-0.5">{t("listening.spokenNative")}</p>
             <p className="font-display text-xl font-bold text-coral italic">{pattern.spoken}</p>
           </div>
         </div>
@@ -334,17 +338,17 @@ function DetailView({
           onClick={(e) => playSpoken(pattern, e)}
           className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-ink-600 hover:bg-ink-500 transition text-sm font-medium"
         >
-          <Volume2 size={15} className="text-coral" /> {learningLanguage === "ca" ? "Escoltar a velocitat nativa" : "Listen at native speed"}
+          <Volume2 size={15} className="text-coral" /> {t("listening.listenNative")}
         </button>
       </div>
 
       {/* Shadowing */}
       <div className="mb-4">
-        <p className="eyebrow mb-3">{learningLanguage === "ca" ? "Repeteix" : "Repetí"}</p>
+        <p className="eyebrow mb-3">{t("listening.repeatEyebrow")}</p>
         <ShadowingBlock
           text={pattern.written}
-          lang={pattern.lang ?? voicePrefs.voiceAccent ?? "en-GB"}
-          label={learningLanguage === "ca" ? "Escoltar i repetir" : "Listen & repeat"}
+          lang={pattern.lang ?? voicePrefs.voiceAccent ?? (isCatalan ? "ca-ES" : "en-GB")}
+          label={t("listening.listenRepeat")}
         />
       </div>
     </div>
@@ -370,14 +374,16 @@ type TrainPhase = "listening" | "answered";
 
 export function TrainView({
   patterns,
-  learningLanguage,
+  t,
+  isCatalan,
   voicePrefs,
   playSpoken,
   onBack,
   onRestart,
 }: {
   patterns: LinkingLike[];
-  learningLanguage: string;
+  t: T;
+  isCatalan: boolean;
   voicePrefs: ReturnType<typeof useVoicePrefs>;
   playSpoken: (p: LinkingLike, e?: React.MouseEvent) => void;
   onBack: () => void;
@@ -395,7 +401,7 @@ export function TrainView({
   const { profile } = useAuth();
   const sessionKey = useRef<string | null>(null);
   useEffect(() => {
-    if (!done || !profile || profile.learning_language === "ca") return;
+    if (!done || !profile) return;
     void awardXp(profile.id, { source: "listening", refKey: (sessionKey.current ??= `listening:${Date.now()}`), amount: listeningXp(correct), meta: { correct } });
     // Nivel de escucha: aciertos de la ronda sobre el total de patrones.
     void recordSkillAttempt(profile.id, "listening", correct, queue.length);
@@ -414,8 +420,8 @@ export function TrainView({
   // Initialize choices for first pattern on mount, then auto-play
   useEffect(() => {
     buildChoices(queue[0]);
-    const t = setTimeout(() => playSpoken(queue[0]), 400);
-    return () => clearTimeout(t);
+    const tm = setTimeout(() => playSpoken(queue[0]), 400);
+    return () => clearTimeout(tm);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -447,26 +453,23 @@ export function TrainView({
   }
 
   if (done) {
-    const ca = learningLanguage === "ca";
     return (
       <div className="animate-fade-up max-w-md mx-auto text-center pt-10">
         <Headphones size={44} className="mx-auto text-coral mb-3" />
-        <h1 className="page-title mb-2">{ca ? "Sessió completada!" : "Session complete!"}</h1>
+        <h1 className="page-title mb-2">{t("listening.completeTitle")}</h1>
         <p className="font-display text-5xl font-extrabold text-mint mb-1">{correct}</p>
-        <p className="text-paper-muted mb-2">{ca ? "de" : "out of"} {queue.length} {ca ? "correctes" : "correct"}</p>
+        <p className="text-paper-muted mb-2">{t("listening.outOf", { n: queue.length })}</p>
         <p className="text-sm text-paper-faint mb-6">
-          {correct >= queue.length * 0.8
-            ? (ca ? "Oïda excel·lent! Continua així." : "Excellent ear! Keep it up.")
-            : (ca ? "Continua practitzant — la teva oïda es fa més aguda." : "Keep practising — your ear is getting sharper.")}
+          {correct >= queue.length * 0.8 ? t("listening.excellent") : t("listening.keepPractising")}
         </p>
 
-        {missed.length > 0 && !ca && (
+        {missed.length > 0 && !isCatalan && (
           <div className="card mb-6 p-4 text-left">
-            <p className="eyebrow mb-2">To hear again</p>
+            <p className="eyebrow mb-2">{t("listening.toHearAgain")}</p>
             <ul className="space-y-2">
               {missed.map((p) => (
                 <li key={p.id} className="flex items-center gap-3 text-sm">
-                  <button onClick={(e) => playSpoken(p, e)} aria-label={`Listen: ${p.spoken}`} className="text-coral">
+                  <button onClick={(e) => playSpoken(p, e)} aria-label={t("listening.listenSpokenAria", { s: p.spoken })} className="text-coral">
                     <Volume2 size={16} />
                   </button>
                   <span className="flex-1">
@@ -482,16 +485,16 @@ export function TrainView({
         <div className="flex flex-col gap-2">
           {onRestart && (
             <button className="btn-coral w-full" onClick={onRestart}>
-              {ca ? "Una altra sessió" : "Train again"}
+              {t("listening.trainAgain")}
             </button>
           )}
-          {!ca && (
+          {!isCatalan && (
             <button className="flex w-full items-center justify-center gap-2 rounded-xl bg-ink-600 py-2.5 text-sm font-medium transition hover:bg-ink-500" onClick={() => navigate("/dictation")}>
-              <Keyboard size={16} className="text-coral" /> Next: write what you hear (Dictation)
+              <Keyboard size={16} className="text-coral" /> {t("listening.nextDictation")}
             </button>
           )}
           <button className="py-2 text-sm text-paper-muted hover:text-paper" onClick={onBack}>
-            {ca ? "Torna als patrons" : "Back to patterns"}
+            {t("listening.backPatterns")}
           </button>
         </div>
       </div>
@@ -502,24 +505,24 @@ export function TrainView({
 
   return (
     <div className="animate-fade-up max-w-lg mx-auto">
-      <h1 className="sr-only">{learningLanguage === "ca" ? "Entrena la teva orella" : "Train my ear"}</h1>
+      <h1 className="sr-only">{t("listening.train")}</h1>
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <button
           onClick={onBack}
           className="flex items-center gap-1.5 text-sm text-paper-muted hover:text-paper transition"
         >
-          <ArrowLeft size={16} /> {learningLanguage === "ca" ? "Sortir" : "Exit"}
+          <ArrowLeft size={16} /> {t("listening.exit")}
         </button>
         <span className="text-sm font-mono text-paper-muted">
-          {idx + 1} / {queue.length} · {correct} {learningLanguage === "ca" ? "correctes" : "correct"}
+          {t("listening.progressLine", { i: idx + 1, n: queue.length, c: correct })}
         </span>
       </div>
 
       {/* Progress bar */}
       <div
         role="progressbar"
-        aria-label={learningLanguage === "ca" ? "Progrés" : "Progress"}
+        aria-label={t("listening.progress")}
         aria-valuemin={0}
         aria-valuemax={queue.length}
         aria-valuenow={idx}
@@ -533,18 +536,18 @@ export function TrainView({
 
       {/* Prompt card */}
       <div className="card p-6 mb-5">
-        <p className="eyebrow mb-3">{learningLanguage === "ca" ? "Què has escoltat?" : "What did you hear?"}</p>
+        <p className="eyebrow mb-3">{t("listening.whatHeard")}</p>
         <div className="flex items-center gap-3">
           <button
             onClick={handlePlayCurrent}
             className="flex items-center gap-2 px-5 py-3 rounded-xl bg-coral text-ink-900 font-medium hover:bg-coral/90 transition"
           >
-            <Volume2 size={18} /> {learningLanguage === "ca" ? "Escoltar" : "Listen"}
+            <Volume2 size={18} /> {t("listening.listen")}
           </button>
           <button
             onClick={handlePlayCurrent}
             className="text-paper-faint hover:text-paper transition"
-            aria-label={learningLanguage === "ca" ? "Repetir" : "Replay"}
+            aria-label={t("listening.replay")}
           >
             <RotateCcw size={18} />
           </button>
@@ -590,14 +593,14 @@ export function TrainView({
             }`}
           >
             <p className={`font-medium mb-1 ${isCorrect ? "text-mint" : "text-coral"}`}>
-              {isCorrect ? "Correct!" : "Not quite"}
+              {isCorrect ? t("listening.correctBanner") : t("listening.notQuite")}
             </p>
             <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 mb-2">
-              <span className="text-xs text-paper-muted">Written:</span>
+              <span className="text-xs text-paper-muted">{t("listening.writtenLabel")}</span>
               <span className="font-medium text-paper">{pattern.written}</span>
             </div>
             <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 mb-2">
-              <span className="text-xs text-paper-muted">Spoken:</span>
+              <span className="text-xs text-paper-muted">{t("listening.spokenLabel")}</span>
               <span className="font-semibold text-coral italic">{pattern.spoken}</span>
             </div>
             <p className="text-sm text-paper leading-relaxed mt-1">{pattern.explanationEs}</p>
@@ -608,18 +611,18 @@ export function TrainView({
             onClick={handlePlayCurrent}
             className="flex items-center gap-2 text-sm text-paper-faint hover:text-coral transition"
           >
-            <RotateCcw size={14} /> {learningLanguage === "ca" ? "Escoltar de nou a velocitat nativa" : "Listen again at native speed"}
+            <RotateCcw size={14} /> {t("listening.listenAgainNative")}
           </button>
 
           {/* Shadowing the written form */}
           <ShadowingBlock
             text={pattern.written}
-            lang={voicePrefs.voiceAccent ?? "en-GB"}
-            label={learningLanguage === "ca" ? "Ara repeteix" : "Now repeat it"}
+            lang={voicePrefs.voiceAccent ?? (isCatalan ? "ca-ES" : "en-GB")}
+            label={t("listening.nowRepeat")}
           />
 
           <button className="btn-mint w-full py-3" onClick={handleNext}>
-            {idx + 1 < queue.length ? (learningLanguage === "ca" ? "Següent →" : "Next →") : (learningLanguage === "ca" ? "Finalitzar sessió ✓" : "Finish session ✓")}
+            {idx + 1 < queue.length ? t("listening.next") : t("listening.finish")}
           </button>
         </div>
       )}

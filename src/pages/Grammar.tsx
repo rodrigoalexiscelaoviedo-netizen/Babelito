@@ -7,9 +7,11 @@ import { loadGrammarScores } from "../lib/grammarProgress";
 import { loadErrorRows, summarizeErrors } from "../lib/mistakes";
 import { QUIZ_PASS_PERCENT } from "../lib/situations";
 import { levelRank } from "../lib/storyLibrary";
+import { tFor } from "../i18n";
 
 export default function Grammar() {
   const { profile } = useAuth();
+  const t = tFor(profile?.learning_language || "en");
   const [scores, setScores] = useState<Record<string, number>>({});
   const [topTypes, setTopTypes] = useState<string[]>([]);
 
@@ -45,17 +47,18 @@ export default function Grammar() {
     });
   }, [recommended, scores, profile?.current_level]);
 
+  // Las lecciones de gramática existen solo en inglés: en catalán no hay contenido todavía.
   if (profile?.learning_language === "ca") return <Navigate to="/" replace />;
 
   const passed = GRAMMAR_LESSONS.filter((l) => (scores[l.id] ?? 0) >= QUIZ_PASS_PERCENT).length;
 
   return (
     <div className="animate-fade-up">
-      <p className="eyebrow mb-2">Grammar</p>
-      <h1 className="page-title mb-2">Short lessons, real examples</h1>
+      <p className="eyebrow mb-2">{t("grammar.eyebrow")}</p>
+      <h1 className="page-title mb-2">{t("grammar.title")}</h1>
       <p className="text-paper-muted mb-6">
-        Each lesson takes about five minutes: the rule, examples, the mistakes Spanish speakers make, and a quiz.
-        {passed > 0 && ` · ${passed}/${GRAMMAR_LESSONS.length} passed`}
+        {t("grammar.intro")}
+        {passed > 0 && t("grammar.passedCount", { a: passed, b: GRAMMAR_LESSONS.length })}
       </p>
 
       <div className="grid gap-4 sm:grid-cols-2 stagger">
@@ -67,7 +70,7 @@ export default function Grammar() {
               <div className="flex items-center justify-between">
                 <span className="font-mono text-[10px] uppercase tracking-widest text-paper-faint">{l.level}</span>
                 {recommended.has(l.id) && (
-                  <span className="rounded-full bg-gold/15 px-2 py-0.5 text-[10px] font-semibold text-gold">For you</span>
+                  <span className="rounded-full bg-gold/15 px-2 py-0.5 text-[10px] font-semibold text-gold">{t("grammar.forYou")}</span>
                 )}
               </div>
               <h3 className="font-display text-lg font-bold mt-2">{l.title}</h3>
@@ -75,12 +78,12 @@ export default function Grammar() {
               <p className={`mt-3 text-[11px] font-medium ${ok ? "text-mint" : "text-paper-faint"}`}>
                 {ok ? (
                   <span className="inline-flex items-center gap-1">
-                    <Check size={12} /> Passed · {best}%
+                    <Check size={12} /> {t("grammar.passed", { n: best })}
                   </span>
                 ) : best ? (
-                  `Best: ${best}% — try again`
+                  t("grammar.bestTry", { n: best })
                 ) : (
-                  "Not started"
+                  t("grammar.notStarted")
                 )}
               </p>
             </Link>

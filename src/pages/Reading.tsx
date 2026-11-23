@@ -1,5 +1,4 @@
 import { useHistoryBack } from "../lib/useHistoryBack";
-import { useTranslation } from "react-i18next";
 import { useEffect, useRef, useState } from "react";
 import { ArrowLeft, BookOpen, Volume2, Pause, Play } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
@@ -14,6 +13,7 @@ import ClickableText from "../components/ClickableText";
 import ShadowingBlock from "../components/ShadowingBlock";
 import ReadingFinish, { type SavedWord } from "../components/ReadingFinish";
 import Loader from "../components/Loader";
+import { tFor } from "../i18n";
 
 const LEVEL_BADGE: Record<string, string> = {
   A2: "bg-mint/20 text-mint",
@@ -23,7 +23,7 @@ const LEVEL_BADGE: Record<string, string> = {
 
 /** Minutos de lectura a ~120 palabras por minuto (ritmo de quien aprende), mínimo 1. */
 function readingMinutes(content: string): number {
-  return Math.max(1, Math.round(content.split(/s+/).length / 120));
+  return Math.max(1, Math.round(content.trim().split(/\s+/).length / 120));
 }
 
 /** Returns the first complete sentence (ending in . ! ?) from a text. */
@@ -35,6 +35,7 @@ function firstSentence(text: string): string {
 export default function Reading() {
   const { profile } = useAuth();
   const learningLanguage = profile?.learning_language || "en";
+  const t = tFor(learningLanguage);
   const [view, setView] = useState<"library" | "reader">("library");
   const [activeText, setActiveText] = useState<ReadingText | null>(null);
   useHistoryBack(view === "reader", () => setView("library"));
@@ -49,8 +50,8 @@ export default function Reading() {
     if (!customContent.trim()) return;
     setActiveText({
       id: "custom",
-      title: "My text",
-      author: "Pasted text",
+      title: t("reading.customTitle"),
+      author: t("reading.customAuthor"),
       level: "B1",
       content: customContent.trim(),
     });
@@ -61,43 +62,43 @@ export default function Reading() {
     return <Reader text={activeText} onBack={() => setView("library")} />;
   }
 
+  const texts = learningLanguage === "ca" ? READING_TEXTS_CA : READING_TEXTS;
+
   return (
     <div className="animate-fade-up">
-      <p className="eyebrow mb-2">{learningLanguage === "ca" ? "Lectura" : "Reading"}</p>
-      <h1 className="page-title mb-2">{learningLanguage === "ca" ? "Llegeix i crea vocabulari" : "Read & build vocabulary"}</h1>
-      <p className="text-paper-muted mb-8">
-        {learningLanguage === "ca" ? "Clica qualsevol paraula per cercar-la i rastreja-la. Les paraules colorejades estan a la teva llista de vocabulari." : "1. Read. 2. Tap any word or sentence to hear it and see what it means. 3. Answer a quick check: the words you save come back in Review."}
-      </p>
+      <p className="eyebrow mb-2">{t("reading.eyebrow")}</p>
+      <h1 className="page-title mb-2">{t("reading.title")}</h1>
+      <p className="text-paper-muted mb-8">{t("reading.intro")}</p>
 
       <div className="grid sm:grid-cols-2 gap-4 mb-8 stagger">
-        {(learningLanguage === "ca" ? READING_TEXTS_CA : READING_TEXTS).map((t) => (
+        {texts.map((txt) => (
           <button
-            key={t.id}
-            onClick={() => openText(t)}
+            key={txt.id}
+            onClick={() => openText(txt)}
             className="card-interactive p-5 text-left"
           >
             <div className="flex items-start justify-between gap-2 mb-2">
               <BookOpen size={18} className="text-coral mt-0.5 shrink-0" />
-              <span className={`text-[10px] font-mono uppercase tracking-widest px-1.5 py-0.5 rounded ${LEVEL_BADGE[t.level] ?? ""}`}>
-                {t.level}
+              <span className={`text-[10px] font-mono uppercase tracking-widest px-1.5 py-0.5 rounded ${LEVEL_BADGE[txt.level] ?? ""}`}>
+                {txt.level}
               </span>
             </div>
-            <h3 className="font-display font-bold text-base leading-snug">{t.title}</h3>
-            <p className="text-xs text-paper-muted mt-0.5">{t.author}</p>
-            <p className="text-xs text-paper-faint mt-2 line-clamp-2">{t.content.slice(0, 100)}…</p>
+            <h3 className="font-display font-bold text-base leading-snug">{txt.title}</h3>
+            <p className="text-xs text-paper-muted mt-0.5">{txt.author}</p>
+            <p className="text-xs text-paper-faint mt-2 line-clamp-2">{txt.content.slice(0, 100)}…</p>
             <p className="mt-3 font-mono text-[10px] uppercase tracking-widest text-paper-faint">
-              ~{readingMinutes(t.content)} min · {learningLanguage === "ca" ? "toca paraules" : "tap words"} · {learningLanguage === "ca" ? "comprova" : "quick check"}
+              ~{readingMinutes(txt.content)} min · {t("reading.tapWords")} · {t("reading.quickCheck")}
             </p>
           </button>
         ))}
       </div>
 
       <div className="card p-5">
-        <h3 className="font-display font-bold mb-3">{learningLanguage === "ca" ? "Enganxa el teu propi text" : "Paste your own text"}</h3>
+        <h3 className="font-display font-bold mb-3">{t("reading.pasteTitle")}</h3>
         <textarea
-          aria-label={learningLanguage === "ca" ? "El teu text" : "Your text"}
+          aria-label={t("reading.pasteAria")}
           className="input min-h-[120px] resize-none w-full mb-3"
-          placeholder={learningLanguage === "ca" ? "Enganxa qualsevol text en català aquí…" : "Paste any English text here…"}
+          placeholder={t("reading.pastePlaceholder")}
           value={customContent}
           onChange={(e) => setCustomContent(e.target.value)}
         />
@@ -106,7 +107,7 @@ export default function Reading() {
           onClick={openCustom}
           disabled={!customContent.trim()}
         >
-          {learningLanguage === "ca" ? "Llegeix aquest text →" : "Read this text →"}
+          {t("reading.readThis")}
         </button>
       </div>
     </div>
@@ -114,10 +115,10 @@ export default function Reading() {
 }
 
 function Reader({ text, onBack }: { text: ReadingText; onBack: () => void }) {
-  const { t } = useTranslation();
   const { profile } = useAuth();
   const voicePrefs = useVoicePrefs();
   const learningLanguage = profile?.learning_language || "en";
+  const t = tFor(learningLanguage);
   const [vocabMap, setVocabMap] = useState<VocabMap>({});
   const [loadingVocab, setLoadingVocab] = useState(true);
   const [scrollProgress, setScrollProgress] = useState(0);
@@ -129,10 +130,10 @@ function Reader({ text, onBack }: { text: ReadingText; onBack: () => void }) {
   useEffect(() => {
     if (!profile) return;
     (async () => {
-      // READING_TEXTS is English-only content, regardless of learning_language
+      // El vocabulario se guarda por idioma: lo que marca quien aprende catalán no mezcla con el inglés.
       const { data } = await scopeByLanguage(
         supabase.from("user_vocabulary").select("*").eq("user_id", profile.id),
-        "en"
+        learningLanguage
       );
       if (data) {
         const map: VocabMap = {};
@@ -143,7 +144,7 @@ function Reader({ text, onBack }: { text: ReadingText; onBack: () => void }) {
       }
       setLoadingVocab(false);
     })();
-  }, [profile]);
+  }, [profile, learningLanguage]);
 
   useEffect(() => {
     const el = containerRef.current;
@@ -212,7 +213,7 @@ function Reader({ text, onBack }: { text: ReadingText; onBack: () => void }) {
             <button
               onClick={handlePauseResume}
               className="text-paper-faint hover:text-mint transition"
-              aria-label={paused ? (learningLanguage === "ca" ? "Reprendre la narració" : "Resume narration") : (learningLanguage === "ca" ? "Pausar la narració" : "Pause narration")}
+              aria-label={paused ? t("reading.resumeNarr") : t("reading.pauseNarr")}
             >
               {paused ? <Play size={15} /> : <Pause size={15} />}
             </button>
@@ -220,9 +221,9 @@ function Reader({ text, onBack }: { text: ReadingText; onBack: () => void }) {
           <button
             onClick={handleFullNarration}
             className="flex items-center gap-1 text-xs text-paper-faint hover:text-coral transition"
-            aria-label={learningLanguage === "ca" ? "Escoltar text complet" : "Listen to full text"}
+            aria-label={t("reading.listenFull")}
           >
-            <Volume2 size={15} /> {learningLanguage === "ca" ? "Escoltar" : "Listen"}
+            <Volume2 size={15} /> {t("reading.listen")}
           </button>
         </div>
       </div>
@@ -230,7 +231,7 @@ function Reader({ text, onBack }: { text: ReadingText; onBack: () => void }) {
       {/* Scroll progress */}
       <div
         role="progressbar"
-        aria-label={learningLanguage === "ca" ? "Progrés de lectura" : "Reading progress"}
+        aria-label={t("reading.progressAria")}
         aria-valuemin={0}
         aria-valuemax={100}
         aria-valuenow={scrollProgress}
@@ -244,33 +245,31 @@ function Reader({ text, onBack }: { text: ReadingText; onBack: () => void }) {
         ref={containerRef}
         tabIndex={0}
         role="region"
-        aria-label={learningLanguage === "ca" ? "Text" : "Text to read"}
+        aria-label={t("reading.textAria")}
         className="flex-1 overflow-y-auto space-y-4 focus-visible:outline-2 focus-visible:outline-coral rounded-sm"
       >
         <ClickableText
           text={text.content}
           vocabMap={vocabMap}
           userId={profile!.id}
-          language="en"
+          language={learningLanguage}
           voicePrefs={voicePrefs}
           source="reading"
           onVocabUpdate={handleVocabUpdate}
         />
 
         {/* Cierre: comprensión + palabras guardadas + qué sigue */}
-        {learningLanguage !== "ca" && (
-          <div className="mt-8">
-            <ReadingFinish text={text} saved={savedWords} userId={profile!.id} voicePrefs={voicePrefs} onNext={onBack} />
-          </div>
-        )}
+        <div className="mt-8">
+          <ReadingFinish text={text} saved={savedWords} userId={profile!.id} voicePrefs={voicePrefs} onNext={onBack} lang={learningLanguage === "ca" ? "ca" : "en"} />
+        </div>
 
         {/* Bonus: decir la primera frase en voz alta */}
         <div className="mt-6 pb-4">
-          <p className="eyebrow mb-2">{learningLanguage === "ca" ? "Extra" : "Bonus"}</p>
+          <p className="eyebrow mb-2">{t("reading.bonus")}</p>
           <ShadowingBlock
             text={shadowSentence}
-            lang={voicePrefs.voiceAccent ?? "en-GB"}
-            label={learningLanguage === "ca" ? "Pràctica d'ombra" : "Say the first sentence"}
+            lang={voicePrefs.voiceAccent ?? (learningLanguage === "ca" ? "ca-ES" : "en-GB")}
+            label={t("reading.shadowLabel")}
           />
         </div>
       </div>

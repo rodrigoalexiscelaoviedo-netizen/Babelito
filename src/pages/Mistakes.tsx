@@ -6,12 +6,13 @@ import MultipleChoiceQuiz from "../components/MultipleChoiceQuiz";
 import { ERROR_TYPES, errorHint, errorLabel } from "../lib/errorTypes";
 import { lessonsForError } from "../lib/grammarLessons";
 import { generateDrill, loadErrorRows, summarizeErrors, type ExerciseItem, type MistakeSummary, type Trend } from "../lib/mistakes";
+import { tFor } from "../i18n";
 
-const TREND_LABEL: Record<Trend, string> = {
-  up: "More than last month",
-  down: "Fewer than last month",
-  same: "About the same",
-  new: "New this month",
+const TREND_KEY: Record<Trend, string> = {
+  up: "mistakes.trendUp",
+  down: "mistakes.trendDown",
+  same: "mistakes.trendSame",
+  new: "mistakes.trendNew",
 };
 
 function TrendIcon({ trend }: { trend: Trend }) {
@@ -22,6 +23,7 @@ function TrendIcon({ trend }: { trend: Trend }) {
 
 export default function Mistakes() {
   const { profile } = useAuth();
+  const t = tFor(profile?.learning_language || "en");
   const [summary, setSummary] = useState<MistakeSummary | null>(null);
   const [drill, setDrill] = useState<{ type: string; items: ExerciseItem[]; fromAi: boolean; round: number } | null>(null);
   const [loadingDrill, setLoadingDrill] = useState<string | null>(null);
@@ -45,6 +47,7 @@ export default function Mistakes() {
     setDrill({ type, items: res.items, fromAi: res.fromAi, round: (drill?.round ?? 0) + 1 });
   }
 
+  // Las etiquetas de errores y los ejercicios de gramática siguen en inglés: en catalán no hay contenido todavía.
   if (profile?.learning_language === "ca") return <Navigate to="/" replace />;
 
   if (!summary) {
@@ -60,24 +63,21 @@ export default function Mistakes() {
 
   return (
     <div className="animate-fade-up mx-auto max-w-2xl">
-      <p className="eyebrow mb-2">My mistakes</p>
-      <h1 className="page-title mb-2">What to work on</h1>
+      <p className="eyebrow mb-2">{t("mistakes.eyebrow")}</p>
+      <h1 className="page-title mb-2">{t("mistakes.title")}</h1>
 
       {!top ? (
         <div className="card p-6 text-center">
-          <p className="font-medium">Nothing to show yet</p>
-          <p className="mt-1 text-sm text-paper-muted">
-            Have a few conversations or use the Corrector. Your coach spots patterns and they will appear here with exercises to fix them.
-          </p>
+          <p className="font-medium">{t("mistakes.nothingTitle")}</p>
+          <p className="mt-1 text-sm text-paper-muted">{t("mistakes.nothingSub")}</p>
           <Link to="/conversation" className="btn-coral mt-4 inline-block">
-            Start talking
+            {t("mistakes.startTalking")}
           </Link>
         </div>
       ) : (
         <>
           <p className="mb-6 text-paper-muted">
-            In the last 30 days the coach noticed <strong className="text-paper">{summary.total}</strong> slips. You slip most on{" "}
-            <strong className="text-paper">{errorLabel(top.type)}</strong>.
+            {t("mistakes.summary", { n: summary.total, type: errorLabel(top.type) })}
           </p>
 
           <ul className="space-y-4">
@@ -93,7 +93,7 @@ export default function Mistakes() {
                     <div className="h-1.5 rounded-full bg-coral" style={{ width: `${(s.count / max) * 100}%` }} />
                   </div>
                   <p className="mt-2 flex items-center gap-1.5 text-[11px] text-paper-faint">
-                    <TrendIcon trend={s.trend} /> {TREND_LABEL[s.trend]}
+                    <TrendIcon trend={s.trend} /> {t(TREND_KEY[s.trend])}
                   </p>
                   {ERROR_TYPES[s.type] && <p className="mt-2 text-sm text-paper-muted">{errorHint(s.type)}</p>}
 
@@ -110,11 +110,11 @@ export default function Mistakes() {
 
                   <div className="mt-4 flex flex-wrap gap-2">
                     <button className="btn-coral flex items-center gap-1.5 px-4 py-2 text-sm" onClick={() => startDrill(s.type)} disabled={loadingDrill !== null}>
-                      {loadingDrill === s.type ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />} Practise this
+                      {loadingDrill === s.type ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />} {t("mistakes.practise")}
                     </button>
                     {lessons[0] && (
                       <Link to={`/grammar/${lessons[0].id}`} className="btn-ghost px-4 py-2 text-sm">
-                        Read the lesson
+                        {t("mistakes.readLesson")}
                       </Link>
                     )}
                   </div>
@@ -122,9 +122,9 @@ export default function Mistakes() {
                   {drill?.type === s.type && (
                     <div className="mt-5 border-t border-ink-600 pt-4">
                       <p className="mb-3 text-xs text-paper-faint">
-                        {drill.fromAi ? "Exercises made for your level" : "Practice from the lesson quiz"}
+                        {drill.fromAi ? t("mistakes.fromAi") : t("mistakes.fromLesson")}
                       </p>
-                      <MultipleChoiceQuiz key={drill.round} items={drill.items} onFinish={() => {}} onRetry={() => startDrill(s.type)} retryLabel="New exercises" />
+                      <MultipleChoiceQuiz key={drill.round} items={drill.items} onFinish={() => {}} onRetry={() => startDrill(s.type)} retryLabel={t("mistakes.newExercises")} />
                     </div>
                   )}
                 </li>
@@ -136,7 +136,7 @@ export default function Mistakes() {
 
       {summary.pronunciationWords.length > 0 && (
         <section className="mt-8">
-          <h2 className="mb-2 font-display text-lg font-bold">Words to pronounce better</h2>
+          <h2 className="mb-2 font-display text-lg font-bold">{t("mistakes.pronWords")}</h2>
           <div className="flex flex-wrap gap-2">
             {summary.pronunciationWords.map((w) => (
               <span key={w} className="rounded-full bg-ink-700 px-3 py-1 text-sm">
@@ -145,7 +145,7 @@ export default function Mistakes() {
             ))}
           </div>
           <Link to="/sounds" className="mt-3 inline-block text-sm text-coral hover:underline">
-            Practise sounds →
+            {t("mistakes.practiseSounds")}
           </Link>
         </section>
       )}

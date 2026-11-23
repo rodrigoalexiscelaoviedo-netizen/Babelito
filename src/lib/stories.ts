@@ -79,10 +79,28 @@ Rules:
 - Keep the level appropriate: A2=simple vocabulary, B1=moderate, B2=advanced idioms
 - Be concise. Short story, short questions. The entire JSON response must fit in 3000 tokens.`;
 
+const GENERATE_SYSTEM_CA = `You are a Catalan story generator for learners who already speak Spanish.
+Generate a reading comprehension story WRITTEN IN CATALAN (standard Catalan, Barcelona norm). Respond ONLY with a single valid JSON object — no markdown, no extra text:
+{
+  "title": "...",
+  "content": "...",
+  "questions": [
+    {"question":"...","options":["A","B","C","D"],"correct_index":0}
+  ]
+}
+Rules:
+- title and content in Catalan. Questions and options in Catalan too.
+- content: EXACTLY 180-220 words, natural spoken-style Catalan, clear narrative, engaging. DO NOT exceed 220 words.
+- Generate exactly 4 comprehension questions, each with exactly 4 options
+- correct_index is 0-based (0=first option)
+- Keep the level appropriate: A2=simple vocabulary, B1=moderate, B2=advanced idioms
+- Be concise. The entire JSON response must fit in 3000 tokens.`;
+
 export async function generateStory(
   topic: string,
   level: string,
-  interests?: string
+  interests?: string,
+  language: "en" | "ca" = "en"
 ): Promise<Story> {
   const { data: authData } = await supabase.auth.getUser();
   const userId = authData?.user?.id;
@@ -94,7 +112,7 @@ export async function generateStory(
   try {
     raw = await askCoach({
       json: true,
-      system: GENERATE_SYSTEM,
+      system: language === "ca" ? GENERATE_SYSTEM_CA : GENERATE_SYSTEM,
       messages: [{ role: "user", content: userMsg }],
       maxTokens: 3000,
       temperature: 0.8,
@@ -122,7 +140,7 @@ export async function generateStory(
       source: "ai_generated",
       user_id: userId,
       questions: parsed.questions,
-      language: "en", // generateStory only writes English prompts/content for now
+      language, // el idioma que se aprende (en o ca), igual que las demás lecturas
     })
     .select("*")
     .single();

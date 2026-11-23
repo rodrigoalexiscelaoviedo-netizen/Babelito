@@ -10,6 +10,9 @@ import { catalanSounds, type CatalanSound } from "../lib/catalanSounds";
 import { speak } from "../lib/speech";
 import { useVoicePrefs } from "../lib/useVoicePrefs";
 import ShadowingBlock from "../components/ShadowingBlock";
+import { tFor } from "../i18n";
+
+type T = ReturnType<typeof tFor>;
 
 // The Sounds UI (minimal pairs game, shadowing) was built around SoundEntry.
 // catalanSounds.ts has a different shape (no minimal pairs / shadowing phrase
@@ -34,17 +37,12 @@ const CATALAN_SOUNDS: SoundLike[] = catalanSounds.map(catalanToSoundEntry);
 
 // ─── List view ───────────────────────────────────────────────────────────────
 
-/** Etiquetas de interfaz según el idioma que se aprende (las instrucciones de pronunciación siguen en español). */
-function useUi() {
-  const { profile } = useAuth();
-  const ca = profile?.learning_language === "ca";
-  return (en: string, cat: string) => (ca ? cat : en);
-}
-
 export default function Sounds() {
   const { profile } = useAuth();
   const voicePrefs = useVoicePrefs();
-  const isCatalan = (profile?.learning_language || "en") === "ca";
+  const learningLanguage = profile?.learning_language || "en";
+  const isCatalan = learningLanguage === "ca";
+  const t = tFor(learningLanguage);
   const allSounds = isCatalan ? CATALAN_SOUNDS : SOUNDS;
   const [selected, setSelected] = useState<SoundLike | null>(null);
   useHistoryBack(selected !== null, () => setSelected(null));
@@ -101,6 +99,7 @@ export default function Sounds() {
     return (
       <SoundDetail
         sound={selected}
+        t={t}
         voicePrefs={voicePrefs}
         onBack={() => setSelected(null)}
       />
@@ -109,19 +108,16 @@ export default function Sounds() {
 
   return (
     <div className="animate-fade-up">
-      <p className="eyebrow mb-2">Speaking</p>
-      <h1 className="page-title mb-1">Sounds</h1>
-      <p className="text-paper-muted mb-8">
-        {isCatalan
-          ? "Els sons del català que costen més als castellanoparlants. Toca'n un per practicar."
-          : "The English sounds Spanish speakers find hardest. Tap one to practise."}
-      </p>
+      <p className="eyebrow mb-2">{t("sounds.eyebrow")}</p>
+      <h1 className="page-title mb-1">{t("sounds.title")}</h1>
+      <p className="text-paper-muted mb-8">{t("sounds.intro")}</p>
 
       <div className="grid lg:grid-cols-2 gap-3">
         {sorted.map((s) => (
           <SoundCard
             key={s.id}
             sound={s}
+            t={t}
             needsPractice={needsPractice.has(s.id)}
             voicePrefs={voicePrefs}
             onSelect={() => setSelected(s)}
@@ -136,11 +132,13 @@ export default function Sounds() {
 
 function SoundCard({
   sound,
+  t,
   needsPractice,
   voicePrefs,
   onSelect,
 }: {
   sound: SoundLike;
+  t: T;
   needsPractice: boolean;
   voicePrefs: ReturnType<typeof useVoicePrefs>;
   onSelect: () => void;
@@ -169,7 +167,7 @@ function SoundCard({
           <p className="font-display font-bold text-base leading-snug">{sound.name}</p>
           {needsPractice && (
             <span className="shrink-0 text-[10px] font-mono bg-coral/20 text-coral px-2 py-0.5 rounded-full">
-              Practise
+              {t("sounds.practise")}
             </span>
           )}
         </div>
@@ -189,14 +187,15 @@ function SoundCard({
 
 function SoundDetail({
   sound,
+  t,
   voicePrefs,
   onBack,
 }: {
   sound: SoundLike;
+  t: T;
   voicePrefs: ReturnType<typeof useVoicePrefs>;
   onBack: () => void;
 }) {
-  const ui = useUi();
   return (
     <div className="animate-fade-up max-w-xl mx-auto">
       {/* Back */}
@@ -204,7 +203,7 @@ function SoundDetail({
         onClick={onBack}
         className="flex items-center gap-1.5 text-sm text-paper-muted hover:text-paper transition mb-6"
       >
-        <ArrowLeft size={16} /> All sounds
+        <ArrowLeft size={16} /> {t("sounds.allSounds")}
       </button>
 
       {/* Hero */}
@@ -220,25 +219,25 @@ function SoundDetail({
 
       {/* Articulación */}
       <div className="card p-5 mb-4">
-        <p className="eyebrow mb-2">{ui("How to make it", "Com es pronuncia")}</p>
+        <p className="eyebrow mb-2">{t("sounds.howTo")}</p>
         <p className="text-paper leading-relaxed">{sound.articulation}</p>
       </div>
 
       {/* Ejemplos con audio */}
-      <ExamplesSection sound={sound} voicePrefs={voicePrefs} />
+      <ExamplesSection sound={sound} t={t} voicePrefs={voicePrefs} />
 
       {/* Minimal pairs — only when the sound has pair data */}
       {sound.minimalPairs.length > 0 && (
-        <MinimalPairsSection sound={sound} voicePrefs={voicePrefs} />
+        <MinimalPairsSection sound={sound} t={t} voicePrefs={voicePrefs} />
       )}
 
       {/* Shadowing */}
       <div className="mb-6">
-        <p className="eyebrow mb-3">{ui("Repeat", "Repeteix")}</p>
+        <p className="eyebrow mb-3">{t("sounds.repeat")}</p>
         <ShadowingBlock
           text={sound.shadowingPhrase}
           lang={sound.lang ?? voicePrefs.voiceAccent ?? "en-GB"}
-          label={`Shadowing: ${sound.ipa}`}
+          label={t("sounds.shadowingLabel", { ipa: sound.ipa })}
         />
       </div>
     </div>
@@ -249,12 +248,13 @@ function SoundDetail({
 
 function ExamplesSection({
   sound,
+  t,
   voicePrefs,
 }: {
   sound: SoundLike;
+  t: T;
   voicePrefs: ReturnType<typeof useVoicePrefs>;
 }) {
-  const ui = useUi();
   function playWord(word: string) {
     speak(word, {
       voiceName: voicePrefs.voiceName ?? undefined,
@@ -265,7 +265,7 @@ function ExamplesSection({
 
   return (
     <div className="card p-5 mb-4">
-      <p className="eyebrow mb-3">{ui("Listen", "Escolta")}</p>
+      <p className="eyebrow mb-3">{t("sounds.listen")}</p>
       <div className="flex flex-wrap gap-3">
         {sound.examples.map((word) => (
           <button
@@ -296,12 +296,13 @@ interface PairState {
 
 function MinimalPairsSection({
   sound,
+  t,
   voicePrefs,
 }: {
   sound: SoundEntry;
+  t: T;
   voicePrefs: ReturnType<typeof useVoicePrefs>;
 }) {
-  const ui = useUi();
   const { profile } = useAuth();
   const init = (): PairState => ({
     playing: null,
@@ -379,16 +380,14 @@ function MinimalPairsSection({
   return (
     <div className="card p-5 mb-4">
       <div className="flex items-center justify-between mb-3">
-        <p className="eyebrow">{ui("Train your ear", "Entrena l'oïda")}</p>
+        <p className="eyebrow">{t("sounds.trainEar")}</p>
         {totalPlayed > 0 && (
           <span className="text-xs font-mono text-paper-muted">
-            {totalCorrect}/{totalPlayed} {ui("correct", "correctes")}
+            {t("sounds.correctCount", { c: totalCorrect, n: totalPlayed })}
           </span>
         )}
       </div>
-      <p className="text-xs text-paper-muted mb-4">
-        {ui("Listen to the word and tap the one you heard.", "Escolta la paraula i toca la que has sentit.")}
-      </p>
+      <p className="text-xs text-paper-muted mb-4">{t("sounds.pairHint")}</p>
 
       <div className="space-y-4">
         {sound.minimalPairs.map((pair, i) => {
@@ -410,7 +409,7 @@ function MinimalPairsSection({
                 className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg bg-ink-600 hover:bg-ink-500 transition text-sm font-medium"
               >
                 <Volume2 size={15} className="text-coral" />
-                {hasPlayed ? ui("Listen again", "Torna a escoltar") : ui("Listen", "Escolta")}
+                {hasPlayed ? t("sounds.listenAgain") : t("sounds.listen")}
               </button>
 
               {/* Guess buttons — only after playing */}
@@ -458,13 +457,15 @@ function MinimalPairsSection({
                       s.result === "correct" ? "text-mint" : "text-coral"
                     }`}
                   >
-                    {s.result === "correct" ? ui("Correct!", "Correcte!") : `${ui("It was", "Era")} "${played[i] === "a" ? pair.a : pair.b}"`}
+                    {s.result === "correct"
+                      ? t("sounds.correctBang")
+                      : t("sounds.itWas", { w: played[i] === "a" ? pair.a : pair.b })}
                   </span>
                   <button
                     onClick={() => handleNext(i)}
                     className="text-xs text-paper-faint hover:text-paper transition"
                   >
-                    {ui("Next", "Següent")} →
+                    {t("sounds.next")} →
                   </button>
                 </div>
               )}

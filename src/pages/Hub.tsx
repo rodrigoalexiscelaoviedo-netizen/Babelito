@@ -11,6 +11,7 @@ import { supabase } from "../lib/supabaseClient";
 import { scopeByLanguage } from "../lib/language";
 import { geminiToolsAvailable } from "../lib/geminiTools";
 import { liveSupported } from "../lib/liveSession";
+import { tFor } from "../i18n";
 
 /** Cada puerta tiene su color (token de index.css): se reconoce dónde estás de un vistazo. */
 const ACCENT: Record<HubId, { token: string; text: string }> = {
@@ -34,6 +35,7 @@ export default function Hub({ id }: { id: HubId }) {
   const hub = hubById(id);
   const language = profile?.learning_language || "en";
   const ca = language === "ca";
+  const t = tFor(language);
   const [due, setDue] = useState(0);
   const [stats, setStats] = useState<{ deck: number; learning: number; known: number } | null>(null);
   const [liveOk, setLiveOk] = useState(false);
@@ -84,17 +86,15 @@ export default function Hub({ id }: { id: HubId }) {
       <h1 className="page-title mb-1">{copy.title}</h1>
       <p className="mb-6 text-paper-muted">{copy.subtitle}</p>
 
-      {id === "remember" && !ca && (
+      {id === "remember" && (
         <>
-          <p className="mb-4 text-sm text-paper-muted">
-            Everything you save while you read, listen and talk lands here. Review it a few minutes a day and it stays in your head.
-          </p>
+          <p className="mb-4 text-sm text-paper-muted">{t("hub.rememberIntro")}</p>
           {stats && (
             <div className="mb-5 grid grid-cols-3 gap-3">
               {[
-                { n: due, label: "due today", tone: due > 0 ? "text-gold" : "text-mint" },
-                { n: stats.learning, label: "words in practice", tone: "text-coral" },
-                { n: stats.known, label: "words you know", tone: "text-mint" },
+                { n: due, label: t("hub.dueToday"), tone: due > 0 ? "text-gold" : "text-mint" },
+                { n: stats.learning, label: t("hub.wordsPractice"), tone: "text-coral" },
+                { n: stats.known, label: t("hub.wordsKnown"), tone: "text-mint" },
               ].map((x) => (
                 <div key={x.label} className="card p-3 text-center">
                   <p className={`font-display text-2xl font-extrabold ${x.tone}`}>{x.n}</p>
@@ -115,12 +115,12 @@ export default function Hub({ id }: { id: HubId }) {
             </span>
           </span>
           <span className="min-w-0 flex-1">
-            <span className={`mb-1 block font-mono text-[10px] uppercase tracking-[0.2em] ${accent.text}`}>{ca ? "Comença aquí" : "Start here"}</span>
+            <span className={`mb-1 block font-mono text-[10px] uppercase tracking-[0.2em] ${accent.text}`}>{t("hub.startHere")}</span>
             <span className="block font-display text-2xl font-extrabold leading-tight">{featured.text.title}</span>
             <span className="mt-1 block text-sm text-paper-muted">{featured.text.desc}</span>
           </span>
           {featured.dueBadge && due > 0 && (
-            <span className="rounded-full bg-gold px-2.5 py-1 text-xs font-bold text-ongold" aria-label={`${due} due`}>
+            <span className="rounded-full bg-gold px-2.5 py-1 text-xs font-bold text-ongold" aria-label={t("hub.dueAria", { n: due })}>
               {due}
             </span>
           )}

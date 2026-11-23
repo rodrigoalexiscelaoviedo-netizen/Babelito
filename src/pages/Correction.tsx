@@ -5,10 +5,12 @@ import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabaseClient";
 import { askCoach } from "../lib/claude";
 import { buildCorrectionPrompt, parseErrors } from "../lib/buildSystemPrompt";
+import { tFor } from "../i18n";
 
 export default function Correction() {
   const { profile } = useAuth();
   const learningLanguage = profile?.learning_language || "en";
+  const t = tFor(learningLanguage);
   const [text, setText] = useState("");
   const [result, setResult] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -54,7 +56,7 @@ export default function Correction() {
         );
       }
     } catch (e) {
-      setResult(`⚠️ ${e instanceof Error ? e.message : "Error."}`);
+      setResult(`⚠️ ${e instanceof Error ? e.message : t("correction.error")}`);
     } finally {
       setBusy(false);
     }
@@ -62,27 +64,21 @@ export default function Correction() {
 
   return (
     <div className="animate-fade-up max-w-2xl mx-auto">
-      <p className="eyebrow mb-2">
-        {learningLanguage === "ca" ? "Revisió d'escriptura" : "Writing check"}
-      </p>
-      <h1 className="page-title mb-2">
-        {learningLanguage === "ca" ? "Corregeix el meu text" : "Fix my writing"}
-      </h1>
+      <p className="eyebrow mb-2">{t("correction.eyebrow")}</p>
+      <h1 className="page-title mb-2">{t("correction.title")}</h1>
       <p className="text-paper-muted mb-6">
-        {learningLanguage === "ca"
-          ? "Enganxa un correu o missatge. Te'l corregirem, farem més natural i afegiran millores gramaticals."
-          : `Paste an email or message. You'll get it corrected, made more natural, and in real ${profile?.english_variant ?? "British"} English.`}
+        {t("correction.intro", { variant: profile?.english_variant ?? "British" })}
       </p>
 
       <textarea
-        aria-label={learningLanguage === "ca" ? "El teu text" : "Your text"}
+        aria-label={t("correction.yourText")}
         className="input min-h-[160px] resize-none mb-3"
-        placeholder={learningLanguage === "ca" ? "Enganxa el teu text en català aquí…" : "Paste your English text here…"}
+        placeholder={t("correction.placeholder")}
         value={text}
         onChange={(e) => setText(e.target.value)}
       />
       <button className="btn-coral w-full mb-8" onClick={correct} disabled={busy || !text.trim()}>
-        <Sparkles size={16} /> {busy ? (learningLanguage === "ca" ? "Revisant…" : "Checking…") : learningLanguage === "ca" ? "Revisa'l" : "Check it"}
+        <Sparkles size={16} /> {busy ? t("correction.checking") : t("correction.check")}
       </button>
 
       {result && (
@@ -110,16 +106,16 @@ export default function Correction() {
           {!result.startsWith("⚠️") && (
             <div className="mt-5 pt-4 border-t border-ink-600 flex flex-wrap gap-2 whitespace-normal">
               {[
-                { key: "corrected", re: /correct|correcci/i, en: "Copy corrected", ca: "Copia la correcció" },
-                { key: "natural", re: /natural/i, en: "Copy natural version", ca: "Copia la versió natural" },
-              ].map(({ key, re, en, ca }) => {
+                { key: "corrected", re: /correct|correcci/i, label: t("correction.copyCorrected") },
+                { key: "natural", re: /natural/i, label: t("correction.copyNatural") },
+              ].map(({ key, re, label }) => {
                 const value = sectionText(result, re);
                 if (!value) return null;
                 const done = copied === key;
                 return (
                   <button key={key} className="btn-ghost text-sm px-3 py-2" onClick={() => copy(key, value)}>
                     {done ? <Check size={15} className="text-mint" /> : <Copy size={15} />}
-                    {done ? (learningLanguage === "ca" ? "Copiat" : "Copied") : learningLanguage === "ca" ? ca : en}
+                    {done ? t("correction.copied") : label}
                   </button>
                 );
               })}

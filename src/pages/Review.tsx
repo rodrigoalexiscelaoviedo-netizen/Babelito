@@ -26,6 +26,9 @@ import Loader from "../components/Loader";
 import Maica from "../components/Maica";
 import { checkAchievements, markSeen, type AchievementDef } from "../lib/achievements";
 import AchievementCelebration from "../components/AchievementCelebration";
+import { tFor } from "../i18n";
+
+type T = ReturnType<typeof tFor>;
 
 interface Entry {
   item: ReviewItem;
@@ -39,11 +42,11 @@ interface Entry {
 
 type Phase = "loading" | "empty" | "session" | "done";
 
-const KIND_LABEL: Record<CardKind, string> = {
-  meet: "New · listen and read",
-  listen: "Listen and choose",
-  gap: "Fill the gap",
-  say: "Say it out loud",
+const KIND_KEY: Record<CardKind, string> = {
+  meet: "review.kindMeet",
+  listen: "review.kindListen",
+  gap: "review.kindGap",
+  say: "review.kindSay",
 };
 
 /** Arma la tarjeta de un ítem: si no se puede el ejercicio ideal, cae a uno más simple. */
@@ -65,6 +68,9 @@ function makeEntry(item: ReviewItem, pool: Pool, meta: ReviewMeta | undefined, r
 export default function Review() {
   const { profile } = useAuth();
   const voicePrefs = useVoicePrefs();
+  const lang = profile?.learning_language || "en";
+  const t = tFor(lang);
+  const accentFallback = lang === "ca" ? "ca-ES" : "en-GB";
   const [phase, setPhase] = useState<Phase>("loading");
   const [queue, setQueue] = useState<Entry[]>([]);
   const [pos, setPos] = useState(0);
@@ -77,8 +83,8 @@ export default function Review() {
   const metaRef = useRef<Record<string, ReviewMeta>>({});
 
   const say = useCallback(
-    (text: string) => speak(text, { voiceName: voicePrefs.voiceName ?? undefined, rate: voicePrefs.voiceRate ?? 0.9, lang: voicePrefs.voiceAccent ?? "en-GB" }),
-    [voicePrefs.voiceName, voicePrefs.voiceRate, voicePrefs.voiceAccent]
+    (text: string) => speak(text, { voiceName: voicePrefs.voiceName ?? undefined, rate: voicePrefs.voiceRate ?? 0.9, lang: voicePrefs.voiceAccent ?? accentFallback }),
+    [voicePrefs.voiceName, voicePrefs.voiceRate, voicePrefs.voiceAccent, accentFallback]
   );
 
   const start = useCallback(async () => {
@@ -152,7 +158,7 @@ export default function Review() {
   if (phase === "loading") {
     return (
       <div className="mx-auto max-w-md pt-16 text-center">
-        <Loader label="Preparing your review…" />
+        <Loader label={t("review.loadingPrep")} />
       </div>
     );
   }
@@ -162,14 +168,14 @@ export default function Review() {
       <div className="animate-fade-up mx-auto max-w-md pt-12">
         <div className="card p-8 text-center">
           <Maica mood="curious" size="md" className="mx-auto mb-2" />
-          <h1 className="mb-2 font-display text-2xl font-extrabold">You're all caught up</h1>
-          <p className="mb-6 text-sm text-paper-muted">Nothing to review today. Learn new phrases from a situation, a story or the phrase library.</p>
+          <h1 className="mb-2 font-display text-2xl font-extrabold">{t("review.caughtTitle")}</h1>
+          <p className="mb-6 text-sm text-paper-muted">{t("review.caughtSub")}</p>
           <div className="flex flex-col justify-center gap-3 sm:flex-row">
             <Link to="/situations" className="btn-mint text-sm">
-              <Library size={15} /> Situations
+              <Library size={15} /> {t("review.situations")}
             </Link>
             <Link to="/stories" className="btn-ghost text-sm">
-              <BookOpen size={15} /> Stories <ArrowRight size={13} />
+              <BookOpen size={15} /> {t("review.stories")} <ArrowRight size={13} />
             </Link>
           </div>
         </div>
@@ -190,35 +196,41 @@ export default function Review() {
         />
         <div className="animate-fade-up mx-auto max-w-md pt-10 text-center">
           <CheckCircle2 size={48} className="mx-auto mb-3 text-mint" />
-          <h1 className="page-title mb-1">Session complete</h1>
+          <h1 className="page-title mb-1">{t("review.sessionDone")}</h1>
           <p className="text-paper-muted">
-            <span className="font-display text-xl font-bold text-mint">{stats.firstTryRight}</span> of {stats.firstTry} right the first time ({pct}%)
+            <span className="font-display text-xl font-bold text-mint">{t("review.rightFirst", { a: stats.firstTryRight, b: stats.firstTry, pct })}</span>
           </p>
-          {stats.learned > 0 && <p className="mt-1 text-sm text-mint">{stats.learned} new item{stats.learned === 1 ? "" : "s"} learned</p>}
+          {stats.learned > 0 && (
+            <p className="mt-1 text-sm text-mint">
+              {stats.learned === 1
+                ? t("review.newLearnedOne", { n: stats.learned })
+                : t("review.newLearnedMany", { n: stats.learned })}
+            </p>
+          )}
 
           {missed.length > 0 && (
             <div className="card mt-6 p-4 text-left">
-              <p className="eyebrow mb-2">Listen again</p>
+              <p className="eyebrow mb-2">{t("review.listenAgain")}</p>
               <ul className="space-y-2">
                 {missed.map((m) => (
                   <li key={m.id} className="flex items-center justify-between gap-3">
                     <span className="font-medium">{m.content}</span>
-                    <button onClick={() => say(m.content)} className="text-paper-faint transition hover:text-coral" aria-label={`Listen: ${m.content}`}>
+                    <button onClick={() => say(m.content)} className="text-paper-faint transition hover:text-coral" aria-label={t("review.listenAria", { c: m.content })}>
                       <Volume2 size={16} />
                     </button>
                   </li>
                 ))}
               </ul>
-              <p className="mt-3 text-xs text-paper-faint">These will come back tomorrow.</p>
+              <p className="mt-3 text-xs text-paper-faint">{t("review.comeBack")}</p>
             </div>
           )}
 
           {remaining > 0 ? (
             <button className="btn-coral mt-6 w-full" onClick={() => void start()}>
-              Keep going · {remaining} more due
+              {t("review.keepGoing", { n: remaining })}
             </button>
           ) : (
-            <p className="mt-6 text-sm text-paper-faint">That's everything for today. See you tomorrow!</p>
+            <p className="mt-6 text-sm text-paper-faint">{t("review.allDone")}</p>
           )}
         </div>
       </>
@@ -231,8 +243,8 @@ export default function Review() {
     <div className="animate-fade-up mx-auto max-w-lg">
       <header className="mb-4 flex items-end justify-between">
         <div>
-          <p className="eyebrow mb-1">{entry.retry ? "Try once more" : "Review"}</p>
-          <h1 className="font-display text-2xl font-extrabold">{KIND_LABEL[entry.kind]}</h1>
+          <p className="eyebrow mb-1">{entry.retry ? t("review.tryOnce") : t("review.review")}</p>
+          <h1 className="font-display text-2xl font-extrabold">{t(KIND_KEY[entry.kind])}</h1>
         </div>
         <span className="font-mono text-sm text-paper-muted">
           {Math.min(pos + 1, queue.length)} / {queue.length}
@@ -243,7 +255,7 @@ export default function Review() {
         <div className="h-full rounded-full bg-coral transition-all" style={{ width: `${progress}%` }} />
       </div>
 
-      <CardBody key={`${entry.item.id}-${pos}`} entry={entry} say={say} onAnswer={onAnswer} answered={answered} />
+      <CardBody key={`${entry.item.id}-${pos}`} entry={entry} say={say} onAnswer={onAnswer} answered={answered} t={t} accentFallback={accentFallback} />
 
       {answered && (
         <div className="mt-4 animate-fade-up space-y-3">
@@ -252,10 +264,10 @@ export default function Review() {
             className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium ${answered.correct ? "bg-mint/10 text-mint" : "bg-coral/10 text-coral"}`}
           >
             {answered.correct ? <CheckCircle2 size={16} /> : <XCircle size={16} />}
-            {answered.correct ? (entry.retry ? "Good — you've got it now" : "Correct!") : "Not this time. Listen again and you'll see it again soon."}
+            {answered.correct ? (entry.retry ? t("review.gotItNow") : t("review.correct")) : t("review.wrongAgain")}
           </div>
           <button className="btn-mint w-full py-3 text-base" onClick={() => void next()}>
-            {pos + 1 < queue.length ? "Next →" : "Finish ✓"}
+            {pos + 1 < queue.length ? t("review.next") : t("review.finish")}
           </button>
         </div>
       )}
@@ -265,13 +277,13 @@ export default function Review() {
 
 // ── Tarjetas ─────────────────────────────────────────────────────────────────────
 
-function SpanishHelper({ text }: { text: string }) {
+function SpanishHelper({ text, t }: { text: string; t: T }) {
   const [shown, setShown] = useState(false);
   return shown ? (
     <p className="mt-3 text-sm text-paper-muted">🇪🇸 {text}</p>
   ) : (
     <button onClick={() => setShown(true)} className="mt-3 text-xs text-paper-faint underline decoration-dotted transition hover:text-paper">
-      Need the Spanish?
+      {t("review.needSpanish")}
     </button>
   );
 }
@@ -293,20 +305,25 @@ function CardBody({
   say,
   onAnswer,
   answered,
+  t,
+  accentFallback,
 }: {
   entry: Entry;
   say: (t: string) => void;
   onAnswer: (correct: boolean) => void;
   answered: { correct: boolean } | null;
+  t: T;
+  accentFallback: string;
 }) {
   const { item, kind, meta } = entry;
   const [picked, setPicked] = useState<number | null>(null);
+  const typeLabel = item.item_type === "chunk" ? t("review.phrase") : t("review.word");
 
   // Cada tarjeta empieza sonando sola (la persona ya tocó para llegar aquí).
   useEffect(() => {
     if (kind === "meet" || kind === "listen") {
-      const t = setTimeout(() => say(item.content), 250);
-      return () => clearTimeout(t);
+      const tm = setTimeout(() => say(item.content), 250);
+      return () => clearTimeout(tm);
     }
   }, [kind, item.content, say]);
 
@@ -314,9 +331,9 @@ function CardBody({
     return (
       <div className="card p-6">
         <div className="flex items-start gap-4">
-          <SpeakerButton onClick={() => say(item.content)} label="Listen" />
+          <SpeakerButton onClick={() => say(item.content)} label={t("review.listen")} />
           <div className="min-w-0">
-            <p className="eyebrow mb-1">{item.item_type === "chunk" ? "Phrase" : "Word"}</p>
+            <p className="eyebrow mb-1">{typeLabel}</p>
             <p className="font-display text-2xl font-semibold leading-snug">{item.content}</p>
           </div>
         </div>
@@ -326,14 +343,14 @@ function CardBody({
             <Volume2 size={14} className="mt-0.5 shrink-0" /> “{meta.example}”
           </button>
         )}
-        <SpanishHelper text={item.prompt} />
+        <SpanishHelper text={item.prompt} t={t} />
         {!answered && (
           <div className="mt-6 grid grid-cols-2 gap-3">
             <button className="btn-ghost py-3" onClick={() => onAnswer(false)}>
-              Show me again
+              {t("review.showAgain")}
             </button>
             <button className="btn-mint py-3" onClick={() => onAnswer(true)}>
-              I got it
+              {t("review.gotIt")}
             </button>
           </div>
         )}
@@ -346,8 +363,8 @@ function CardBody({
     return (
       <div className="card p-6">
         <div className="mb-5 flex items-center gap-4">
-          <SpeakerButton onClick={() => say(item.content)} label="Play again" />
-          <p className="text-paper-muted">Listen. Which one did you hear?</p>
+          <SpeakerButton onClick={() => say(item.content)} label={t("review.playAgain")} />
+          <p className="text-paper-muted">{t("review.listenWhich")}</p>
         </div>
         <ul className="space-y-2">
           {options.map((o, i) => {
@@ -370,15 +387,15 @@ function CardBody({
                   className={`w-full rounded-xl border p-3 text-left font-medium transition ${state}`}
                 >
                   {o}
-                  {picked !== null && i === correctIndex && <span className="sr-only"> (correct answer)</span>}
-                  {picked !== null && i === picked && i !== correctIndex && <span className="sr-only"> (your answer, not correct)</span>}
+                  {picked !== null && i === correctIndex && <span className="sr-only">{t("review.correctAnnot")}</span>}
+                  {picked !== null && i === picked && i !== correctIndex && <span className="sr-only">{t("review.wrongAnnot")}</span>}
                 </button>
               </li>
             );
           })}
         </ul>
         {picked !== null && meta?.definition && <p className="mt-4 text-sm text-paper-muted">{meta.definition}</p>}
-        {picked !== null && <SpanishHelper text={item.prompt} />}
+        {picked !== null && <SpanishHelper text={item.prompt} t={t} />}
       </div>
     );
   }
@@ -416,14 +433,14 @@ function CardBody({
                   className={`w-full rounded-xl border p-3 text-center font-medium transition ${state}`}
                 >
                   {o}
-                  {picked !== null && i === g.correctIndex && <span className="sr-only"> (correct answer)</span>}
-                  {picked !== null && i === picked && i !== g.correctIndex && <span className="sr-only"> (your answer, not correct)</span>}
+                  {picked !== null && i === g.correctIndex && <span className="sr-only">{t("review.correctAnnot")}</span>}
+                  {picked !== null && i === picked && i !== g.correctIndex && <span className="sr-only">{t("review.wrongAnnot")}</span>}
                 </button>
               </li>
             );
           })}
         </ul>
-        {picked !== null && <SpanishHelper text={item.prompt} />}
+        {picked !== null && <SpanishHelper text={item.prompt} t={t} />}
       </div>
     );
   }
@@ -431,15 +448,15 @@ function CardBody({
   // say
   return (
     <div className="card p-5">
-      <p className="mb-1 eyebrow">{item.item_type === "chunk" ? "Phrase" : "Word"}</p>
+      <p className="mb-1 eyebrow">{typeLabel}</p>
       <p className="mb-4 font-display text-2xl font-semibold leading-snug">{item.content}</p>
-      <ShadowingBlock text={item.content} label="Listen, then say it" onResult={(r) => onAnswer(r.ok || (r.score ?? 0) >= 70)} />
+      <ShadowingBlock text={item.content} lang={accentFallback} label={t("review.listenThenSay")} onResult={(r) => onAnswer(r.ok || (r.score ?? 0) >= 70)} />
       {!answered && (
         <button className="btn-ghost mt-3 w-full text-sm" onClick={() => onAnswer(false)}>
-          Skip — I can't speak now
+          {t("review.skipSpeak")}
         </button>
       )}
-      <SpanishHelper text={item.prompt} />
+      <SpanishHelper text={item.prompt} t={t} />
     </div>
   );
 }

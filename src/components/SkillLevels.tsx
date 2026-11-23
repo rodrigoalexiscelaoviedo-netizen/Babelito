@@ -17,7 +17,7 @@ export default function SkillLevels() {
   const [estimates, setEstimates] = useState<SkillEstimate[] | null>(null);
 
   useEffect(() => {
-    if (!profile || profile.learning_language === "ca") return;
+    if (!profile) return;
     let cancelled = false;
     const since = new Date(Date.now() - SKILL_WINDOW_DAYS * 86_400_000).toISOString();
     const general = (profile.current_level ?? "A1") as Level;
@@ -58,7 +58,7 @@ export default function SkillLevels() {
     };
   }, [profile]);
 
-  if (!profile || profile.learning_language === "ca" || !estimates) return null;
+  if (!profile || !estimates) return null;
 
   return (
     <section aria-labelledby="skills-title" className="card mb-6 p-5">

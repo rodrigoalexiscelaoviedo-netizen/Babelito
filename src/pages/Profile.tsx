@@ -1,5 +1,4 @@
 import ThemeToggle from "../components/ThemeToggle";
-import { useTranslation } from "react-i18next";
 import { cloneElement, isValidElement, useEffect, useState, type ReactElement, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { LogOut, RefreshCw, Volume2, Bell, BellOff, Download } from "lucide-react";
@@ -10,6 +9,7 @@ import { localDateISO } from "../lib/dates";
 import { getVoices, speak } from "../lib/speech";
 import { naturalVoicePref, setNaturalVoicePref } from "../lib/naturalVoice";
 import { subscribeToPush, unsubscribeFromPush, getNotificationPermission } from "../lib/notifications";
+import { tFor } from "../i18n";
 
 export default function Profile() {
   const { profile, session, refreshProfile, signOut } = useAuth();
@@ -19,12 +19,12 @@ export default function Profile() {
   const [target, setTarget] = useState<string>(profile?.target_level ?? "B2");
   const [variant, setVariant] = useState(profile?.english_variant ?? "British");
   const [learningLanguage, setLearningLanguage] = useState<string>(profile?.learning_language ?? "en");
+  const t = tFor(learningLanguage);
   const [saved, setSaved] = useState(false);
   const [busy, setBusy] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
-  const { t } = useTranslation();
   const [exportMsg, setExportMsg] = useState("");
 
   // Notification settings
@@ -135,12 +135,12 @@ export default function Profile() {
       .limit(2000);
     setExporting(false);
     if (error) {
-      setExportMsg(learningLanguage === "ca" ? "No s'han pogut carregar les targetes." : "Couldn't load your cards.");
+      setExportMsg(t("profile.exportErrLoad"));
       return;
     }
     const rows = (data ?? []) as Array<{ content: string; prompt: string; item_type: string }>;
     if (rows.length === 0) {
-      setExportMsg(learningLanguage === "ca" ? "Encara no tens targetes de repàs." : "You don't have review cards yet.");
+      setExportMsg(t("profile.exportEmpty"));
       return;
     }
     const text = buildAnkiText(
@@ -149,14 +149,10 @@ export default function Profile() {
         back: r.prompt,
         tags: `babelito ${learningLanguage} ${r.item_type}`,
       })),
-      { deck: `Babelito ${learningLanguage === "ca" ? "Català" : "English"}` }
+      { deck: t("profile.deckName") }
     );
     downloadAnki(text, ankiFileName(learningLanguage, localDateISO()));
-    setExportMsg(
-      learningLanguage === "ca"
-        ? `${rows.length} targetes exportades. Importa el fitxer a Anki (Fitxer → Importa).`
-        : `${rows.length} cards exported. Import the file in Anki (File → Import).`
-    );
+    setExportMsg(t("profile.exportDone", { n: rows.length }));
   }
 
   async function retest() {
@@ -182,27 +178,27 @@ export default function Profile() {
 
   return (
     <div className="animate-fade-up max-w-xl mx-auto">
-      <p className="eyebrow mb-2">{learningLanguage === "ca" ? "Perfil" : "Profile"}</p>
-      <h1 className="page-title mb-8">{learningLanguage === "ca" ? "La teva configuració" : "Your settings"}</h1>
+      <p className="eyebrow mb-2">{t("profile.eyebrow")}</p>
+      <h1 className="page-title mb-8">{t("profile.title")}</h1>
 
       <div className="mb-6 flex items-center justify-between rounded-xl2 border border-ink-600 bg-ink-700 px-4 py-3">
-        <p className="text-sm font-medium">{learningLanguage === "ca" ? "Aspecte" : "Look"}</p>
+        <p className="text-sm font-medium">{t("profile.look")}</p>
         <ThemeToggle />
       </div>
 
       <div className="space-y-5">
-        <Field label={learningLanguage === "ca" ? "Nom" : "Name"}>
+        <Field label={t("profile.name")}>
           <input className="input" value={name} onChange={(e) => setName(e.target.value)} />
         </Field>
 
         <div className="grid grid-cols-2 gap-4">
-          <Field label={learningLanguage === "ca" ? "Nivell actual" : "Current level"}>
+          <Field label={t("profile.currentLevel")}>
             <div className="input flex items-center justify-between">
               <span className="font-display font-bold text-coral">{profile?.current_level ?? "—"}</span>
-              <span className="text-xs text-paper-muted">{learningLanguage === "ca" ? "mesurat" : "measured"}</span>
+              <span className="text-xs text-paper-muted">{t("profile.measured")}</span>
             </div>
           </Field>
-          <Field label={learningLanguage === "ca" ? "Nivell objectiu" : "Target level"}>
+          <Field label={t("profile.targetLevel")}>
             <select className="input" value={target} onChange={(e) => setTarget(e.target.value)}>
               {["A2", "B1", "B2", "C1"].map((l) => (
                 <option key={l} value={l}>{l}</option>
@@ -211,19 +207,19 @@ export default function Profile() {
           </Field>
         </div>
 
-        <Field label={learningLanguage === "ca" ? "Aprenent" : "Learning"}>
+        <Field label={t("profile.learning")}>
           <select
             className="input"
             value={learningLanguage}
             onChange={(e) => setLearningLanguage(e.target.value)}
           >
-            <option value="en">English 🇬🇧</option>
-            <option value="ca">Català</option>
+            <option value="en">{t("profile.langEn")}</option>
+            <option value="ca">{t("profile.langCa")}</option>
           </select>
         </Field>
 
         {learningLanguage === "en" && (
-          <Field label="Accent">
+          <Field label={t("profile.accent")}>
             <select className="input" value={variant} onChange={(e) => setVariant(e.target.value)}>
               <option value="British">British 🇬🇧</option>
               <option value="American">American 🇺🇸</option>
@@ -231,7 +227,7 @@ export default function Profile() {
           </Field>
         )}
 
-        <Field label={learningLanguage === "ca" ? "De què t'agrada parlar" : "What you like talking about"}>
+        <Field label={t("profile.interests")}>
           <textarea
             className="input min-h-[100px] resize-none"
             value={interests}
@@ -242,17 +238,17 @@ export default function Profile() {
         {/* ─── Voice settings ─── */}
         <div className="card p-5 space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="font-display font-bold">{learningLanguage === "ca" ? "Veu del coach" : "Coach voice"}</h3>
+            <h3 className="font-display font-bold">{t("profile.coachVoice")}</h3>
             <button
               onClick={testVoice}
               className="flex items-center gap-1.5 text-sm text-paper-muted hover:text-coral transition"
               type="button"
             >
-              <Volume2 size={14} /> {learningLanguage === "ca" ? "Provar veu" : "Test voice"}
+              <Volume2 size={14} /> {t("profile.testVoice")}
             </button>
           </div>
 
-          <Field label={learningLanguage === "ca" ? "Accent" : "Accent"}>
+          <Field label={t("profile.accent")}>
             <select
               className="input"
               value={voiceAccent}
@@ -266,36 +262,32 @@ export default function Profile() {
             </select>
           </Field>
 
-          <Field label={learningLanguage === "ca" ? "Veu" : "Voice"}>
+          <Field label={t("profile.voice")}>
             <select
               className="input"
               value={voiceName}
               onChange={(e) => setVoiceName(e.target.value)}
             >
-              <option value="">{learningLanguage === "ca" ? "— Per defecte per a l'accent —" : "— Default for accent —"}</option>
+              <option value="">{t("profile.defaultAccent")}</option>
               {availableVoices.map((v) => (
                 <option key={v.name} value={v.name}>
                   {v.name}
                 </option>
               ))}
             </select>
-            <p className="mt-1 text-xs text-paper-faint">
-              {learningLanguage === "ca" ? "Les veus disponibles depenen del teu dispositiu." : "Available voices depend on your device."}
-            </p>
+            <p className="mt-1 text-xs text-paper-faint">{t("profile.voiceNote")}</p>
             {learningLanguage === "ca" && availableVoices.length === 0 && (
-              <p className="mt-2 text-xs text-coral">
-                No hi ha voces en català disponibles en aquest dispositiu. Prova d'usar el navegador Chrome o Firefox en Android.
-              </p>
+              <p className="mt-2 text-xs text-coral">{t("profile.noCatalanVoices")}</p>
             )}
           </Field>
 
-          <Field label={`${learningLanguage === "ca" ? "Velocitat" : "Speed"}: ${voiceRate.toFixed(2)}×`}>
+          <Field label={`${t("profile.speed")}: ${voiceRate.toFixed(2)}×`}>
             {/* Atajos: 0.5× es demasiado lento para escuchar con naturalidad; el rango útil es 0.6–1.3. */}
-            <div className="mb-2 flex flex-wrap gap-2" role="group" aria-label={learningLanguage === "ca" ? "Velocitat" : "Speed presets"}>
+            <div className="mb-2 flex flex-wrap gap-2" role="group" aria-label={t("profile.speedPresets")}>
               {[
-                { v: 0.75, en: "Slow", ca: "Lenta" },
-                { v: 0.95, en: "Normal", ca: "Normal" },
-                { v: 1.15, en: "Fast", ca: "Ràpida" },
+                { v: 0.75, key: "slow" },
+                { v: 0.95, key: "normal" },
+                { v: 1.15, key: "fast" },
               ].map((p) => (
                 <button
                   key={p.v}
@@ -308,7 +300,7 @@ export default function Profile() {
                       : "bg-ink-700 text-paper-muted hover:text-paper"
                   }`}
                 >
-                  {learningLanguage === "ca" ? p.ca : p.en}
+                  {t(`profile.${p.key}`)}
                 </button>
               ))}
             </div>
@@ -320,12 +312,13 @@ export default function Profile() {
               value={voiceRate}
               onChange={(e) => setVoiceRate(parseFloat(e.target.value))}
               className="w-full accent-coral"
-              aria-label={learningLanguage === "ca" ? "Velocitat de la veu" : "Voice speed"}
+              aria-label={t("profile.voiceSpeed")}
             />
             <div className="flex justify-between text-xs text-paper-faint mt-0.5">
-              <span>{learningLanguage === "ca" ? "0.5× lent" : "0.5× slow"}</span>
-              <span>{learningLanguage === "ca" ? "1.5× ràpid" : "1.5× fast"}</span>
+              <span>{t("profile.rangeSlow")}</span>
+              <span>{t("profile.rangeFast")}</span>
             </div>
+            {/* La voz natural solo existe para audio en inglés. */}
             {learningLanguage !== "ca" && (
               <label className="mt-3 flex cursor-pointer items-start gap-2 text-sm">
                 <input
@@ -338,19 +331,13 @@ export default function Profile() {
                   }}
                 />
                 <span>
-                  Natural voice
-                  <span className="block text-xs text-paper-muted">
-                    A more human voice for English audio. If it is not available, the browser voice is used.
-                  </span>
+                  {t("profile.naturalLabel")}
+                  <span className="block text-xs text-paper-muted">{t("profile.naturalHelp")}</span>
                 </span>
               </label>
             )}
             {voiceRate < 0.6 && (
-              <p className="mt-2 text-xs text-gold">
-                {learningLanguage === "ca"
-                  ? "Aquesta velocitat és molt lenta; prova «Lenta» per a una veu més natural."
-                  : "This is very slow. Try “Slow” for a more natural voice."}
-              </p>
+              <p className="mt-2 text-xs text-gold">{t("profile.slowWarning")}</p>
             )}
           </Field>
         </div>
@@ -358,7 +345,7 @@ export default function Profile() {
         {/* ─── Notification settings ─── */}
         <div className="card p-5 space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="font-display font-bold">{learningLanguage === "ca" ? "Recordatori diari" : "Daily reminder"}</h3>
+            <h3 className="font-display font-bold">{t("profile.dailyReminder")}</h3>
             {notifStatus === "granted" ? (
               <Bell size={16} className="text-mint" />
             ) : (
@@ -373,11 +360,11 @@ export default function Profile() {
               checked={notifEnabled}
               onChange={(e) => handleToggleNotif(e.target.checked)}
             />
-            <span className="text-sm font-medium">{learningLanguage === "ca" ? "Activar notificacions diàries" : "Activate daily notifications"}</span>
+            <span className="text-sm font-medium">{t("profile.enableNotif")}</span>
           </label>
 
           {notifEnabled && (
-            <Field label={learningLanguage === "ca" ? "Hora de recordatori" : "Reminder time"}>
+            <Field label={t("profile.reminderTime")}>
               <input
                 type="time"
                 className="input"
@@ -388,59 +375,51 @@ export default function Profile() {
           )}
 
           {notifStatus === "denied" && (
-            <p className="text-coral text-xs">
-              {learningLanguage === "ca" ? "Permís denegat. Habilita les notificacions per a aquest lloc en la configuració del navegador." : "Permission was denied. Enable notifications for this site in your browser settings."}
-            </p>
+            <p className="text-coral text-xs">{t("profile.deniedNotif")}</p>
           )}
 
-          <p className="text-xs text-paper-faint leading-relaxed">
-            {learningLanguage === "ca" ? "Rebràs el recordatori a l'hora escollida, encara que l'app estigui tancada. Activat per dispositiu." : "You'll get the reminder at the chosen time, even when the app is closed. Set per device."}
-          </p>
+          <p className="text-xs text-paper-faint leading-relaxed">{t("profile.reminderHelp")}</p>
         </div>
 
         <button className="btn-coral w-full" onClick={save} disabled={busy}>
-          {saved ? (learningLanguage === "ca" ? "Guardat ✓" : "Saved ✓") : busy ? (learningLanguage === "ca" ? "Guardant…" : "Saving…") : (learningLanguage === "ca" ? "Guardar canvis" : "Save changes")}
+          {saved ? t("profile.saved") : busy ? t("profile.saving") : t("profile.save")}
         </button>
       </div>
 
       <div className="mt-10 pt-6 border-t border-ink-600 space-y-3">
         <button className="btn-ghost w-full" onClick={exportAnki} disabled={exporting}>
           <Download size={16} />{" "}
-          {exporting
-            ? (learningLanguage === "ca" ? "Preparant…" : "Preparing…")
-            : (learningLanguage === "ca" ? "Exporta les targetes a Anki" : "Export my cards to Anki")}
+          {exporting ? t("profile.preparing") : t("profile.exportAnki")}
         </button>
         {exportMsg && <p className="text-xs text-paper-muted text-center">{exportMsg}</p>}
 
         <button className="btn-ghost w-full" onClick={retest}>
-          <RefreshCw size={16} /> {learningLanguage === "ca" ? "Repetir la prova de nivell" : "Retake the level test"}
+          <RefreshCw size={16} /> {t("profile.retest")}
         </button>
 
         {confirmReset ? (
           <div className="card p-4 space-y-3">
-            <p className="text-sm text-paper-muted">
-              {learningLanguage === "ca" ? "Reiniciar l'incorporació? Triaràs de nou l'idioma, l'objectiu i el nivell. El teu compte i l'historial es mantenen." : "Restart onboarding? You'll choose your language, goal and level again. Your account and history stay."}
-            </p>
+            <p className="text-sm text-paper-muted">{t("profile.restartQ")}</p>
             <div className="flex gap-3">
               <button
                 className="flex-1 py-2.5 rounded-xl bg-ink-600 hover:bg-ink-500 text-paper font-medium transition"
                 onClick={() => setConfirmReset(false)}
                 disabled={busy}
               >
-                {learningLanguage === "ca" ? "Cancelar" : "Cancel"}
+                {t("profile.cancel")}
               </button>
               <button
                 className="flex-1 py-2.5 rounded-xl bg-coral/20 hover:bg-coral/30 text-coral font-medium transition"
                 onClick={restartOnboarding}
                 disabled={busy}
               >
-                {busy ? (learningLanguage === "ca" ? "Reiniciant…" : "Resetting…") : (learningLanguage === "ca" ? "Reiniciar" : "Restart")}
+                {busy ? t("profile.resetting") : t("profile.restart")}
               </button>
             </div>
           </div>
         ) : (
           <button className="btn-ghost w-full" onClick={() => setConfirmReset(true)}>
-            <RefreshCw size={16} /> {learningLanguage === "ca" ? "Reiniciar l'incorporació" : "Restart onboarding"}
+            <RefreshCw size={16} /> {t("profile.restartBtn")}
           </button>
         )}
 
@@ -458,7 +437,7 @@ export default function Profile() {
             }
           }}
         >
-          <LogOut size={16} /> {signingOut ? t("common.signingOut") : learningLanguage === "ca" ? "Tancar sessió" : "Sign out"}
+          <LogOut size={16} /> {signingOut ? t("common.signingOut") : t("profile.signOut")}
         </button>
       </div>
     </div>

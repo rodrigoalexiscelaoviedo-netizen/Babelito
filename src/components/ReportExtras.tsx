@@ -1,13 +1,15 @@
 import { useState } from "react";
 import { Check, Plus, Sparkles } from "lucide-react";
 import { addToReview } from "../lib/srs";
+import { tFor } from "../i18n";
 
 /** XP ganado en la sesión, mostrado en el informe. */
 export function XpEarned({ amount, learningLanguage }: { amount: number | null; learningLanguage: string }) {
+  const t = tFor(learningLanguage);
   if (!amount) return null;
   return (
     <p className="inline-flex items-center gap-1.5 rounded-full status-streak-bg px-3 py-1 text-sm font-semibold level-up-pop">
-      <Sparkles size={14} /> +{amount} XP {learningLanguage === "ca" ? "guanyats" : "earned"}
+      <Sparkles size={14} /> +{amount} XP {t("report.earned")}
     </p>
   );
 }
@@ -28,7 +30,7 @@ export function SuggestedChunks({
   title: string;
 }) {
   const [saved, setSaved] = useState<Record<string, "added" | "exists" | "error" | "saving">>({});
-  const ca = learningLanguage === "ca";
+  const t = tFor(learningLanguage);
 
   async function save(chunk: string) {
     if (!userId || saved[chunk]) return;
@@ -38,7 +40,7 @@ export function SuggestedChunks({
       {
         item_type: "chunk",
         content: chunk,
-        prompt: ca ? "Expressió suggerida pel coach" : "Phrase suggested by your coach",
+        prompt: t("report.savedPrompt"),
         source_ref: `coach:${chunk.toLowerCase().slice(0, 120)}`,
       },
       learningLanguage
@@ -64,14 +66,14 @@ export function SuggestedChunks({
                 className={`shrink-0 inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-medium transition ${
                   done ? "bg-mint/15 text-mint" : "bg-ink-600 text-paper hover:bg-ink-500"
                 }`}
-                aria-label={ca ? `Desa "${chunk}" al repàs` : `Save "${chunk}" to review`}
+                aria-label={t("report.saveAria", { c: chunk })}
               >
                 {done ? <Check size={13} /> : <Plus size={13} />}
                 {done
-                  ? ca ? "Desat" : "Saved"
+                  ? t("report.saved")
                   : state === "error"
-                  ? ca ? "Torna-ho a provar" : "Try again"
-                  : ca ? "Al repàs" : "Review"}
+                  ? t("roleplay.retry")
+                  : t("report.review")}
               </button>
             </li>
           );
