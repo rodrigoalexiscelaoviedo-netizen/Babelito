@@ -11,6 +11,7 @@
  * tu propio mazo y de las frases de Situaciones.
  */
 import { SITUATIONS } from "./situationsData";
+import { SITUATIONS_CA } from "./situationsDataCa";
 
 export type CardKind = "meet" | "listen" | "gap" | "say";
 
@@ -74,15 +75,20 @@ export interface Pool {
   words: string[];
 }
 
-const SITUATION_POOL: Pool = {
-  chunks: SITUATIONS.flatMap((s) => s.phrases.map((p) => p.en)),
-  words: SITUATIONS.flatMap((s) => s.words.map((w) => w.en)),
-};
+/** Frases y palabras de Situaciones en el idioma de la persona (las opciones falsas salen de aquí). */
+function situationPool(lang: "en" | "ca"): Pool {
+  const list = lang === "ca" ? SITUATIONS_CA : SITUATIONS;
+  return {
+    chunks: list.flatMap((s) => s.phrases.map((p) => p.en)),
+    words: list.flatMap((s) => s.words.map((w) => w.en)),
+  };
+}
 
 /** Mazo de la persona + frases de Situaciones, sin repetidos. */
-export function buildPool(deck: Array<Pick<CardItem, "item_type" | "content">>): Pool {
-  const chunks = new Set<string>(SITUATION_POOL.chunks);
-  const words = new Set<string>(SITUATION_POOL.words);
+export function buildPool(deck: Array<Pick<CardItem, "item_type" | "content">>, lang: "en" | "ca" = "en"): Pool {
+  const base = situationPool(lang);
+  const chunks = new Set<string>(base.chunks);
+  const words = new Set<string>(base.words);
   for (const d of deck) (d.item_type === "chunk" ? chunks : words).add(d.content);
   return { chunks: [...chunks], words: [...words] };
 }

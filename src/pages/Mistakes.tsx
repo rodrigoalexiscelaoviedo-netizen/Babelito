@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
-import { Link, Navigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { ArrowDown, ArrowRight, ArrowUp, Loader2, Sparkles } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import MultipleChoiceQuiz from "../components/MultipleChoiceQuiz";
-import { ERROR_TYPES, errorHint, errorLabel } from "../lib/errorTypes";
+import { ERROR_TYPES, ERROR_TYPES_CA, errorHint, errorLabel } from "../lib/errorTypes";
 import { lessonsForError } from "../lib/grammarLessons";
+import { lessonsForErrorCa } from "../lib/grammarLessonsCa";
 import { generateDrill, loadErrorRows, summarizeErrors, type ExerciseItem, type MistakeSummary, type Trend } from "../lib/mistakes";
 import { tFor } from "../i18n";
 
@@ -24,6 +25,9 @@ function TrendIcon({ trend }: { trend: Trend }) {
 export default function Mistakes() {
   const { profile } = useAuth();
   const t = tFor(profile?.learning_language || "en");
+  const lang: "en" | "ca" = profile?.learning_language === "ca" ? "ca" : "en";
+  const lessonsFor = lang === "ca" ? lessonsForErrorCa : lessonsForError;
+  const errorTable = lang === "ca" ? ERROR_TYPES_CA : ERROR_TYPES;
   const [summary, setSummary] = useState<MistakeSummary | null>(null);
   const [drill, setDrill] = useState<{ type: string; items: ExerciseItem[]; fromAi: boolean; round: number } | null>(null);
   const [loadingDrill, setLoadingDrill] = useState<string | null>(null);
@@ -42,13 +46,10 @@ export default function Mistakes() {
   async function startDrill(type: string) {
     if (!profile) return;
     setLoadingDrill(type);
-    const res = await generateDrill(type, profile.current_level ?? "A2");
+    const res = await generateDrill(type, profile.current_level ?? "A2", lang);
     setLoadingDrill(null);
     setDrill({ type, items: res.items, fromAi: res.fromAi, round: (drill?.round ?? 0) + 1 });
   }
-
-  // Las etiquetas de errores y los ejercicios de gramática siguen en inglés: en catalán no hay contenido todavía.
-  if (profile?.learning_language === "ca") return <Navigate to="/" replace />;
 
   if (!summary) {
     return (
@@ -77,16 +78,16 @@ export default function Mistakes() {
       ) : (
         <>
           <p className="mb-6 text-paper-muted">
-            {t("mistakes.summary", { n: summary.total, type: errorLabel(top.type) })}
+            {t("mistakes.summary", { n: summary.total, type: errorLabel(top.type, lang) })}
           </p>
 
           <ul className="space-y-4">
             {summary.stats.slice(0, 5).map((s) => {
-              const lessons = lessonsForError(s.type);
+              const lessons = lessonsFor(s.type);
               return (
                 <li key={s.type} className="card p-5">
                   <div className="flex items-center justify-between gap-3">
-                    <h2 className="font-display text-lg font-bold">{errorLabel(s.type)}</h2>
+                    <h2 className="font-display text-lg font-bold">{errorLabel(s.type, lang)}</h2>
                     <span className="font-mono text-sm text-paper-muted">{s.count}×</span>
                   </div>
                   <div className="mt-2 h-1.5 rounded-full bg-ink-600" aria-hidden>
@@ -95,7 +96,7 @@ export default function Mistakes() {
                   <p className="mt-2 flex items-center gap-1.5 text-[11px] text-paper-faint">
                     <TrendIcon trend={s.trend} /> {t(TREND_KEY[s.trend])}
                   </p>
-                  {ERROR_TYPES[s.type] && <p className="mt-2 text-sm text-paper-muted">{errorHint(s.type)}</p>}
+                  {errorTable[s.type] && <p className="mt-2 text-sm text-paper-muted">{errorHint(s.type, lang)}</p>}
 
                   {s.examples.length > 0 && (
                     <ul className="mt-3 space-y-2">

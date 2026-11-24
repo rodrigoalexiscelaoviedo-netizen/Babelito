@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, Navigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { Check } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { GRAMMAR_LESSONS, lessonsForError } from "../lib/grammarLessons";
+import { GRAMMAR_LESSONS_CA, lessonsForErrorCa } from "../lib/grammarLessonsCa";
 import { loadGrammarScores } from "../lib/grammarProgress";
 import { loadErrorRows, summarizeErrors } from "../lib/mistakes";
 import { QUIZ_PASS_PERCENT } from "../lib/situations";
@@ -12,6 +13,9 @@ import { tFor } from "../i18n";
 export default function Grammar() {
   const { profile } = useAuth();
   const t = tFor(profile?.learning_language || "en");
+  const isCa = profile?.learning_language === "ca";
+  const LESSONS = isCa ? GRAMMAR_LESSONS_CA : GRAMMAR_LESSONS;
+  const lessonsFor = isCa ? lessonsForErrorCa : lessonsForError;
   const [scores, setScores] = useState<Record<string, number>>({});
   const [topTypes, setTopTypes] = useState<string[]>([]);
 
@@ -30,13 +34,15 @@ export default function Grammar() {
 
   const recommended = useMemo(() => {
     const ids = new Set<string>();
-    for (const t of topTypes) for (const l of lessonsForError(t)) ids.add(l.id);
+    for (const et of topTypes) for (const l of lessonsFor(et)) ids.add(l.id);
     return ids;
-  }, [topTypes]);
+    // lessonsFor depende solo del idioma, que ya cambia la lista de abajo.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [topTypes, isCa]);
 
   const lessons = useMemo(() => {
     const me = levelRank(profile?.current_level ?? "A1");
-    return [...GRAMMAR_LESSONS].sort((a, b) => {
+    return [...LESSONS].sort((a, b) => {
       const ra = recommended.has(a.id) ? 0 : 1;
       const rb = recommended.has(b.id) ? 0 : 1;
       if (ra !== rb) return ra - rb;
@@ -45,12 +51,9 @@ export default function Grammar() {
       if (pa !== pb) return pa - pb;
       return Math.abs(levelRank(a.level) - me) - Math.abs(levelRank(b.level) - me);
     });
-  }, [recommended, scores, profile?.current_level]);
+  }, [recommended, scores, profile?.current_level, LESSONS]);
 
-  // Las lecciones de gramática existen solo en inglés: en catalán no hay contenido todavía.
-  if (profile?.learning_language === "ca") return <Navigate to="/" replace />;
-
-  const passed = GRAMMAR_LESSONS.filter((l) => (scores[l.id] ?? 0) >= QUIZ_PASS_PERCENT).length;
+  const passed = LESSONS.filter((l) => (scores[l.id] ?? 0) >= QUIZ_PASS_PERCENT).length;
 
   return (
     <div className="animate-fade-up">
@@ -58,7 +61,7 @@ export default function Grammar() {
       <h1 className="page-title mb-2">{t("grammar.title")}</h1>
       <p className="text-paper-muted mb-6">
         {t("grammar.intro")}
-        {passed > 0 && t("grammar.passedCount", { a: passed, b: GRAMMAR_LESSONS.length })}
+        {passed > 0 && t("grammar.passedCount", { a: passed, b: LESSONS.length })}
       </p>
 
       <div className="grid gap-4 sm:grid-cols-2 stagger">

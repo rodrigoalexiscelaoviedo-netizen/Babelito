@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, Navigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { Check, Target } from "lucide-react";
 import { SITUATION_ICONS } from "../components/situationIcons";
 import { useAuth } from "../context/AuthContext";
 import { tFor } from "../i18n";
+import { SITUATIONS_CA } from "../lib/situationsDataCa";
 import {
   SITUATIONS,
   STEP_ORDER,
@@ -21,6 +22,7 @@ export default function Situations() {
   const t = tFor(profile?.learning_language || "en");
   const [progress, setProgress] = useState<Record<string, SituationProgress>>({});
   const [level, setLevel] = useState<(typeof LEVEL_FILTERS)[number]>("All");
+  const ALL = profile?.learning_language === "ca" ? SITUATIONS_CA : SITUATIONS;
 
   useEffect(() => {
     if (!profile) return;
@@ -34,14 +36,11 @@ export default function Situations() {
   }, [profile]);
 
   const list = useMemo(() => {
-    const sorted = sortSituations(SITUATIONS, profile?.current_level, progress);
+    const sorted = sortSituations(ALL, profile?.current_level, progress);
     return level === "All" ? sorted : sorted.filter((s) => s.level === level);
-  }, [profile?.current_level, progress, level]);
+  }, [ALL, profile?.current_level, progress, level]);
 
-  const doneCount = SITUATIONS.filter((s) => isComplete(progress[s.id]?.steps)).length;
-
-  // Versión catalana pendiente (contenido de situaciones solo en inglés): se vuelve a Inicio.
-  if (profile?.learning_language === "ca") return <Navigate to="/" replace />;
+  const doneCount = ALL.filter((s) => isComplete(progress[s.id]?.steps)).length;
 
   return (
     <div className="animate-fade-up">
@@ -49,7 +48,7 @@ export default function Situations() {
       <h1 className="page-title mb-2">{t("situations.title")}</h1>
       <p className="text-paper-muted mb-6">
         {t("situations.intro")}
-        {doneCount > 0 && t("situations.doneCount", { a: doneCount, b: SITUATIONS.length })}
+        {doneCount > 0 && t("situations.doneCount", { a: doneCount, b: ALL.length })}
       </p>
 
       <div className="mb-6 flex flex-wrap gap-2" role="group" aria-label={t("situations.filterLevel")}>

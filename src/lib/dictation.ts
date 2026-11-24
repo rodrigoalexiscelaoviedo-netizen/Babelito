@@ -1,5 +1,6 @@
 /** Dictado: frases para escuchar y escribir, y corrección palabra por palabra. */
 import { SITUATIONS } from "./situationsData";
+import { SITUATIONS_CA } from "./situationsDataCa";
 import { levelRank } from "./storyLibrary";
 
 export interface DiffToken {
@@ -67,10 +68,10 @@ export function diffWords(target: string, typed: string): DiffResult {
 }
 
 /** Frases de las situaciones cercanas al nivel de la persona, mezcladas. */
-export function pickSentences(userLevel: string | null | undefined, count = 6, rng: () => number = Math.random): string[] {
+export function pickSentences(userLevel: string | null | undefined, count = 6, rng: () => number = Math.random, lang: "en" | "ca" = "en"): string[] {
   const me = levelRank(userLevel ?? "A1");
   const pool = new Set<string>();
-  for (const s of SITUATIONS) {
+  for (const s of lang === "ca" ? SITUATIONS_CA : SITUATIONS) {
     const r = levelRank(s.level);
     if (r > me + 1) continue;
     for (const p of s.phrases) pool.add(p.en);

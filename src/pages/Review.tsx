@@ -97,7 +97,7 @@ export default function Review() {
       return;
     }
     const batch = due.slice(0, SESSION_SIZE);
-    poolRef.current = buildPool(deck);
+    poolRef.current = buildPool(deck, language === "ca" ? "ca" : "en");
     // Definiciones y ejemplos en inglés: se esperan unos segundos como máximo.
     metaRef.current = await Promise.race([loadReviewMeta(batch), new Promise<Record<string, ReviewMeta>>((r) => setTimeout(() => r({}), 7000))]);
     const entries = batch.map((it) => makeEntry(it, poolRef.current, metaRef.current[metaKey(it.content)]));

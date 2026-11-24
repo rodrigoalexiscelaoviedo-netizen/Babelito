@@ -5,8 +5,9 @@
 import { supabase } from "./supabaseClient";
 import { askCoach } from "./claude";
 import { tryParseAiJson } from "./json";
-import { ERROR_TYPES } from "./errorTypes";
+import { ERROR_TYPES, ERROR_TYPES_CA } from "./errorTypes";
 import { lessonsForError } from "./grammarLessons";
+import { lessonsForErrorCa } from "./grammarLessonsCa";
 import { buildQuiz, shuffle } from "./situations";
 
 export interface ErrorRow {
@@ -137,15 +138,16 @@ export function parseDrill(raw: string, rng: () => number = Math.random): Exerci
 }
 
 /** 5 ejercicios de completar la frase sobre un tipo de error, a tu nivel. Respaldo: la quiz de la lección. */
-export async function generateDrill(errorType: string, level: string): Promise<{ items: ExerciseItem[]; fromAi: boolean }> {
-  const meta = ERROR_TYPES[errorType];
+export async function generateDrill(errorType: string, level: string, lang: "en" | "ca" = "en"): Promise<{ items: ExerciseItem[]; fromAi: boolean }> {
+  const meta = lang === "ca" ? ERROR_TYPES_CA[errorType] : ERROR_TYPES[errorType];
+  const target = lang === "ca" ? "Catalan" : "English";
   try {
     const raw = await askCoach({
       json: true,
       system:
-        `You write short grammar exercises for a Spanish speaker learning English at level ${level}. ` +
+        `You write short grammar exercises for a Spanish speaker learning ${target} at level ${level}. ` +
         `Focus: ${meta?.label ?? errorType} — ${meta?.hint ?? ""}. ` +
-        `Reply with ONLY JSON: {"items":[{"q":"a short English sentence with ___ for the gap","options":["a","b","c"],"answer":0,"why":"one-sentence explanation in Spanish"}]}. ` +
+        `Reply with ONLY JSON: {"items":[{"q":"a short ${target} sentence with ___ for the gap","options":["a","b","c"],"answer":0,"why":"one-sentence explanation in Spanish"}]}. ` +
         `Exactly 5 items, exactly 3 options each (one correct, two typical Spanish-speaker mistakes), "answer" is the index of the correct option. Use everyday situations. No markdown.`,
       messages: [{ role: "user", content: `Create the 5 exercises about: ${meta?.label ?? errorType}.` }],
       maxTokens: 900,
@@ -156,6 +158,6 @@ export async function generateDrill(errorType: string, level: string): Promise<{
   } catch {
     /* se usa el respaldo */
   }
-  const lesson = lessonsForError(errorType)[0];
+  const lesson = (lang === "ca" ? lessonsForErrorCa : lessonsForError)(errorType)[0];
   return { items: lesson ? buildQuiz(lesson.quiz) : [], fromAi: false };
 }

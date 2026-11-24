@@ -5,15 +5,20 @@ import { useAuth } from "../context/AuthContext";
 import { useVoicePrefs } from "../lib/useVoicePrefs";
 import { speak, stopSpeech } from "../lib/speech";
 import MultipleChoiceQuiz from "../components/MultipleChoiceQuiz";
-import { getLesson } from "../lib/grammarLessons";
+import { getLesson, type GrammarLesson as Lesson } from "../lib/grammarLessons";
+import { getLessonCa } from "../lib/grammarLessonsCa";
 import { loadGrammarScores, saveGrammarScore } from "../lib/grammarProgress";
 import { buildQuiz, quizPercent, QUIZ_PASS_PERCENT } from "../lib/situations";
+import { tFor } from "../i18n";
 
 export default function GrammarLesson() {
   const { id } = useParams();
   const { profile } = useAuth();
   const prefs = useVoicePrefs();
-  const lesson = getLesson(id);
+  const isCa = profile?.learning_language === "ca";
+  const t = tFor(profile?.learning_language || "en");
+  // En el contenido catalán, `en` guarda la frase en catalán y `es` la explicación en castellano.
+  const lesson: Lesson | undefined = isCa ? getLessonCa(id) : getLesson(id);
   const [round, setRound] = useState(0);
   const [best, setBest] = useState<number | null>(null);
 
@@ -37,11 +42,14 @@ export default function GrammarLesson() {
 
   useEffect(() => () => stopSpeech(), []);
 
-  if (profile?.learning_language === "ca") return <Navigate to="/" replace />;
   if (!lesson) return <Navigate to="/grammar" replace />;
 
   const say = (text: string) =>
-    speak(text.replace(/\s*\(.*$/, ""), { voiceName: prefs.voiceName ?? undefined, rate: prefs.voiceRate, lang: prefs.voiceAccent });
+    speak(text.replace(/\s*\(.*$/, ""), {
+      voiceName: prefs.voiceName ?? undefined,
+      rate: prefs.voiceRate,
+      lang: prefs.voiceAccent ?? (isCa ? "ca-ES" : "en-GB"),
+    });
 
   async function finished(correct: number, total: number) {
     if (!profile || !lesson) return;
@@ -51,10 +59,10 @@ export default function GrammarLesson() {
   return (
     <div className="animate-fade-up mx-auto max-w-2xl">
       <Link to="/grammar" className="mb-4 inline-flex items-center gap-1.5 text-xs text-paper-muted transition hover:text-paper">
-        <ArrowLeft size={14} /> All lessons
+        <ArrowLeft size={14} /> {t("grammar.allLessons")}
       </Link>
 
-      <p className="eyebrow">Grammar · {lesson.level}</p>
+      <p className="eyebrow">{t("grammar.lessonEyebrow", { l: lesson.level })}</p>
       <h1 className="page-title mb-1">{lesson.title}</h1>
       <p className="mb-6 text-paper-muted">{lesson.summary}</p>
 
@@ -66,7 +74,7 @@ export default function GrammarLesson() {
             <ul className="space-y-2">
               {r.examples.map((ex) => (
                 <li key={ex.en} className="flex items-start gap-3">
-                  <button onClick={() => say(ex.en)} className="mt-0.5 text-paper-faint transition hover:text-coral" aria-label={`Listen: ${ex.en}`}>
+                  <button onClick={() => say(ex.en)} className="mt-0.5 text-paper-faint transition hover:text-coral" aria-label={t("grammar.listenAria", { s: ex.en })}>
                     <Volume2 size={15} />
                   </button>
                   <div>
@@ -80,7 +88,7 @@ export default function GrammarLesson() {
         ))}
 
         <section>
-          <h2 className="mb-2 font-display text-lg font-bold">Common mistakes</h2>
+          <h2 className="mb-2 font-display text-lg font-bold">{t("grammar.commonMistakes")}</h2>
           <ul className="space-y-2">
             {lesson.mistakes.map((m) => (
               <li key={m.wrong} className="card p-4">
@@ -98,12 +106,12 @@ export default function GrammarLesson() {
 
         <section>
           <div className="mb-2 flex items-center justify-between">
-            <h2 className="font-display text-lg font-bold">Quiz</h2>
+            <h2 className="font-display text-lg font-bold">{t("grammar.quiz")}</h2>
             {best !== null && best > 0 && (
-              <span className={`text-xs ${best >= QUIZ_PASS_PERCENT ? "text-mint" : "text-paper-faint"}`}>Best: {best}%</span>
+              <span className={`text-xs ${best >= QUIZ_PASS_PERCENT ? "text-mint" : "text-paper-faint"}`}>{t("grammar.best", { n: best })}</span>
             )}
           </div>
-          <MultipleChoiceQuiz key={round} items={quiz} onFinish={finished} onRetry={() => setRound((r) => r + 1)} retryLabel="Try again" />
+          <MultipleChoiceQuiz key={round} items={quiz} onFinish={finished} onRetry={() => setRound((r) => r + 1)} retryLabel={t("grammar.tryAgain")} />
         </section>
       </div>
     </div>

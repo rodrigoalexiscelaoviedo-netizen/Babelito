@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Navigate, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { Check, Layers, Plus, Volume2 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useVoicePrefs } from "../lib/useVoicePrefs";
@@ -7,7 +7,7 @@ import { speak, stopSpeech } from "../lib/speech";
 import { awardXp } from "../lib/xp";
 import { diffWords, pickSentences, type DiffResult } from "../lib/dictation";
 import { addToReview } from "../lib/srs";
-import { lookupPhrase } from "../lib/dictionary";
+import { dictLang, lookupPhrase } from "../lib/dictionary";
 import { tFor } from "../i18n";
 
 const ROUND_SIZE = 6;
@@ -16,9 +16,10 @@ export default function Dictation() {
   const { profile } = useAuth();
   const prefs = useVoicePrefs();
   const t = tFor(profile?.learning_language || "en");
+  const lang = dictLang(profile?.learning_language);
   const [round, setRound] = useState(0);
   const sentences = useMemo(
-    () => pickSentences(profile?.current_level, ROUND_SIZE),
+    () => pickSentences(profile?.current_level, ROUND_SIZE, Math.random, lang),
     // Una ronda nueva solo cuando se pide; el nivel no debe re-sortear a mitad.
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [round]
@@ -38,7 +39,7 @@ export default function Dictation() {
 
   function play(slow = false) {
     if (!target) return;
-    speak(target, { voiceName: prefs.voiceName ?? undefined, rate: slow ? 0.7 : prefs.voiceRate, lang: prefs.voiceAccent });
+    speak(target, { voiceName: prefs.voiceName ?? undefined, rate: slow ? 0.7 : prefs.voiceRate, lang: prefs.voiceAccent ?? (lang === "ca" ? "ca-ES" : "en-GB") });
   }
 
   // Reproduce la frase al aparecer cada ejercicio.
@@ -51,9 +52,6 @@ export default function Dictation() {
   }, [target]);
 
   useEffect(() => () => stopSpeech(), []);
-
-  // Las frases de dictado solo existen en inglés: en catalán no hay banco todavía.
-  if (profile?.learning_language === "ca") return <Navigate to="/" replace />;
 
   const finished = i >= sentences.length;
 
@@ -70,8 +68,8 @@ export default function Dictation() {
   async function practise(sentence: string) {
     if (!profile || saved[sentence]) return;
     setSaved((m) => ({ ...m, [sentence]: "saving" }));
-    const expl = await lookupPhrase(sentence, "en");
-    const res = await addToReview(profile.id, { item_type: "chunk", content: sentence, prompt: expl.es === "No disponible" ? "" : expl.es, source_ref: "dictation" }, "en");
+    const expl = await lookupPhrase(sentence, lang);
+    const res = await addToReview(profile.id, { item_type: "chunk", content: sentence, prompt: expl.es === "No disponible" ? "" : expl.es, source_ref: "dictation" }, lang);
     setSaved((m) => {
       if (res === "error") {
         const { [sentence]: _drop, ...rest } = m;
