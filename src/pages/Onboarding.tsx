@@ -56,7 +56,9 @@ export default function Onboarding() {
       })
       .eq("id", session.user.id);
     await refreshProfile();
-    navigate("/diagnostic", { replace: true });
+    // Si este idioma ya tiene nivel (se estudió antes), no hace falta repetir la prueba.
+    const hasLevel = perLangData(profile?.profile_json).levels[learningLanguage] != null;
+    navigate(hasLevel ? "/" : "/diagnostic", { replace: true });
   }
 
   const steps = [
