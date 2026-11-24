@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabaseClient";
 import { useAuth } from "../context/AuthContext";
 import { tFor } from "../i18n";
+import { perLangData } from "../lib/studyLanguage";
 
 const GOAL_KEYS = [
   { key: "work", emoji: "💼" },
@@ -25,7 +26,7 @@ const LANGUAGES = [
 ];
 
 export default function Onboarding() {
-  const { session, refreshProfile } = useAuth();
+  const { session, profile, refreshProfile } = useAuth();
   const navigate = useNavigate();
   const [step, setStep] = useState(0);
   // Sin default silencioso: el usuario DEBE elegir idioma explícitamente.
@@ -51,7 +52,7 @@ export default function Onboarding() {
         self_assessed_level: level,
         english_variant: variant,
         onboarding_complete: true,
-        profile_json: { interests },
+        profile_json: { ...(profile?.profile_json ?? {}), interests, onboarded: { ...perLangData(profile?.profile_json).onboarded, [learningLanguage]: true } },
       })
       .eq("id", session.user.id);
     await refreshProfile();

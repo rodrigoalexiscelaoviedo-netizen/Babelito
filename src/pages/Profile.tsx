@@ -1,3 +1,4 @@
+import { buildSwitchUpdate } from "../lib/studyLanguage";
 import ThemeToggle from "../components/ThemeToggle";
 import { cloneElement, isValidElement, useEffect, useState, type ReactElement, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
@@ -83,22 +84,27 @@ export default function Profile() {
   async function save() {
     if (!session) return;
     setBusy(true);
-    // Un nivel por idioma: al cambiar de idioma guardo el nivel del que dejo y cargo el
-    // del que elijo. Si no tiene nivel todavía, la app manda a la prueba de nivel.
-    const prevLang = profile?.learning_language || "en";
-    const levels: Record<string, string> = { ...((profile?.profile_json?.levels as Record<string, string> | undefined) ?? {}) };
-    const langChanged = learningLanguage !== prevLang;
-    if (langChanged && profile?.current_level) levels[prevLang] = profile.current_level;
-    const nextLevel = langChanged ? (levels[learningLanguage] ?? null) : (profile?.current_level ?? null);
+    // Nivel, objetivo y alta son por idioma: buildSwitchUpdate guarda lo del idioma que se deja
+    // y carga lo del elegido. Sin nivel o sin alta para el nuevo idioma, la app lleva a la prueba o al alta.
+    const sw = profile
+      ? buildSwitchUpdate(
+          {
+            learning_language: profile.learning_language ?? null,
+            current_level: profile.current_level ?? null,
+            onboarding_complete: profile.onboarding_complete,
+            profile_json: profile.profile_json,
+          },
+          learningLanguage === "ca" ? "ca" : "en",
+          target,
+          interests
+        )
+      : null;
     await supabase
       .from("profiles")
       .update({
         name,
-        target_level: target,
         english_variant: variant,
-        learning_language: learningLanguage,
-        ...(langChanged ? { current_level: nextLevel, diagnostic_complete: nextLevel !== null } : {}),
-        profile_json: { ...(profile?.profile_json ?? {}), interests, levels },
+        ...(sw ?? {}),
         voice_name: voiceName || null,
         voice_rate: voiceRate,
         voice_accent: voiceAccent,
