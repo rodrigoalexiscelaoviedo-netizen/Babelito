@@ -326,8 +326,8 @@ export default function Profile() {
               <span>{t("profile.rangeSlow")}</span>
               <span>{t("profile.rangeFast")}</span>
             </div>
-            {/* La voz natural solo existe para audio en inglés. */}
-            {learningLanguage !== "ca" && (
+            {/* Voz natural para inglés y catalán; si no está disponible, se usa la del navegador. */}
+            {(
               <label className="mt-3 flex cursor-pointer items-start gap-2 text-sm">
                 <input
                   type="checkbox"

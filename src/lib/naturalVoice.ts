@@ -23,7 +23,8 @@ export function neuralVoiceFor(lang: string, alt = false): string | null {
   if (lang.startsWith("en-AU")) return "en-AU-NatashaNeural";
   if (lang.startsWith("en-IN")) return "en-IN-NeerjaNeural";
   if (lang.startsWith("en")) return "en-GB-SoniaNeural";
-  return null; // catalán y otros: voz del navegador
+  if (lang.startsWith("ca")) return alt ? "ca-ES-EnricNeural" : "ca-ES-JoanaNeural";
+  return null; // otros idiomas: voz del navegador
 }
 
 export function clampRate(rate: number): number {
