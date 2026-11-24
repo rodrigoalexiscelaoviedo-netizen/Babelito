@@ -61,6 +61,7 @@ describe("neuralVoiceFor", () => {
     expect(neuralVoiceFor("en-GB")).toBe("en-GB-SoniaNeural");
     expect(neuralVoiceFor("en-GB", true)).toBe("en-GB-RyanNeural");
     expect(neuralVoiceFor("en-US", true)).toBe("en-US-GuyNeural");
-    expect(neuralVoiceFor("ca-ES", true)).toBeNull();
+    expect(neuralVoiceFor("ca-ES")).toBe("ca-ES-JoanaNeural");
+    expect(neuralVoiceFor("ca-ES", true)).toBe("ca-ES-EnricNeural");
   });
 });
