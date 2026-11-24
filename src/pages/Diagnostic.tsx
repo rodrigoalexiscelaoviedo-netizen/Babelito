@@ -51,6 +51,12 @@ const CRITERIA: Array<{ key: keyof Pick<ExaminerRating, "range" | "accuracy" | "
   { key: "coherence", en: "Coherence", ca: "Coherència" },
 ];
 
+/** Nombre corto de cada habilidad que aparece en la etiqueta de la pregunta. */
+const SKILL_TAG: Record<"en" | "ca", Record<string, string>> = {
+  en: { grammar: "grammar", vocab: "vocabulary", usage: "usage", listening: "listening", visual: "visual" },
+  ca: { grammar: "gramàtica", vocab: "vocabulari", usage: "ús", listening: "escolta", visual: "visual" },
+};
+
 export default function Diagnostic() {
   const { session, profile, refreshProfile } = useAuth();
   const navigate = useNavigate();
@@ -471,7 +477,7 @@ export default function Diagnostic() {
         <div className="flex items-center justify-between mb-6">
           <p className="eyebrow">{isCatalan ? "Pregunta" : "Question"} {shown}</p>
           <span className="font-mono text-xs text-paper-faint">
-            {item.format === "listen" ? (isCatalan ? "escolta" : "listening") : item.format === "visual" ? "visual" : item.skill}
+            {item.format === "listen" ? (isCatalan ? "escolta" : "listening") : item.format === "visual" ? "visual" : SKILL_TAG[isCatalan ? "ca" : "en"][item.skill]}
           </span>
         </div>
 
