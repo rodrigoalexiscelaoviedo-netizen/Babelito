@@ -748,7 +748,7 @@ export const en = {
     rangeSlow: "0.5× slow",
     rangeFast: "1.5× fast",
     naturalLabel: "Natural voice",
-    naturalHelp: "A more human voice for English audio. If it is not available, the browser voice is used.",
+    naturalHelp: "A more human voice for the audio. If it is not available, the browser voice is used.",
     slowWarning: "This is very slow. Try “Slow” for a more natural voice.",
     dailyReminder: "Daily reminder",
     enableNotif: "Activate daily notifications",

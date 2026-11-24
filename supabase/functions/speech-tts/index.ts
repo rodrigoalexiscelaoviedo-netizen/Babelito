@@ -21,6 +21,9 @@ const VOICES = new Set([
   "en-US-GuyNeural",
   "en-AU-NatashaNeural",
   "en-IN-NeerjaNeural",
+  "ca-ES-JoanaNeural",
+  "ca-ES-EnricNeural",
+  "ca-ES-AlbaNeural",
 ]);
 
 function corsFor(origin: string | null) {

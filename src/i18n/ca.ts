@@ -753,7 +753,7 @@ export const ca: Shape<typeof en> = {
     rangeSlow: "0.5× lent",
     rangeFast: "1.5× ràpid",
     naturalLabel: "Veu natural",
-    naturalHelp: "Una veu més humana per a l'àudio en anglès. Si no està disponible, s'usa la veu del navegador.",
+    naturalHelp: "Una veu més humana per a l'àudio. Si no està disponible, s'usa la veu del navegador.",
     slowWarning: "Aquesta velocitat és molt lenta; prova «Lenta» per a una veu més natural.",
     dailyReminder: "Recordatori diari",
     enableNotif: "Activar notificacions diàries",
