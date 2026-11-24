@@ -214,12 +214,13 @@ export function normalizeLiveReport(raw: unknown): LiveReport | null {
 }
 
 /** Pide al coach el informe de la llamada que acaba de terminar. */
-export async function liveReport(input: { transcript: string; corrections: LiveCorrectionItem[]; level: string }): Promise<LiveReport | null> {
+export async function liveReport(input: { transcript: string; corrections: LiveCorrectionItem[]; level: string; lang?: "en" | "ca" }): Promise<LiveReport | null> {
   const { result } = await call<{ result: unknown }>({
     mode: "live-report",
     transcript: input.transcript,
     corrections: input.corrections,
     level: input.level,
+    lang: input.lang ?? "en",
   });
   return normalizeLiveReport(result);
 }

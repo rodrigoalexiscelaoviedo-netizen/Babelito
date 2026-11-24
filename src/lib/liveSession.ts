@@ -77,8 +77,16 @@ export function isBeginnerLevel(level: string): boolean {
 }
 
 /** Mensaje claro para el usuario según por qué no arrancó la llamada. */
-export function describeStartError(e: unknown): string {
+export function describeStartError(e: unknown, lang: "en" | "ca" = "en"): string {
   const name = typeof e === "object" && e !== null && "name" in e ? String((e as { name: unknown }).name) : "";
+  if (lang === "ca") {
+    if (name === "NotAllowedError" || name === "SecurityError") {
+      return "El micròfon està bloquejat. Permet-lo a la configuració del lloc del navegador (la icona del cadenat, al costat de l'adreça) i torna-ho a provar.";
+    }
+    if (name === "NotFoundError" || name === "OverconstrainedError") return "No hem trobat cap micròfon. Connecta'n un i torna-ho a provar.";
+    if (name === "NotReadableError") return "El micròfon l'està usant una altra aplicació. Tanca-la i torna-ho a provar.";
+    return e instanceof Error && e.message ? e.message : "No hem pogut iniciar la trucada en directe. Torna-ho a provar d'aquí a un moment.";
+  }
   if (name === "NotAllowedError" || name === "SecurityError") {
     return "Microphone access is blocked. Allow it in your browser's site settings (the lock icon next to the address) and try again.";
   }
@@ -91,7 +99,8 @@ export function describeStartError(e: unknown): string {
   return e instanceof Error && e.message ? e.message : "We couldn't start the live call. Try again in a moment.";
 }
 
-export function liveSystemPrompt(opts: { level: string; name: string; topic: string | null; situation?: LiveSituation | null }): string {
+export function liveSystemPrompt(opts: { level: string; name: string; topic: string | null; situation?: LiveSituation | null; lang?: "en" | "ca" }): string {
+  if (opts.lang === "ca") return liveSystemPromptCa(opts);
   const who = opts.name || "a learner";
   const support = isBeginnerLevel(opts.level)
     ? "The learner is a beginner: when a key word or idea is not clear, explain it briefly in Spanish, then go back to English. Keep Spanish to a few words per turn."
@@ -119,6 +128,38 @@ export function liveSystemPrompt(opts: { level: string; name: string; topic: str
     ...common,
     opts.topic ? `Topic for this call: ${opts.topic}.` : "Choose a friendly everyday topic.",
     "Start by greeting them and asking a first simple question.",
+  ].join(" ");
+}
+
+/** Prompt del coach en catalán: habla català; el alumno es hispanohablante, así que el apoyo es en castellano. */
+function liveSystemPromptCa(opts: { level: string; name: string; topic: string | null; situation?: LiveSituation | null }): string {
+  const who = opts.name || "un alumne";
+  const support = isBeginnerLevel(opts.level)
+    ? "The learner is a beginner: when a key word or idea is not clear, explain it briefly in Spanish, then go back to Catalan. Keep Spanish to a few words per turn."
+    : "Speak Catalan only. Use Spanish only if the learner is completely stuck, and then only one short word or phrase.";
+  const common = [
+    "Speak clearly and a little slowly, in standard Catalan. Keep every turn short (1–3 sentences) and ask only one question at a time.",
+    "Use vocabulary and grammar suited to the level. Never lecture.",
+    "When the learner makes a clear mistake (grammar, a wrong word, a Spanish calque, or an unnatural phrase; never pronunciation), do this in order: first call the log_correction tool with the correction; then say one very short tip out loud, starting with 'Consell ràpid:' and one simple sentence; then answer what they said and ask one question. At most one tip per turn. Do not explain more unless they ask.",
+    support,
+  ];
+
+  if (opts.situation) {
+    const s = opts.situation;
+    return [
+      `You are Babelito playing a role on a live phone call in Catalan with ${who}, a Spanish speaker at CEFR level ${opts.level}.`,
+      `You are the one calling. Your role: ${s.coachRole}. Situation: ${s.description}.`,
+      `Open the call yourself, right away, with a line like: "${s.opening}". Do not wait for the learner to speak first.`,
+      "Stay in character the whole time. Do not correct the learner as a teacher; keep the conversation going naturally.",
+      ...common,
+    ].join(" ");
+  }
+
+  return [
+    `You are Babelito, a warm Catalan conversation partner on a live voice call with ${who}, a Spanish speaker at CEFR level ${opts.level}.`,
+    ...common,
+    opts.topic ? `Topic for this call: ${opts.topic}.` : "Choose a friendly everyday topic.",
+    "Start by greeting them in Catalan and asking a first simple question.",
   ].join(" ");
 }
 
@@ -256,7 +297,7 @@ export class LiveSession {
    */
   constructor(
     private readonly handlers: LiveHandlers,
-    private readonly prompt: { level: string; name: string; topic: string | null; situation?: LiveSituation | null },
+    private readonly prompt: { level: string; name: string; topic: string | null; situation?: LiveSituation | null; lang?: "en" | "ca" },
     private readonly examiner: { lang: ExaminerLang } | null = null
   ) {}
 
@@ -281,7 +322,7 @@ export class LiveSession {
         if (!this.closed) this.fail(ev.reason || "The live call was closed by the service. Try again.");
       };
     } catch (e) {
-      this.fail(describeStartError(e));
+      this.fail(describeStartError(e, this.prompt.lang ?? "en"));
     }
   }
 

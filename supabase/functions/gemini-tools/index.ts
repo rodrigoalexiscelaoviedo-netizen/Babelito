@@ -138,9 +138,13 @@ Deno.serve(async (req) => {
       : "";
     const beginner = level === "A1" || level === "A2";
     system = [
-      `You are a very experienced native English teacher (British, CELTA-trained, 20 years teaching adult learners) writing the end-of-call report for a Spanish-speaking learner at CEFR level ${level}.`,
+      lang === "ca"
+        ? `You are a very experienced native Catalan teacher (Barcelona standard, 20 years teaching adult learners) writing the end-of-call report for a Spanish-speaking learner of Catalan at CEFR level ${level}.`
+        : `You are a very experienced native English teacher (British, CELTA-trained, 20 years teaching adult learners) writing the end-of-call report for a Spanish-speaking learner at CEFR level ${level}.`,
       "Be honest, specific and warm. Base everything ONLY on what the learner actually said in the transcript; quote short exact phrases from the learner. Do not invent mistakes.",
-      beginner ? "Write all explanations in Spanish, with English examples." : "Write the explanations in simple English.",
+      lang === "ca"
+        ? (beginner ? "Write all explanations in Spanish, with Catalan examples." : "Write the explanations in simple Spanish, quoting Catalan examples.")
+        : (beginner ? "Write all explanations in Spanish, with English examples." : "Write the explanations in simple English."),
       'Reply ONLY with JSON: {"overall": "2-3 sentences: how the call went and the learner real level today", "levelNote": "one sentence: is the learner at this level, above or below, and why", "strengths": ["up to 3 items. Quote a learner phrase ONLY if it is grammatically correct; never quote anything that contains an error. If nothing was correct, praise effort or confidence in general terms without quoting"], "priorities": [{"issue": "short name", "youSaid": "exact short quote from the learner", "better": "natural correct version", "why": "one short explanation the learner can act on"}], "vocabulary": [{"en": "useful word or phrase", "es": "meaning"}], "nextSteps": ["up to 3 concrete practice actions for the next call"]}.',
       "priorities: at most 3, most important first. vocabulary: at most 5 words they needed but did not have. If the transcript is too short to judge, say so in overall and keep the lists short.",
     ].join(" ");

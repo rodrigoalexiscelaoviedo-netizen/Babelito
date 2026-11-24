@@ -4,11 +4,14 @@ import { ArrowLeft, Loader2, Mic, MessageCircle, Phone, PhoneOff, RotateCcw, Spa
 import { LiveSession, LIVE_MAX_SECONDS, type LiveCorrection, type LiveSituation } from "../lib/liveSession";
 import { liveReport, type LiveReport } from "../lib/geminiTools";
 import { SITUATIONS } from "../lib/situationsData";
+import { SITUATIONS_CA } from "../lib/situationsDataCa";
 import { SITUATION_ICONS } from "./situationIcons";
 import { awardXp } from "../lib/xp";
+import { tFor } from "../i18n";
 
 type Choice = { kind: "free" } | { kind: "situation"; situation: LiveSituation } | { kind: "surprise" };
 type State = "pick" | "connecting" | "live" | "ended" | "error";
+type T = ReturnType<typeof tFor>;
 
 /**
  * Llamada en tiempo real con el coach (voz a voz, BETA).
@@ -21,6 +24,8 @@ type LiveCallProps = {
   name: string;
   topic: string | null;
   onClose: () => void;
+  /** Idioma que se aprende: "en" (por defecto) o "ca". */
+  lang?: "en" | "ca";
 };
 
 /**
@@ -37,7 +42,10 @@ function LiveCallView({
   name,
   topic,
   onClose,
+  lang = "en",
 }: LiveCallProps) {
+  const t = tFor(lang);
+  const bank = lang === "ca" ? SITUATIONS_CA : SITUATIONS;
   const [choice, setChoice] = useState<Choice | null>(null);
   const [state, setState] = useState<State>("pick");
   const [detail, setDetail] = useState("");
@@ -78,7 +86,7 @@ function LiveCallView({
     setReport(null);
     setReportState("idle");
     reportRequested.current = false;
-    const situation = c.kind === "free" ? null : c.kind === "situation" ? c.situation : pickSurprise().situation;
+    const situation = c.kind === "free" ? null : c.kind === "situation" ? c.situation : pickSurprise(bank).situation;
     const session = new LiveSession(
       {
         onState: (s, d) => {
@@ -86,22 +94,22 @@ function LiveCallView({
           if (d) setDetail(d);
           if (s === "live") startedAt.current = Date.now();
         },
-        onHeard: (t) => {
-          setHeard((prev) => (prev + t).slice(-220));
-          appendLog("learner", t);
+        onHeard: (tx) => {
+          setHeard((prev) => (prev + tx).slice(-220));
+          appendLog("learner", tx);
         },
-        onSaid: (t) => {
-          setSaid((prev) => (prev + t).slice(-260));
-          appendLog("coach", t);
+        onSaid: (tx) => {
+          setSaid((prev) => (prev + tx).slice(-260));
+          appendLog("coach", tx);
         },
         onSpeaking: setSpeaking,
-        onCorrection: (c) => {
-          correctionsRef.current = [...correctionsRef.current, c];
+        onCorrection: (cor) => {
+          correctionsRef.current = [...correctionsRef.current, cor];
           setCorrections(correctionsRef.current);
-          setTip(c);
+          setTip(cor);
         },
       },
-      { level, name, topic: c.kind === "free" ? topic : null, situation }
+      { level, name, topic: c.kind === "free" ? topic : null, situation, lang }
     );
     sessionRef.current = session;
     void session.start();
@@ -113,8 +121,8 @@ function LiveCallView({
   // La pista rápida se retira sola a los 9 segundos.
   useEffect(() => {
     if (!tip) return;
-    const t = setTimeout(() => setTip(null), 9000);
-    return () => clearTimeout(t);
+    const tm = setTimeout(() => setTip(null), 9000);
+    return () => clearTimeout(tm);
   }, [tip]);
 
   // Al terminar, el profesor escribe el informe (solo si el alumno habló al menos dos veces).
@@ -128,19 +136,19 @@ function LiveCallView({
       .map((e) => `${e.who === "learner" ? "L" : "C"}: ${e.text.trim()}`)
       .join("\n")
       .slice(-12000);
-    liveReport({ transcript, corrections: correctionsRef.current, level })
+    liveReport({ transcript, corrections: correctionsRef.current, level, lang })
       .then((r) => {
         setReport(r);
         setReportState(r ? "done" : "error");
       })
       .catch(() => setReportState("error"));
-  }, [state, level]);
+  }, [state, level, lang]);
 
   // Cronómetro mientras la llamada está en vivo.
   useEffect(() => {
     if (state !== "live") return;
-    const t = setInterval(() => setSeconds(Math.round((Date.now() - (startedAt.current ?? Date.now())) / 1000)), 1000);
-    return () => clearInterval(t);
+    const tm = setInterval(() => setSeconds(Math.round((Date.now() - (startedAt.current ?? Date.now())) / 1000)), 1000);
+    return () => clearInterval(tm);
   }, [state]);
 
   // Tope de tiempo: al llegar a 15 minutos la llamada se corta sola (y muestra el informe).
@@ -174,7 +182,7 @@ function LiveCallView({
 
   if (state === "pick") {
     return (
-      <div className="fixed inset-0 z-[100] flex flex-col overflow-y-auto bg-ink-900 p-6" role="dialog" aria-label="Choose a live call">
+      <div className="fixed inset-0 z-[100] flex flex-col overflow-y-auto bg-ink-900 p-6" role="dialog" aria-label={t("live.chooseAria")}>
         <div className="mx-auto w-full max-w-2xl animate-fade-up">
           <div className="flex items-center justify-between">
             <p className="eyebrow flex items-center gap-2">
@@ -182,21 +190,26 @@ function LiveCallView({
                 <span className="absolute inline-flex h-full w-full rounded-full bg-mint opacity-60 motion-safe:animate-ping" />
                 <span className="relative inline-flex h-2 w-2 rounded-full bg-mint" />
               </span>
-              Live · beta
+              {t("live.beta")}
             </p>
-            <button onClick={onClose} className="text-xs text-paper-muted hover:text-coral" aria-label="Close">Cancel</button>
+            <button onClick={onClose} className="text-xs text-paper-muted hover:text-coral" aria-label={t("live.close")}>{t("live.cancel")}</button>
           </div>
-          <h2 className="page-title mt-3 mb-1">Pick a call</h2>
-          <p className="mb-6 text-sm text-paper-muted">Up to 15 minutes. You can hang up any time.</p>
+          <h2 className="page-title mt-3 mb-1">{t("live.pickTitle")}</h2>
+          <p className="mb-6 text-sm text-paper-muted">{t("live.pickSub")}</p>
 
           <div className="grid gap-3 sm:grid-cols-2 stagger">
-            <ChoiceCard onClick={() => start({ kind: "free" })} icon={MessageCircle} title="Free chat" text={topic ?? "Talk about anything, the coach will suggest a topic."} />
-            <ChoiceCard onClick={() => start({ kind: "surprise" })} icon={Sparkles} title="Surprise me" text="A random situation: the coach calls you." />
+            <ChoiceCard
+              onClick={() => start({ kind: "free" })}
+              icon={MessageCircle}
+              title={t("live.freeTitle")}
+              text={topic ?? t("live.freeText")}
+            />
+            <ChoiceCard onClick={() => start({ kind: "surprise" })} icon={Sparkles} title={t("live.surpriseTitle")} text={t("live.surpriseText")} />
           </div>
 
-          <p className="mb-3 mt-8 eyebrow">Real-life calls</p>
+          <p className="mb-3 mt-8 eyebrow">{t("live.realCalls")}</p>
           <div className="grid gap-3 sm:grid-cols-2 stagger">
-            {SITUATIONS.map((s) => {
+            {bank.map((s) => {
               const Icon = SITUATION_ICONS[s.icon] ?? Phone;
               return (
                 <button
@@ -224,23 +237,23 @@ function LiveCallView({
     );
   }
 
-  const title = choice?.kind === "situation" ? choice.situation.title : choice?.kind === "surprise" ? "Surprise call" : (topic ?? "Free chat");
+  const title = choice?.kind === "situation" ? choice.situation.title : choice?.kind === "surprise" ? t("live.surpriseCall") : (topic ?? t("live.freeTitle"));
 
   if (state === "ended" || state === "error") {
     const secs = seconds;
     return (
-      <div className="fixed inset-0 z-[100] flex flex-col items-center overflow-y-auto bg-ink-900 p-6" role="dialog" aria-label="Call summary">
+      <div className="fixed inset-0 z-[100] flex flex-col items-center overflow-y-auto bg-ink-900 p-6" role="dialog" aria-label={t("live.summaryAria")}>
         <div className="card my-auto w-full max-w-lg animate-fade-up p-6">
           <div className="text-center">
-            <p className="eyebrow mb-2">Live · beta</p>
-            <h2 className="font-display text-2xl font-extrabold">{state === "error" ? "Could not connect" : "Call ended"}</h2>
+            <p className="eyebrow mb-2">{t("live.beta")}</p>
+            <h2 className="font-display text-2xl font-extrabold">{state === "error" ? t("live.couldNot") : t("live.ended")}</h2>
             {state === "error" && <p className="mt-2 text-sm text-coral">{detail}</p>}
             {state === "ended" && (
               <div className="mt-5 grid grid-cols-2 gap-3">
                 <div className="rounded-xl bg-ink-800 p-3">
                   <Clock className="mx-auto mb-1 text-paper-muted" size={16} aria-hidden />
                   <p className="font-mono text-lg font-bold">{Math.floor(secs / 60)}:{String(secs % 60).padStart(2, "0")}</p>
-                  <p className="text-[11px] text-paper-faint">talked</p>
+                  <p className="text-[11px] text-paper-faint">{t("live.talked")}</p>
                 </div>
                 <div className="rounded-xl bg-ink-800 p-3">
                   <Sparkles className="mx-auto mb-1 text-gold" size={16} aria-hidden />
@@ -250,13 +263,13 @@ function LiveCallView({
               </div>
             )}
           </div>
-          {state === "ended" && <TeacherReport status={reportState} report={report} corrections={corrections} />}
+          {state === "ended" && <TeacherReport status={reportState} report={report} corrections={corrections} t={t} />}
           <div className="mt-6 flex flex-col gap-2">
             <button onClick={() => setState("pick")} className="btn-coral inline-flex items-center justify-center gap-2">
-              <RotateCcw size={16} /> Pick another call
+              <RotateCcw size={16} /> {t("live.pickAnother")}
             </button>
             <button onClick={onClose} className="btn-ghost inline-flex items-center justify-center gap-2">
-              <ArrowLeft size={16} /> Back to Speak
+              <ArrowLeft size={16} /> {t("live.backSpeak")}
             </button>
           </div>
         </div>
@@ -268,7 +281,7 @@ function LiveCallView({
   const userLive = state === "live" && !speaking;
 
   return (
-    <div className="fixed inset-0 z-[100] flex flex-col items-center justify-between overflow-hidden bg-ink-900 p-6" role="dialog" aria-label="Live call">
+    <div className="fixed inset-0 z-[100] flex flex-col items-center justify-between overflow-hidden bg-ink-900 p-6" role="dialog" aria-label={t("live.callAria")}>
       {/* Fondo: un halo que cambia de color según quién habla. */}
       <div
         aria-hidden
@@ -281,11 +294,11 @@ function LiveCallView({
       />
 
       <div className="relative pt-6 text-center animate-fade-up">
-        <p className="eyebrow">Live call · beta</p>
+        <p className="eyebrow">{t("live.callEyebrow")}</p>
         <p className="mt-1 text-xs text-paper-faint">{title}</p>
         {state === "live" && (
           <p className={`mt-1 font-mono text-xs ${nearEnd ? "text-gold" : "text-mint"}`}>
-            {mm}:{ss} · {nearEnd ? `ends in ${remaining}` : `max ${Math.round(LIVE_MAX_SECONDS / 60)} min`}
+            {mm}:{ss} · {nearEnd ? t("live.endsIn", { t: remaining }) : t("live.maxMin", { n: Math.round(LIVE_MAX_SECONDS / 60) })}
           </p>
         )}
       </div>
@@ -341,13 +354,13 @@ function LiveCallView({
         </div>
 
         <p className="font-display text-xl font-bold" role="status">
-          {state === "connecting" && "Connecting…"}
-          {state === "live" && (speaking ? "They're talking…" : "Your turn — just speak")}
+          {state === "connecting" && t("live.connecting")}
+          {state === "live" && (speaking ? t("live.coachTalking") : t("live.yourTurn"))}
         </p>
 
         {tip && state === "live" && (
           <div key={tip.original + tip.correction} role="status" className="mx-auto max-w-sm rounded-xl border border-gold/40 bg-ink-800/90 px-4 py-2 text-left animate-fade-up">
-            <p className="font-mono text-[10px] uppercase tracking-widest text-gold">Quick tip</p>
+            <p className="font-mono text-[10px] uppercase tracking-widest text-gold">{t("live.quickTip")}</p>
             <p className="text-sm">
               <span className="text-paper-faint line-through">{tip.original}</span> → <strong>{tip.correction}</strong>
             </p>
@@ -364,24 +377,24 @@ function LiveCallView({
             )}
             {heard && (
               <p key={heard.slice(-30)} className="italic text-paper-faint animate-fade-up">
-                You: {heard}
+                {t("live.youLine", { t: heard })}
               </p>
             )}
           </div>
         )}
-        {state === "live" && <p className="text-[11px] text-paper-faint">Tip: headphones avoid echo. You can interrupt at any time.</p>}
+        {state === "live" && <p className="text-[11px] text-paper-faint">{t("live.headphones")}</p>}
       </div>
 
       <div className="relative flex flex-col items-center gap-3 pb-6">
         <button
           onClick={endCall}
           className="group relative grid h-16 w-16 place-items-center rounded-full bg-red-600 text-white transition hover:scale-105 active:scale-95"
-          aria-label="Hang up"
+          aria-label={t("live.hangUp")}
         >
           <span className="absolute inset-0 rounded-full bg-red-600/40 motion-safe:animate-ping" aria-hidden />
           <PhoneOff size={22} className="relative" />
         </button>
-        <span className="text-[11px] text-paper-faint">Hang up</span>
+        <span className="text-[11px] text-paper-faint">{t("live.hangUp")}</span>
       </div>
     </div>
   );
@@ -425,36 +438,38 @@ function TeacherReport({
   status,
   report,
   corrections,
+  t,
 }: {
   status: "idle" | "loading" | "done" | "error";
   report: LiveReport | null;
   corrections: LiveCorrection[];
+  t: T;
 }) {
   if (status === "loading") {
     return (
       <div className="mt-6 flex items-center justify-center gap-2 text-sm text-paper-muted" role="status">
-        <Loader2 className="animate-spin" size={16} /> Your teacher is writing your report…
+        <Loader2 className="animate-spin" size={16} /> {t("live.reportWriting")}
       </div>
     );
   }
   if (status === "idle") {
-    return <p className="mt-6 text-center text-sm text-paper-muted">Talk a little longer next time and your teacher will write you a full report.</p>;
+    return <p className="mt-6 text-center text-sm text-paper-muted">{t("live.reportLater")}</p>;
   }
   if (status === "error" || !report) {
-    return <p className="mt-6 text-center text-sm text-coral">We couldn't write the report this time. Try another call.</p>;
+    return <p className="mt-6 text-center text-sm text-coral">{t("live.reportFail")}</p>;
   }
 
   return (
-    <section aria-label="Teacher's report" className="mt-6 space-y-5 text-left">
+    <section aria-label={t("live.reportTitle")} className="mt-6 space-y-5 text-left">
       <div>
-        <p className="eyebrow mb-1">Teacher's report</p>
+        <p className="eyebrow mb-1">{t("live.reportTitle")}</p>
         {report.overall && <p className="text-sm leading-relaxed">{report.overall}</p>}
         {report.levelNote && <p className="mt-2 text-xs text-paper-muted">{report.levelNote}</p>}
       </div>
 
       {report.strengths.length > 0 && (
         <div>
-          <h3 className="mb-1 text-sm font-semibold text-mint">What you did well</h3>
+          <h3 className="mb-1 text-sm font-semibold text-mint">{t("live.doneWell")}</h3>
           <ul className="list-disc space-y-1 pl-5 text-sm">
             {report.strengths.map((s, i) => <li key={i}>{s}</li>)}
           </ul>
@@ -463,13 +478,13 @@ function TeacherReport({
 
       {report.priorities.length > 0 && (
         <div>
-          <h3 className="mb-2 text-sm font-semibold text-coral">What to improve</h3>
+          <h3 className="mb-2 text-sm font-semibold text-coral">{t("live.improve")}</h3>
           <ol className="space-y-3">
             {report.priorities.map((p, i) => (
               <li key={i} className="rounded-lg bg-ink-800 p-3 text-sm">
                 <p className="font-semibold">{p.issue}</p>
-                {p.youSaid && <p className="mt-1 text-paper-muted">You said: <em>“{p.youSaid}”</em></p>}
-                {p.better && <p>Better: <strong>{p.better}</strong></p>}
+                {p.youSaid && <p className="mt-1 text-paper-muted">{t("live.youSaid", { t: "" })}<em>“{p.youSaid}”</em></p>}
+                {p.better && <p>{t("live.better", { t: "" })}<strong>{p.better}</strong></p>}
                 {p.why && <p className="mt-1 text-xs text-paper-muted">{p.why}</p>}
               </li>
             ))}
@@ -479,7 +494,7 @@ function TeacherReport({
 
       {report.vocabulary.length > 0 && (
         <div>
-          <h3 className="mb-2 text-sm font-semibold">Words to keep</h3>
+          <h3 className="mb-2 text-sm font-semibold">{t("live.keep")}</h3>
           <ul className="flex flex-wrap gap-2 text-xs">
             {report.vocabulary.map((v, i) => (
               <li key={i} className="rounded-full bg-ink-700 px-3 py-1">
@@ -492,7 +507,7 @@ function TeacherReport({
 
       {report.nextSteps.length > 0 && (
         <div>
-          <h3 className="mb-1 text-sm font-semibold">Next time</h3>
+          <h3 className="mb-1 text-sm font-semibold">{t("live.nextTime")}</h3>
           <ul className="list-disc space-y-1 pl-5 text-sm">
             {report.nextSteps.map((s, i) => <li key={i}>{s}</li>)}
           </ul>
@@ -501,7 +516,7 @@ function TeacherReport({
 
       {corrections.length > 0 && (
         <details className="text-sm">
-          <summary className="cursor-pointer text-paper-muted">Tips during the call ({corrections.length})</summary>
+          <summary className="cursor-pointer text-paper-muted">{t("live.tipsDuring", { n: corrections.length })}</summary>
           <ul className="mt-2 space-y-2">
             {corrections.map((c, i) => (
               <li key={i}>
@@ -516,7 +531,7 @@ function TeacherReport({
   );
 }
 
-function pickSurprise(): { situation: LiveSituation } {
-  const s = SITUATIONS[Math.floor(Math.random() * SITUATIONS.length)];
+function pickSurprise(bank: typeof SITUATIONS): { situation: LiveSituation } {
+  const s = bank[Math.floor(Math.random() * bank.length)];
   return { situation: toLiveSituation(s) };
 }
