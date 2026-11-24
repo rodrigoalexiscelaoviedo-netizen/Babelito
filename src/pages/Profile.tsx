@@ -83,6 +83,13 @@ export default function Profile() {
   async function save() {
     if (!session) return;
     setBusy(true);
+    // Un nivel por idioma: al cambiar de idioma guardo el nivel del que dejo y cargo el
+    // del que elijo. Si no tiene nivel todavía, la app manda a la prueba de nivel.
+    const prevLang = profile?.learning_language || "en";
+    const levels: Record<string, string> = { ...((profile?.profile_json?.levels as Record<string, string> | undefined) ?? {}) };
+    const langChanged = learningLanguage !== prevLang;
+    if (langChanged && profile?.current_level) levels[prevLang] = profile.current_level;
+    const nextLevel = langChanged ? (levels[learningLanguage] ?? null) : (profile?.current_level ?? null);
     await supabase
       .from("profiles")
       .update({
@@ -90,7 +97,8 @@ export default function Profile() {
         target_level: target,
         english_variant: variant,
         learning_language: learningLanguage,
-        profile_json: { ...(profile?.profile_json ?? {}), interests },
+        ...(langChanged ? { current_level: nextLevel, diagnostic_complete: nextLevel !== null } : {}),
+        profile_json: { ...(profile?.profile_json ?? {}), interests, levels },
         voice_name: voiceName || null,
         voice_rate: voiceRate,
         voice_accent: voiceAccent,

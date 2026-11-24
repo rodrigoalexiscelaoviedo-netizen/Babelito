@@ -8,7 +8,7 @@ import type { Situation } from "./situationsData";
 
 export const SITUATIONS_CA: Situation[] = [
   {
-    id: "job-interview",
+    id: "ca-job-interview",
     title: "Entrevista de feina",
     level: "B1",
     icon: "Briefcase",
@@ -57,7 +57,7 @@ export const SITUATIONS_CA: Situation[] = [
     },
   },
   {
-    id: "shopping",
+    id: "ca-shopping",
     title: "De compres",
     level: "A2",
     icon: "ShoppingBag",
@@ -106,7 +106,7 @@ export const SITUATIONS_CA: Situation[] = [
     },
   },
   {
-    id: "transport",
+    id: "ca-transport",
     title: "Autobús, tren i taxi",
     level: "A1",
     icon: "Bus",
@@ -155,7 +155,7 @@ export const SITUATIONS_CA: Situation[] = [
     },
   },
   {
-    id: "airport",
+    id: "ca-airport",
     title: "A l'aeroport",
     level: "A2",
     icon: "Plane",
@@ -204,7 +204,7 @@ export const SITUATIONS_CA: Situation[] = [
     },
   },
   {
-    id: "tourist",
+    id: "ca-tourist",
     title: "Fer de turista",
     level: "A2",
     icon: "Compass",
@@ -253,7 +253,7 @@ export const SITUATIONS_CA: Situation[] = [
     },
   },
   {
-    id: "restaurant",
+    id: "ca-restaurant",
     title: "A un restaurant",
     level: "A1",
     icon: "UtensilsCrossed",
@@ -302,7 +302,7 @@ export const SITUATIONS_CA: Situation[] = [
     },
   },
   {
-    id: "hotel",
+    id: "ca-hotel",
     title: "A un hotel",
     level: "A2",
     icon: "BedDouble",
@@ -351,7 +351,7 @@ export const SITUATIONS_CA: Situation[] = [
     },
   },
   {
-    id: "health",
+    id: "ca-health",
     title: "Metge i farmàcia",
     level: "A2",
     icon: "Stethoscope",
@@ -400,7 +400,7 @@ export const SITUATIONS_CA: Situation[] = [
     },
   },
   {
-    id: "making-friends",
+    id: "ca-making-friends",
     title: "Fer amics",
     level: "A1",
     icon: "Smile",
@@ -449,7 +449,7 @@ export const SITUATIONS_CA: Situation[] = [
     },
   },
   {
-    id: "phone-calls",
+    id: "ca-phone-calls",
     title: "Trucades i cites",
     level: "B1",
     icon: "Phone",
@@ -498,7 +498,7 @@ export const SITUATIONS_CA: Situation[] = [
     },
   },
   {
-    id: "work-meetings",
+    id: "ca-work-meetings",
     title: "Reunions de feina",
     level: "B2",
     icon: "Presentation",
@@ -547,7 +547,7 @@ export const SITUATIONS_CA: Situation[] = [
     },
   },
   {
-    id: "renting-home",
+    id: "ca-renting-home",
     title: "Llogar un pis",
     level: "B1",
     icon: "House",
@@ -596,7 +596,7 @@ export const SITUATIONS_CA: Situation[] = [
     },
   },
   {
-    id: "bank",
+    id: "ca-bank",
     title: "Al banc",
     level: "A2",
     icon: "Landmark",
@@ -645,7 +645,7 @@ export const SITUATIONS_CA: Situation[] = [
     },
   },
   {
-    id: "gym",
+    id: "ca-gym",
     title: "Al gimnàs",
     level: "A2",
     icon: "Dumbbell",
@@ -694,7 +694,7 @@ export const SITUATIONS_CA: Situation[] = [
     },
   },
   {
-    id: "moving-home",
+    id: "ca-moving-home",
     title: "Mudança i serveis",
     level: "B1",
     icon: "Truck",
@@ -743,7 +743,7 @@ export const SITUATIONS_CA: Situation[] = [
     },
   },
   {
-    id: "complaints",
+    id: "ca-complaints",
     title: "Fer una queixa",
     level: "B1",
     icon: "Frown",
@@ -792,7 +792,7 @@ export const SITUATIONS_CA: Situation[] = [
     },
   },
   {
-    id: "first-date",
+    id: "ca-first-date",
     title: "Una primera cita",
     level: "B1",
     icon: "Heart",
@@ -841,7 +841,7 @@ export const SITUATIONS_CA: Situation[] = [
     },
   },
   {
-    id: "remote-work",
+    id: "ca-remote-work",
     title: "Treballar en remot",
     level: "B2",
     icon: "Laptop",

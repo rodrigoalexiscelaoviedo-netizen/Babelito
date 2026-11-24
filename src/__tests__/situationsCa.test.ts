@@ -3,8 +3,8 @@ import { SITUATIONS_CA, getSituationCa } from "../lib/situationsDataCa";
 import { SITUATIONS } from "../lib/situationsData";
 
 describe("Situaciones en catalán: contenido", () => {
-  it("tiene las mismas situaciones (ids) que la versión en inglés", () => {
-    expect(SITUATIONS_CA.map((s) => s.id).sort()).toEqual(SITUATIONS.map((s) => s.id).sort());
+  it("tiene las mismas situaciones que la versión en inglés, con ids propios (ca-)", () => {
+    expect(SITUATIONS_CA.map((s) => s.id).sort()).toEqual(SITUATIONS.map((s) => "ca-" + s.id).sort());
   });
 
   it("cada situación tiene frases, vocabulario, diálogo, roleplay y 4 preguntas de quiz", () => {
@@ -26,7 +26,7 @@ describe("Situaciones en catalán: contenido", () => {
   });
 
   it("se encuentra una situación por id", () => {
-    expect(getSituationCa("job-interview")?.title).toBeTruthy();
+    expect(getSituationCa("ca-job-interview")?.title).toBeTruthy();
     expect(getSituationCa("no-existe")).toBeUndefined();
   });
 });
