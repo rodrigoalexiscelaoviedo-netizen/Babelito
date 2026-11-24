@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabaseClient";
+import { tFor } from "../i18n";
 
 interface LevelChange {
   id: string;
@@ -16,10 +17,12 @@ interface LevelChange {
  */
 export default function LevelHistory() {
   const { profile } = useAuth();
+  const lang = profile?.learning_language === "ca" ? "ca" : "en";
+  const t = tFor(lang);
   const [changes, setChanges] = useState<LevelChange[] | null>(null);
 
   useEffect(() => {
-    if (!profile || profile.learning_language === "ca") return;
+    if (!profile) return;
     let cancelled = false;
     void supabase
       .from("level_history")
@@ -36,18 +39,15 @@ export default function LevelHistory() {
     };
   }, [profile]);
 
-  if (!profile || profile.learning_language === "ca" || changes === null) return null;
+  if (!profile || changes === null) return null;
 
   return (
     <section className="card mb-6 p-5" aria-labelledby="level-history-title">
-      <h2 id="level-history-title" className="eyebrow mb-3">How your level moves</h2>
-      <p className="mb-4 text-sm text-paper-muted">
-        Once a day we look at your reviews (60%), your conversations (30%) and your diagnostic (10%). Going up needs
-        consistent results over several sessions; going down needs a clear gap.
-      </p>
+      <h2 id="level-history-title" className="eyebrow mb-3">{t("planui.histTitle")}</h2>
+      <p className="mb-4 text-sm text-paper-muted">{t("planui.histIntro")}</p>
 
       {changes.length === 0 ? (
-        <p className="text-sm text-paper-faint">No level changes yet. Keep practising and you'll see them here.</p>
+        <p className="text-sm text-paper-faint">{t("planui.histNone")}</p>
       ) : (
         <ol className="space-y-3">
           {changes.map((c) => (
@@ -60,8 +60,8 @@ export default function LevelHistory() {
                 {c.from_level} → {c.to_level}
               </span>
               <span className="min-w-0 flex-1">
-                <span className="block text-sm">{c.reason ?? "Level updated"}</span>
-                <span className="block text-xs text-paper-faint">{formatDate(c.created_at)}</span>
+                <span className="block text-sm">{c.reason ?? t("planui.levelUpdated")}</span>
+                <span className="block text-xs text-paper-faint">{formatDate(c.created_at, lang)}</span>
               </span>
             </li>
           ))}
@@ -77,7 +77,7 @@ function levelRank(level: string): number {
   return ORDER.indexOf(level);
 }
 
-function formatDate(iso: string): string {
+function formatDate(iso: string, lang: "en" | "ca"): string {
   const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? "" : d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+  return Number.isNaN(d.getTime()) ? "" : d.toLocaleDateString(lang === "ca" ? "ca-ES" : "en-GB", { day: "numeric", month: "short", year: "numeric" });
 }

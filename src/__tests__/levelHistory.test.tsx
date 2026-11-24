@@ -56,11 +56,10 @@ describe("LevelHistory", () => {
     expect(await screen.findByText(/No level changes yet/)).toBeInTheDocument();
   });
 
-  it("en catalán no se muestra (la función aún no tiene esa versión)", async () => {
+  it("en catalán se muestra con el texto en catalán", async () => {
     h.language = "ca";
     h.rows = [{ id: "1", from_level: "A1", to_level: "A2", reason: "x", created_at: "2026-11-10T10:00:00Z" }];
-    const { container } = render(<LevelHistory />);
-    await new Promise((r) => setTimeout(r, 0));
-    expect(container).toBeEmptyDOMElement();
+    render(<LevelHistory />);
+    expect(await screen.findByText("Com es mou el teu nivell")).toBeTruthy();
   });
 });

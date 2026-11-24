@@ -57,9 +57,49 @@ export interface Ladder {
   message: string;
 }
 
+type Lang = "en" | "ca";
+
+const COPY = {
+  en: {
+    sessions: (n: number) => `Practise ${n}+ times this week`,
+    sessionsHint: "Your level only moves with recent evidence.",
+    review: "Strengthen your review",
+    reviewHint: "Review items regularly so words stay in memory.",
+    convo: "Make fewer slips when you talk",
+    convoHint: "Fewer than about 1.5 mistakes per session.",
+    situations: "Complete 2 situation missions",
+    situationsHint: "Real-life practice that builds confidence.",
+    grammar: "Pass 2 grammar lessons",
+    grammarHint: "Fix the habits your coach keeps noticing.",
+    noData: "no data yet",
+    top: "You are at the top level. Keep your skills sharp with situations and conversation.",
+    noEvidence: "Practise a few times and your progress toward the next level will appear here.",
+    ready: (l: string) => `You are ready for ${l}. Your level is re-checked every day.`,
+    keepGoing: (n: number, l: string) => `Keep going — you need about ${n}% overall to reach ${l}.`,
+  },
+  ca: {
+    sessions: (n: number) => `Practica ${n}+ vegades aquesta setmana`,
+    sessionsHint: "El teu nivell només es mou amb evidència recent.",
+    review: "Reforça el repàs",
+    reviewHint: "Repassa els elements sovint perquè les paraules es quedin a la memòria.",
+    convo: "Fes menys errors quan parles",
+    convoHint: "Menys d'uns 1,5 errors per sessió.",
+    situations: "Completa 2 missions de situacions",
+    situationsHint: "Pràctica de la vida real que dona confiança.",
+    grammar: "Aprova 2 lliçons de gramàtica",
+    grammarHint: "Corregeix els hàbits que el coach segueix detectant.",
+    noData: "encara sense dades",
+    top: "Estàs al nivell més alt. Mantén les habilitats amb situacions i converses.",
+    noEvidence: "Practica unes quantes vegades i el progrés cap al següent nivell apareixerà aquí.",
+    ready: (l: string) => `Estàs preparat per a ${l}. El teu nivell es revisa cada dia.`,
+    keepGoing: (n: number, l: string) => `Continua — necessites un ${n}% global per arribar a ${l}.`,
+  },
+};
+
 const pct = (n: number) => Math.round(Math.min(1, Math.max(0, n)) * 100);
 
-export function buildLadder(current: Level, e: LadderEvidence): Ladder {
+export function buildLadder(current: Level, e: LadderEvidence, lang: Lang = "en"): Ladder {
+  const C = COPY[lang];
   const idx = Math.max(0, levelIndex(current));
   const next = idx < LEVELS.length - 1 ? LEVELS[idx + 1] : null;
 
@@ -79,8 +119,8 @@ export function buildLadder(current: Level, e: LadderEvidence): Ladder {
     goals.push(
       {
         id: "sessions",
-        label: `Practise ${MIN_SESSIONS_7D}+ times this week`,
-        hint: "Your level only moves with recent evidence.",
+        label: C.sessions(MIN_SESSIONS_7D),
+        hint: C.sessionsHint,
         percent: pct(e.sessions7d / MIN_SESSIONS_7D),
         value: `${Math.min(e.sessions7d, MIN_SESSIONS_7D)}/${MIN_SESSIONS_7D}`,
         met: e.sessions7d >= MIN_SESSIONS_7D,
@@ -88,26 +128,26 @@ export function buildLadder(current: Level, e: LadderEvidence): Ladder {
       },
       {
         id: "review",
-        label: "Strengthen your review",
-        hint: "Review items regularly so words stay in memory.",
+        label: C.review,
+        hint: C.reviewHint,
         percent: review === null ? 0 : pct(review / THRESHOLDS.up),
-        value: review === null ? "no data yet" : `${pct(review)}%`,
+        value: review === null ? C.noData : `${pct(review)}%`,
         met: review !== null && review >= THRESHOLDS.up,
         counts: true,
       },
       {
         id: "conversation",
-        label: "Make fewer slips when you talk",
-        hint: "Fewer than about 1.5 mistakes per session.",
+        label: C.convo,
+        hint: C.convoHint,
         percent: convo === null ? 0 : pct(convo / THRESHOLDS.up),
-        value: convo === null ? "no data yet" : `${pct(convo)}%`,
+        value: convo === null ? C.noData : `${pct(convo)}%`,
         met: convo !== null && convo >= THRESHOLDS.up,
         counts: true,
       },
       {
         id: "situations",
-        label: "Complete 2 situation missions",
-        hint: "Real-life practice that builds confidence.",
+        label: C.situations,
+        hint: C.situationsHint,
         percent: pct(e.situationsDone / 2),
         value: `${Math.min(e.situationsDone, 2)}/2`,
         met: e.situationsDone >= 2,
@@ -115,8 +155,8 @@ export function buildLadder(current: Level, e: LadderEvidence): Ladder {
       },
       {
         id: "grammar",
-        label: "Pass 2 grammar lessons",
-        hint: "Fix the habits your coach keeps noticing.",
+        label: C.grammar,
+        hint: C.grammarHint,
         percent: pct(e.grammarPassed / 2),
         value: `${Math.min(e.grammarPassed, 2)}/2`,
         met: e.grammarPassed >= 2,
@@ -126,10 +166,10 @@ export function buildLadder(current: Level, e: LadderEvidence): Ladder {
   }
 
   let message: string;
-  if (!next) message = "You are at the top level. Keep your skills sharp with situations and conversation.";
-  else if (combined === null) message = "Practise a few times and your progress toward the next level will appear here.";
-  else if (combined * 100 >= needed && e.sessions7d >= MIN_SESSIONS_7D) message = `You are ready for ${next}. Your level is re-checked every day.`;
-  else message = `Keep going — you need about ${needed}% overall to reach ${next}.`;
+  if (!next) message = C.top;
+  else if (combined === null) message = C.noEvidence;
+  else if (combined * 100 >= needed && e.sessions7d >= MIN_SESSIONS_7D) message = C.ready(next);
+  else message = C.keepGoing(needed, next);
 
   return { current, next, rungs, readiness: combined === null ? null : pct(combined), needed, goals, message };
 }

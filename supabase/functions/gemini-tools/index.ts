@@ -113,6 +113,7 @@ Deno.serve(async (req) => {
 
   // Validación de entrada ANTES de gastar cuota.
   const level = LEVELS.has(String(payload.level)) ? String(payload.level) : "A2";
+  const lang = payload.lang === "ca" ? "ca" : "en";
   let parts: unknown[] = [];
   let system = "";
 
@@ -148,7 +149,9 @@ Deno.serve(async (req) => {
     const data = clean(payload.image, MAX_IMAGE_B64 + 1);
     const mime = clean(payload.mimeType, 40);
     if (!data || data.length > MAX_IMAGE_B64 || !IMAGE_TYPES.has(mime)) return json({ error: "Invalid image" }, 400, cors);
-    system = `You help a Spanish-speaking learner of English (level ${level}) understand real-life text in a photo (menu, sign, label, ticket, document, product…). Reply ONLY with JSON: {"kind":"what the photo shows, 2-4 words","summary":"2 short sentences in simple English about what it says","summary_es":"the same in neutral Spanish","vocabulary":[{"en":"useful word or phrase from the photo","es":"neutral Spanish meaning"}],"phrases":[{"en":"a useful sentence the learner could say in this situation","es":"neutral Spanish translation"}]}. Max 8 vocabulary items and 3 phrases, suited to level ${level}. If the photo has no readable text, say so in "summary" and return empty arrays.`;
+    system = lang === "ca"
+      ? `You help a Spanish-speaking learner of Catalan (level ${level}) understand real-life text in a photo (menu, sign, label, ticket, document, product…). Reply ONLY with JSON: {"kind":"what the photo shows, 2-4 words, in Catalan","summary":"2 short sentences in simple standard Catalan about what it says","summary_es":"the same in neutral Spanish","vocabulary":[{"en":"useful word or phrase from the photo, IN CATALAN","es":"neutral Spanish meaning"}],"phrases":[{"en":"a useful sentence in CATALAN the learner could say in this situation","es":"neutral Spanish translation"}]}. Note: the JSON keys "en" hold the Catalan text. Max 8 vocabulary items and 3 phrases, suited to level ${level}. If the photo has no readable text, say so in "summary" and return empty arrays.`
+      : `You help a Spanish-speaking learner of English (level ${level}) understand real-life text in a photo (menu, sign, label, ticket, document, product…). Reply ONLY with JSON: {"kind":"what the photo shows, 2-4 words","summary":"2 short sentences in simple English about what it says","summary_es":"the same in neutral Spanish","vocabulary":[{"en":"useful word or phrase from the photo","es":"neutral Spanish meaning"}],"phrases":[{"en":"a useful sentence the learner could say in this situation","es":"neutral Spanish translation"}]}. Max 8 vocabulary items and 3 phrases, suited to level ${level}. If the photo has no readable text, say so in "summary" and return empty arrays.`;
     parts = [{ inlineData: { mimeType: mime, data } }, { text: "Explain this photo for the learner." }];
   }
 

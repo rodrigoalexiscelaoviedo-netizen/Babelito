@@ -38,14 +38,13 @@ describe("TodayTasks (plan de hoy en Inicio)", () => {
     expect(screen.getByRole("link", { name: /Have a conversation/ })).toHaveAttribute("href", "/conversation");
   });
 
-  it("en catalán no se muestra (el plan aún no tiene esa versión)", async () => {
+  it("en catalán muestra el plan en catalán", async () => {
     h.language = "ca";
-    const { container } = render(
+    render(
       <MemoryRouter>
         <TodayTasks />
       </MemoryRouter>
     );
-    await new Promise((r) => setTimeout(r, 0));
-    expect(container).toBeEmptyDOMElement();
+    expect(await screen.findByText("El pla d'avui")).toBeTruthy();
   });
 });

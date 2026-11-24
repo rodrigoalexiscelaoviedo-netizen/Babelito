@@ -158,8 +158,8 @@ export async function photoToJpegBase64(file: File, maxSide = 1024): Promise<str
   return dataUrl.slice(dataUrl.indexOf(",") + 1);
 }
 
-export async function explainPhoto(imageBase64: string, level: string): Promise<PhotoResult | null> {
-  const { result } = await call<{ result: unknown }>({ mode: "vision", image: imageBase64, mimeType: "image/jpeg", level });
+export async function explainPhoto(imageBase64: string, level: string, lang: "en" | "ca" = "en"): Promise<PhotoResult | null> {
+  const { result } = await call<{ result: unknown }>({ mode: "vision", image: imageBase64, mimeType: "image/jpeg", level, lang });
   return normalizePhoto(result);
 }
 

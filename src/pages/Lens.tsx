@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { Navigate } from "react-router-dom";
 import { Camera, ChevronDown, ChevronUp, Loader2, Volume2 } from "lucide-react";
+import { Navigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useVoicePrefs } from "../lib/useVoicePrefs";
 import { speak, stopSpeech } from "../lib/speech";
@@ -39,10 +39,16 @@ export default function Lens() {
     };
   }, [preview]);
 
-  // La explicación de la foto la genera el servidor en inglés: en catalán todavía no hay prompt.
+  // Catalán: hace falta desplegar la Edge Function gemini-tools con el prompt en catalán.
+  // Hasta entonces Foto sigue redirigiendo al inicio para quien aprende catalán.
   if (profile?.learning_language === "ca") return <Navigate to="/" replace />;
 
-  const say = (text: string) => speak(text, { voiceName: prefs.voiceName ?? undefined, rate: prefs.voiceRate, lang: prefs.voiceAccent });
+  const say = (text: string) =>
+    speak(text, {
+      voiceName: prefs.voiceName ?? undefined,
+      rate: prefs.voiceRate,
+      lang: prefs.voiceAccent ?? (profile?.learning_language === "ca" ? "ca-ES" : "en-GB"),
+    });
 
   async function onFile(file: File | undefined) {
     if (!file || !profile) return;
@@ -54,7 +60,7 @@ export default function Lens() {
     setLoading(true);
     try {
       const b64 = await photoToJpegBase64(file);
-      const r = await explainPhoto(b64, profile.current_level ?? "A2");
+      const r = await explainPhoto(b64, profile.current_level ?? "A2", profile.learning_language === "ca" ? "ca" : "en");
       if (!r) setError(t("lens.noReadable"));
       setResult(r);
     } catch (e) {

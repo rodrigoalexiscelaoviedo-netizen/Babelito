@@ -3,29 +3,32 @@ import { Check } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { buildLadder, loadLadderEvidence, type Ladder } from "../lib/levelLadder";
 import type { Level } from "../lib/types";
+import { tFor } from "../i18n";
 
-/** Escalera A1→C1 con lo que falta para el siguiente nivel. Solo inglés por ahora. */
+/** Escalera A1→C1 con lo que falta para el siguiente nivel. */
 export default function LevelLadder() {
   const { profile } = useAuth();
+  const lang = profile?.learning_language === "ca" ? "ca" : "en";
+  const t = tFor(lang);
   const [ladder, setLadder] = useState<Ladder | null>(null);
 
   useEffect(() => {
-    if (!profile || profile.learning_language === "ca") return;
+    if (!profile) return;
     let cancelled = false;
     const current = (profile.current_level ?? "A1") as Level;
     void loadLadderEvidence(profile.id, profile.diagnosed_level ?? null).then((ev) => {
-      if (!cancelled) setLadder(buildLadder(current, ev));
+      if (!cancelled) setLadder(buildLadder(current, ev, lang));
     });
     return () => {
       cancelled = true;
     };
-  }, [profile]);
+  }, [profile, lang]);
 
-  if (!profile || profile.learning_language === "ca" || !ladder) return null;
+  if (!profile || !ladder) return null;
 
   return (
-    <section className="card p-5" aria-label="Level ladder">
-      <p className="eyebrow mb-3">Your level ladder</p>
+    <section className="card p-5" aria-label={t("planui.ladderAria")}>
+      <p className="eyebrow mb-3">{t("planui.ladderTitle")}</p>
 
       <ol className="mb-4 flex items-center gap-1.5">
         {ladder.rungs.map((r) => (
@@ -50,10 +53,10 @@ export default function LevelLadder() {
       {ladder.readiness !== null && ladder.next && (
         <div className="mt-3">
           <div className="mb-1 flex justify-between text-[11px] text-paper-faint">
-            <span>Score for {ladder.next}</span>
+            <span>{t("planui.scoreFor", { l: ladder.next })}</span>
             <span>
-              {ladder.readiness}% · needs {ladder.needed}%
-              {ladder.goals.some((g) => g.id === "sessions" && !g.met) ? " · level moves after 3 practice days this week" : ""}
+              {t("planui.scoreNeeds", { r: ladder.readiness, n: ladder.needed })}
+              {ladder.goals.some((g) => g.id === "sessions" && !g.met) ? t("planui.moveAfter") : ""}
             </span>
           </div>
           <div className="relative h-2 rounded-full bg-ink-600">
@@ -70,7 +73,7 @@ export default function LevelLadder() {
               <div className="flex items-center justify-between gap-3">
                 <p className="flex items-center gap-1.5 text-sm font-medium">
                   {g.met && <Check size={14} className="text-mint" />} {g.label}
-                  {!g.counts && <span className="rounded-full bg-ink-700 px-1.5 py-0.5 text-[9px] font-normal text-paper-faint">helps</span>}
+                  {!g.counts && <span className="rounded-full bg-ink-700 px-1.5 py-0.5 text-[9px] font-normal text-paper-faint">{t("planui.helps")}</span>}
                 </p>
                 <span className={`font-mono text-xs ${g.met ? "text-mint" : "text-paper-muted"}`}>{g.value}</span>
               </div>
