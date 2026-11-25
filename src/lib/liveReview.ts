@@ -193,7 +193,6 @@ export async function saveCall(input: {
         session_type: "conversation",
         topic,
         messages: turns,
-        started_at: new Date(input.startedAt).toISOString(),
         ended_at: new Date(input.endedAt).toISOString(),
         duration_seconds: Math.max(0, Math.round((input.endedAt - input.startedAt) / 1000)),
         completed: true,
@@ -206,16 +205,16 @@ export async function saveCall(input: {
   }
 
   if (mistakes.length) {
-    const { error } = await supabase.from("errors").insert(
-      mistakes.map((m) => ({
-        user_id: userId,
-        session_id: sessionId,
-        error_type: m.type,
-        original_text: m.said,
-        correction: m.better,
-        explanation: m.why || null,
-      }))
-    );
+    const rows = mistakes.map((m) => ({
+      user_id: userId,
+      session_id: sessionId,
+      error_type: m.type,
+      original_text: m.said,
+      correction: m.better,
+    }));
+    let { error } = await supabase.from("errors").insert(rows.map((r, i) => ({ ...r, explanation: mistakes[i].why || null })));
+    // El esquema real se armó en parte a mano: si la explicación no entra, se guarda el error sin ella.
+    if (error) ({ error } = await supabase.from("errors").insert(rows));
     if (error) ok = false;
   }
 
