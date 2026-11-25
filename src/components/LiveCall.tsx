@@ -7,6 +7,8 @@ import { SITUATIONS } from "../lib/situationsData";
 import { SITUATIONS_CA } from "../lib/situationsDataCa";
 import { SITUATION_ICONS } from "./situationIcons";
 import { awardXp } from "../lib/xp";
+import CallReview, { EMPTY_REVIEW, type CallReviewState } from "./CallReview";
+import { appendScores, mistakesFromCorrections, reviewCall, saveCall, toTurns, type CallReviewData } from "../lib/liveReview";
 import { tFor } from "../i18n";
 
 type Choice = { kind: "free" } | { kind: "situation"; situation: LiveSituation } | { kind: "surprise" };
@@ -65,6 +67,10 @@ function LiveCallView({
   const [report, setReport] = useState<LiveReport | null>(null);
   const [reportState, setReportState] = useState<"idle" | "loading" | "done" | "error">("idle");
   const reportRequested = useRef(false);
+  const [review, setReview] = useState<CallReviewState>(EMPTY_REVIEW);
+  // Cada llamada se guarda una sola vez, y una revisión lenta no pisa la llamada siguiente.
+  const callId = useRef(0);
+  const savedCall = useRef(0);
 
   function appendLog(who: "learner" | "coach", text: string) {
     const log = logRef.current;
@@ -86,6 +92,11 @@ function LiveCallView({
     setReport(null);
     setReportState("idle");
     reportRequested.current = false;
+    setReview(EMPTY_REVIEW);
+    callId.current++;
+    startedAt.current = null;
+    rewarded.current = false;
+    setXp(0);
     const situation = c.kind === "free" ? null : c.kind === "situation" ? c.situation : pickSurprise(bank).situation;
     const session = new LiveSession(
       {
@@ -143,6 +154,43 @@ function LiveCallView({
       })
       .catch(() => setReportState("error"));
   }, [state, level, lang]);
+
+  // Al terminar (también si se cortó): revisión frase por frase y guardado de la
+  // llamada. Sigue aunque se cierre la pantalla.
+  useEffect(() => {
+    if ((state !== "ended" && state !== "error") || startedAt.current === null) return;
+    const id = callId.current;
+    if (savedCall.current === id) return;
+    const turns = toTurns(logRef.current);
+    if (!turns.some((turn) => turn.role === "user")) return;
+    savedCall.current = id;
+    void finishCall(id, turns, startedAt.current, Date.now());
+    // Solo reacciona al fin de la llamada; finishCall lee lo de ese momento.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state]);
+
+  async function finishCall(id: number, turns: ReturnType<typeof toTurns>, started: number, ended: number) {
+    const show = (patch: Partial<CallReviewState>) => {
+      if (callId.current === id) setReview((r) => ({ ...r, ...patch }));
+    };
+    const topicTitle =
+      choice?.kind === "situation" ? choice.situation.title : choice?.kind === "surprise" ? t("live.surpriseCall") : (topic ?? t("live.freeTitle"));
+    const fallback = mistakesFromCorrections(correctionsRef.current);
+    // La revisión frase por frase está solo en inglés.
+    let data: CallReviewData | null = null;
+    if (lang === "en") {
+      show({ status: "loading", turns });
+      data = await reviewCall(turns, level).catch(() => null);
+    }
+    const mistakes = data ? data.mistakes : fallback;
+    show({ status: lang === "en" ? (data ? "done" : "error") : "idle", data, mistakes, saved: "saving" });
+    const result = await saveCall({ userId, topic: topicTitle, turns, mistakes, startedAt: started, endedAt: ended }).catch(() => ({ ok: false }));
+    show({ saved: result.ok ? "saved" : "failed" });
+    if (data?.scores) {
+      const previous = await appendScores(userId, { at: new Date(ended).toISOString(), ...data.scores }).catch(() => []);
+      show({ previous });
+    }
+  }
 
   // Cronómetro mientras la llamada está en vivo.
   useEffect(() => {
@@ -263,7 +311,8 @@ function LiveCallView({
               </div>
             )}
           </div>
-          {state === "ended" && <TeacherReport status={reportState} report={report} corrections={corrections} t={t} />}
+          {state === "ended" && <TeacherReport status={reportState} report={report} corrections={lang === "en" ? [] : corrections} t={t} />}
+          {lang === "en" && <CallReview key={callId.current} userId={userId} level={level} review={review} />}
           <div className="mt-6 flex flex-col gap-2">
             <button onClick={() => setState("pick")} className="btn-coral inline-flex items-center justify-center gap-2">
               <RotateCcw size={16} /> {t("live.pickAnother")}

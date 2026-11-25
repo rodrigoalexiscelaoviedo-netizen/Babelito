@@ -9,6 +9,7 @@
  * del micrófono y la reproducción requieren un navegador real.
  */
 import { getLiveToken } from "./geminiTools";
+import { ERROR_TYPES } from "./errorTypes";
 import { examinerSystemPrompt, normalizeExaminerRating, SUBMIT_RATING_TOOL, type ExaminerLang, type ExaminerRating } from "./placementExaminer";
 
 export const LIVE_INPUT_RATE = 16000;
@@ -108,6 +109,7 @@ export function liveSystemPrompt(opts: { level: string; name: string; topic: str
   const common = [
     "Speak clearly and a little slowly. Keep every turn short (1–3 sentences) and ask only one question at a time.",
     "Use vocabulary and grammar suited to the level. Never lecture.",
+    "Listen closely: build each question on something specific the learner just said. Ask for a detail, a reason or an example before changing the subject. If an answer is very short, invite them to say more.",
     "When the learner makes a clear mistake (grammar, a wrong word, or an unnatural phrase; never pronunciation), do this in order: first call the log_correction tool with the correction; then say one very short tip out loud, starting with 'Quick tip:' and one simple sentence; then answer what they said and ask one question. At most one tip per turn. Do not explain more unless they ask.",
     support,
   ];
@@ -119,6 +121,7 @@ export function liveSystemPrompt(opts: { level: string; name: string; topic: str
       `You are the one calling. Your role: ${s.coachRole}. Situation: ${s.description}.`,
       `Open the call yourself, right away, with a line like: "${s.opening}". Do not wait for the learner to speak first.`,
       "Stay in character the whole time. Do not correct the learner as a teacher; keep the conversation going naturally.",
+      "Follow up the way a real person in your role would: in an interview or any formal check, probe vague answers and ask for concrete examples, politely.",
       ...common,
     ].join(" ");
   }
@@ -177,8 +180,9 @@ export const LOG_CORRECTION_TOOL = {
       original: { type: "STRING", description: "What the learner said, a short exact quote" },
       correction: { type: "STRING", description: "The correct, natural version" },
       explanation: { type: "STRING", description: "One short, simple reason" },
+      type: { type: "STRING", enum: Object.keys(ERROR_TYPES), description: "Kind of mistake; 'other' if none fits" },
     },
-    required: ["original", "correction", "explanation"],
+    required: ["original", "correction", "explanation", "type"],
   },
 };
 
@@ -187,6 +191,8 @@ export interface LiveCorrection {
   original: string;
   correction: string;
   explanation: string;
+  /** Clave de ERROR_TYPES; puede faltar si la IA no la manda. */
+  type?: string;
 }
 
 export function buildSetupMessage(model: string, systemPrompt: string, voice = "Aoede", tools: object[] = [LOG_CORRECTION_TOOL]) {
@@ -279,7 +285,13 @@ export interface LiveHandlers {
 /** Normaliza los argumentos de log_correction (la IA puede omitir campos). */
 export function normalizeCorrection(args: Record<string, unknown>): LiveCorrection {
   const s = (v: unknown, max: number) => (typeof v === "string" ? v.trim().slice(0, max) : "");
-  return { original: s(args.original, 160), correction: s(args.correction, 160), explanation: s(args.explanation, 240) };
+  const type = s(args.type, 40);
+  return {
+    original: s(args.original, 160),
+    correction: s(args.correction, 160),
+    explanation: s(args.explanation, 240),
+    ...(type ? { type } : {}),
+  };
 }
 
 export class LiveSession {

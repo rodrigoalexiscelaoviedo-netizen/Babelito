@@ -31,6 +31,7 @@ import Maica from "../components/Maica";
 import LevelLadder from "../components/LevelLadder";
 import LevelHistory from "../components/LevelHistory";
 import WeekGoals from "../components/WeekGoals";
+import LiveScoreHistory from "../components/LiveScoreHistory";
 import SkillLevels from "../components/SkillLevels";
 import { dateLocale, tFor } from "../i18n";
 
@@ -282,6 +283,7 @@ export default function Progress() {
         <WeekGoals />
         <LevelLadder />
         <LevelHistory />
+        <LiveScoreHistory />
       </div>
 
       <div className="mb-8"><XpCard /></div>

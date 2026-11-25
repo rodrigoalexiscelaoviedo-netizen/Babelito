@@ -57,3 +57,22 @@ Fuentes: [inicio](https://stimuler.tech/) · [entrevistas](https://stimuler.tech
 **Dejaría fuera por ahora:** IELTS, rachas con amigos y personaje con video.
 
 **Ayuda al trabarse** (pista, "repetí más lento", traducir la última frase): no es de Stimuler según lo que se pudo leer; sería una mejora propia.
+
+## Implementado (2026-11-26)
+
+Los seis puntos, sin desplegar funciones ni correr SQL.
+
+| Punto | Dónde |
+|---|---|
+| 1. Guardar la llamada | `lib/liveReview.ts` (`saveCall`): errores siempre; sesión completada desde 3 intervenciones, igual que el chat |
+| 2. Repreguntas | `lib/liveSession.ts`, prompt en inglés |
+| 3. Frase por frase | `reviewCall` usa `claude-proxy`; se descartan citas que no están en la transcripción; máximo 8 errores |
+| 4. "Say it better" | `ShadowingBlock` dentro de `CallReview` |
+| 5. Notas y evolución | `profiles.profile_json.liveScores` (últimas 30), desde 30 palabras habladas; tabla en Progreso |
+| 6. Practicar | ejercicios por tipo de error (`generateDrill`) y "Add to review" por frase |
+
+- La revisión y las notas son solo en inglés.
+- Cada llamada revisada gasta una llamada más de la cuota diaria.
+- Los errores de las llamadas ahora cuentan en el nivel (`leveling.ts`: errores por sesión, peso 30 %). Máximo 8 por llamada.
+- Si se sale de la pantalla en plena llamada (botón atrás), esa llamada no se guarda.
+- Sin verificar con micrófono real: el campo `type` de `log_correction`, la calidad de la transcripción y de las notas.
