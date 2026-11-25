@@ -1,8 +1,6 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Bell, MessageCircle, X } from "lucide-react";
-import { useAuth } from "../context/AuthContext";
-import { buildPlan, loadPlanInput, type Plan } from "../lib/plan";
 import { useResumableSession } from "../lib/useResumableSession";
 import { pushSupported } from "../lib/notifications";
 
@@ -25,29 +23,10 @@ export default function HomeNudges({ userId, language }: { userId: string; langu
   const ca = language === "ca";
   const { session } = useResumableSession(userId);
   const [pushHidden, setPushHidden] = useState(readDismissed);
-  const { profile } = useAuth();
-  const [plan, setPlan] = useState<Plan | null>(null);
-
-  // Plan de hoy (qué conviene hacer ahora). Solo inglés por ahora.
-  useEffect(() => {
-    if (ca || !profile) return;
-    let cancelled = false;
-    void loadPlanInput(profile)
-      .then((input) => {
-        if (!cancelled) setPlan(buildPlan(input));
-      })
-      .catch(() => {
-        /* sin plan: la tarjeta simplemente no aparece */
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [ca, profile]);
-
   const canAskPush =
     !pushHidden && pushSupported() && typeof Notification !== "undefined" && Notification.permission === "default";
 
-  if (!session && !canAskPush && !plan) return null;
+  if (!session && !canAskPush) return null;
 
   function hidePush() {
     try {
@@ -81,7 +60,6 @@ export default function HomeNudges({ userId, language }: { userId: string; langu
           <span className="text-coral">→</span>
         </Link>
       )}
-
 
       {canAskPush && (
         <div className="card flex items-center gap-3 p-4">

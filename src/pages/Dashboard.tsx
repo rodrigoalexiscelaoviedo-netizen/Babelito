@@ -1,51 +1,31 @@
 import { BRAND } from "../lib/theme";
 import XpCard from "../components/XpCard";
-import TodayTasks from "../components/TodayTasks";
+import TodayCard from "../components/TodayCard";
 import HomeNudges from "../components/HomeNudges";
 import { awardXp, DAILY_LESSON_XP, dailyLessonRefKey } from "../lib/xp";
 import { consolidateLevel } from "../lib/leveling";
 import { localDateISO, addLocalDays, timestampToLocalDate } from "../lib/dates";
 import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import {
-  BarChart3,
-  Flame,
-  Target,
-  CheckCircle2,
-  Circle,
-  Volume2,
-  Layers,
-  BookOpen,
-} from "lucide-react";
+import { Link } from "react-router-dom";
+import { BarChart3 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabaseClient";
-import { errorLabel } from "../lib/errorTypes";
-import { MIN_USER_TURNS } from "../lib/practice";
+import { buildPlan, loadPlanInput, type PlanTask } from "../lib/plan";
 import {
   getTodayLesson,
   completeLesson,
   setLessonItem,
   getStreakInfo,
-  activeItems,
-  isTriadComplete,
   type DailyLesson,
   type LessonItem,
 } from "../lib/dailyLesson";
 import { lookupWord, dictLang, type WordDefinition } from "../lib/dictionary";
 import { speak } from "../lib/speech";
 import { useVoicePrefs } from "../lib/useVoicePrefs";
-import { countDue } from "../lib/srs";
 import { checkAchievements, markSeen, type AchievementDef } from "../lib/achievements";
 import AchievementCelebration from "../components/AchievementCelebration";
-import { BrandDots } from "../components/Loader";
 import Maica, { type MaicaMood } from "../components/Maica";
 import { tFor } from "../i18n";
-
-interface Stats {
-  sessions: number;
-  topError: string | null;
-  chunksLearned: number;
-}
 
 export default function Dashboard() {
   const { profile, refreshProfile } = useAuth();
@@ -57,9 +37,9 @@ export default function Dashboard() {
       .then((r) => { if (r.changed) void refreshProfile(); })
       .catch((err) => console.warn("[leveling]", err));
   }, [profile?.id, profile?.diagnostic_complete, profile?.level_updated_on]);
-  const navigate = useNavigate();
   const voicePrefs = useVoicePrefs();
-  const [stats, setStats] = useState<Stats | null>(null);
+  const [sessionCount, setSessionCount] = useState(0);
+  const [tasks, setTasks] = useState<PlanTask[]>([]);
   const [streak, setStreak] = useState(0);
   const [freezesLeft, setFreezesLeft] = useState(0);
   const [showCelebration, setShowCelebration] = useState(false);
@@ -70,17 +50,11 @@ export default function Dashboard() {
   const [loadingLesson, setLoadingLesson] = useState(true);
   const [completing, setCompleting] = useState(false);
 
-  const [reviewsDue, setReviewsDue] = useState(0);
   const [activeLast2Days, setActiveLast2Days] = useState(false);
   const [loadError, setLoadError] = useState("");
   const [itemError, setItemError] = useState("");
   const [savingItem, setSavingItem] = useState<LessonItem | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
-
-  // Los tildes se DERIVAN de la fila de hoy — sin estado local paralelo.
-  const items: LessonItem[] = lesson ? activeItems(lesson) : [];
-  const doneCount = lesson ? items.filter((k) => lesson[k]).length : 0;
-  const allChecked = lesson ? isTriadComplete(lesson) : false;
 
   const learningLanguage = profile?.learning_language || "en";
   const isCa = learningLanguage === "ca";
@@ -91,28 +65,22 @@ export default function Dashboard() {
     (async () => {
       setLoadError("");
       try {
-        const [{ data: sessions }, { data: errs }, { count: learned }, todayLesson, streakInfo, due] =
-          await Promise.all([
-            supabase.from("sessions").select("created_at, completed").eq("user_id", profile.id),
-            supabase.from("errors").select("error_type").eq("user_id", profile.id),
-            supabase
-              .from("user_chunks")
-              .select("id", { count: "exact", head: true })
-              .eq("user_id", profile.id),
-            getTodayLesson(profile.id, learningLanguage),
-            // Vista de lectura: NUNCA consumir freezes al abrir el Home.
-            getStreakInfo(profile.id, false),
-            countDue(profile.id, learningLanguage),
-          ]);
+        const [{ data: sessions }, todayLesson, streakInfo, planTasks] = await Promise.all([
+          supabase.from("sessions").select("created_at, completed").eq("user_id", profile.id),
+          getTodayLesson(profile.id, learningLanguage),
+          // Vista de lectura: NUNCA consumir freezes al abrir el Home.
+          getStreakInfo(profile.id, false),
+          // Sin plan, la práctica del día se muestra igual.
+          loadPlanInput(profile)
+            .then((input) => buildPlan(input).tasks)
+            .catch((err): PlanTask[] => {
+              console.warn("[plan]", err);
+              return [];
+            }),
+        ]);
 
-        let topError: string | null = null;
-        if (errs && errs.length) {
-          const tally: Record<string, number> = {};
-          errs.forEach((e) => (tally[e.error_type] = (tally[e.error_type] ?? 0) + 1));
-          topError = Object.entries(tally).sort((a, b) => b[1] - a[1])[0][0];
-        }
-
-        setStats({ sessions: sessions?.length ?? 0, topError, chunksLearned: learned ?? 0 });
+        setSessionCount(sessions?.length ?? 0);
+        setTasks(planTasks);
         setStreak(streakInfo.streak);
         setFreezesLeft(streakInfo.freezesLeft);
 
@@ -128,12 +96,13 @@ export default function Dashboard() {
           )
         );
 
-        // La mini-conversación se deriva de que exista una sesión de hoy ya
-        // registrada; si es así se persiste el tilde (sin toggle optimista).
+        // La conversación se deriva de que hoy haya una sesión registrada o de que
+        // el plan vea una conversación o un roleplay (las llamadas en vivo solo
+        // dejan XP). Si es así se persiste el tilde (sin toggle optimista).
         let lessonToShow = todayLesson;
-        const todayConvoDone = rows.some(
-          (s) => s.completed && timestampToLocalDate(s.created_at) === todayStr
-        );
+        const todayConvoDone =
+          rows.some((s) => s.completed && timestampToLocalDate(s.created_at) === todayStr) ||
+          planTasks.some((x) => x.id === "talk" && x.done);
         if (todayConvoDone && !todayLesson.convo_done) {
           try {
             const updated = await setLessonItem(profile.id, learningLanguage, "convo_done", true);
@@ -147,7 +116,6 @@ export default function Dashboard() {
           if (newly.length > 0) setNewAchievements(newly);
         });
         setLesson(lessonToShow);
-        setReviewsDue(due);
 
         if (lessonToShow.word) {
           lookupWord(lessonToShow.word, dictLang(profile.learning_language)).then(setWordDef).catch(() => null);
@@ -213,13 +181,13 @@ export default function Dashboard() {
 
   const maicaMood: MaicaMood = lesson?.completed
     ? "celebrating"
-    : !activeLast2Days && streak === 0 && (stats?.sessions ?? 0) > 0
+    : !activeLast2Days && streak === 0 && sessionCount > 0
     ? "sleeping"
     : "happy";
 
   const maicaText = lesson?.completed
     ? t("home.maicaProud")
-    : !activeLast2Days && streak === 0 && (stats?.sessions ?? 0) > 0
+    : !activeLast2Days && streak === 0 && sessionCount > 0
     ? t("home.maicaMissed")
     : t("home.maicaWaiting");
 
@@ -311,244 +279,41 @@ export default function Dashboard() {
 
       {profile && <HomeNudges userId={profile.id} language={learningLanguage} />}
 
-      <TodayTasks />
-
-      {/* Daily practice card */}
-      <div className="card p-5 mb-6">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="font-display font-bold text-lg">{t("home.practiceTitle")}</h2>
-          <div className="flex flex-col items-end gap-0.5">
-            <span className="flex items-center gap-1.5 text-coral font-display font-bold">
-              {streak > 0 && !lesson?.completed && (
-                <span className="inline-block w-2 h-2 rounded-full bg-coral animate-pulse" title={t("home.streakAtRisk")} />
-              )}
-              <Flame size={16} className="text-coral" />
-              {streak} {streak === 1 ? t("home.streakDay") : t("home.streakDays")}
-            </span>
-            {freezesLeft > 0 && (
-              <span className="text-[10px] text-paper-faint">❄️ {freezesLeft} {freezesLeft !== 1 ? t("home.freezeWordMany") : t("home.freezeWordOne")}</span>
-            )}
-          </div>
-        </div>
-
-        {loadingLesson ? (
-          <div className="flex justify-center py-6">
-            <BrandDots size="md" />
-          </div>
-        ) : loadError || !lesson ? (
-          <div className="text-center py-6">
-            <p className="text-sm text-coral mb-1">{t("home.errLoad")}</p>
-            {loadError && <p className="text-xs text-paper-faint mb-3">{loadError}</p>}
-            <button
-              className="btn-coral px-4 py-2 text-sm"
-              onClick={() => {
-                setLoadingLesson(true);
-                setReloadKey((k) => k + 1);
-              }}
-            >
-              {t("home.tryAgain")}
-            </button>
-          </div>
-        ) : lesson?.completed ? (
-          <div className="text-center py-6">
-            <CheckCircle2 size={36} className="text-mint mx-auto mb-2 animate-check-pop" />
-            <p className="font-display font-bold text-mint">{t("home.allDone")}</p>
-            <p className="text-xs text-paper-muted mt-1">{t("home.comeBack")}</p>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {/* Chunk of the day */}
-            <div
-              className="flex items-start gap-3 p-3 rounded-xl cursor-pointer hover:bg-ink-700 transition"
-              onClick={() => toggleItem("chunk_done")}
-            >
-              {lesson.chunk_done ? (
-                <CheckCircle2 size={20} className="text-mint shrink-0 mt-0.5" />
-              ) : (
-                <Circle size={20} className="text-paper-faint shrink-0 mt-0.5" />
-              )}
-              <div className="flex-1 min-w-0">
-                <p className="text-xs text-paper-muted uppercase tracking-widest font-mono mb-0.5">{t("home.chunkLabel")}</p>
-                {lesson?.chunk?.english ? (
-                  <>
-                    <p className="font-medium leading-snug">{lesson.chunk.english}</p>
-                    {lesson.chunk.spanish && (
-                      <p className="text-xs text-paper-faint mt-0.5 italic">{lesson.chunk.spanish}</p>
-                    )}
-                  </>
-                ) : lesson?.chunk_id ? (
-                  <p className="font-medium leading-snug text-paper-muted">{t("home.chunkLoading")}</p>
-                ) : (
-                  <p className="text-paper-muted text-sm">{t("home.chunkNone")}</p>
-                )}
-                <p className="text-xs text-paper-faint mt-1">{t("home.chunkHint")}</p>
-              </div>
-            </div>
-
-            {/* Mini-conversation */}
-            <div
-              className="flex items-start gap-3 p-3 rounded-xl cursor-pointer hover:bg-ink-700 transition"
-              onClick={() => navigate("/conversation", { state: { topic: lesson?.topic } })}
-            >
-              {lesson.convo_done ? (
-                <CheckCircle2 size={20} className="text-mint shrink-0 mt-0.5" />
-              ) : (
-                <Circle size={20} className="text-paper-faint shrink-0 mt-0.5" />
-              )}
-              <div className="flex-1 min-w-0">
-                <p className="text-xs text-paper-muted uppercase tracking-widest font-mono mb-0.5">{t("home.convoLabel")}</p>
-                <p className="font-medium leading-snug">{lesson?.topic ?? t("home.freeChat")}</p>
-                <p className="text-xs text-paper-faint mt-1">
-                  {lesson.convo_done ? t("home.convoDone") : t("home.convoTodo", { n: MIN_USER_TURNS })}
-                </p>
-              </div>
-            </div>
-
-            {/* Word of the day — solo cuenta si hay palabra; si no, es un atajo */}
-            {lesson.word ? (
-              <div
-                className="flex items-start gap-3 p-3 rounded-xl cursor-pointer hover:bg-ink-700 transition"
-                onClick={() => toggleItem("word_done")}
-              >
-                {lesson.word_done ? (
-                  <CheckCircle2 size={20} className="text-mint shrink-0 mt-0.5" />
-                ) : (
-                  <Circle size={20} className="text-paper-faint shrink-0 mt-0.5" />
-                )}
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs text-paper-muted uppercase tracking-widest font-mono mb-0.5">{t("home.wordLabel")}</p>
-                  <div className="flex items-center gap-2">
-                    <p className="font-display font-bold">{lesson.word}</p>
-                    {wordDef?.phonetic && (
-                      <span className="text-xs text-paper-muted font-mono">/{wordDef.phonetic.replace(/^\/|\/$/g, "")}/</span>
-                    )}
-                    <button
-                      className="text-paper-faint hover:text-coral transition"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        speak(lesson.word!, {
-                          voiceName: voicePrefs.voiceName ?? undefined,
-                          rate: voicePrefs.voiceRate,
-                          lang: voicePrefs.voiceAccent,
-                        });
-                      }}
-                      aria-label={t("home.pronounce")}
-                    >
-                      <Volume2 size={15} />
-                    </button>
-                  </div>
-                  {wordDef?.definition_es && (
-                    <p className="text-sm text-paper-muted mt-0.5">{wordDef.definition_es}</p>
-                  )}
-                  {wordDef?.example && (
-                    <p className="text-xs text-paper-faint italic mt-0.5">"{wordDef.example}"</p>
-                  )}
-                </div>
-              </div>
-            ) : (
-              <Link
-                to="/reading"
-                className="flex items-center justify-between p-3 rounded-xl bg-mint/10 border border-mint/30 hover:border-mint/60 transition"
-              >
-                <div className="flex items-center gap-2 min-w-0">
-                  <BookOpen size={16} className="text-mint shrink-0" />
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium text-mint">{t("home.learnWord")}</p>
-                    <p className="text-xs text-paper-faint">{t("home.learnWordSub")}</p>
-                  </div>
-                </div>
-                <span className="text-xs text-mint/70 shrink-0 ml-2">{t("home.readingArrow")}</span>
-              </Link>
-            )}
-
-            {reviewsDue > 0 && (
-              <Link
-                to="/review"
-                className="flex items-center justify-between p-3 rounded-xl bg-gold/10 border border-gold/30 hover:border-gold/60 transition"
-              >
-                <div className="flex items-center gap-2">
-                  <Layers size={16} className="text-gold" />
-                  <span className="text-sm font-medium text-gold">
-                    {reviewsDue} {reviewsDue !== 1 ? t("home.reviewMany") : t("home.reviewOne")}
-                  </span>
-                </div>
-                <span className="text-xs text-gold/70">{t("home.practiceNow")}</span>
-              </Link>
-            )}
-
-            {itemError && <p className="text-xs text-coral text-center">{itemError}</p>}
-
-            <button
-              className="btn-coral w-full mt-2 flex items-center justify-center gap-2"
-              disabled={!allChecked || completing}
-              onClick={handleComplete}
-            >
-              {completing ? (
-                <span className="flex items-center gap-2"><BrandDots /> {t("home.saving")}</span>
-              ) : (
-                t("home.completeBtn")
-              )}
-            </button>
-            {!allChecked && (
-              <p className="text-xs text-paper-faint text-center">
-                {t(items.length === 1 ? "home.progressOne" : "home.progressMany", { done: doneCount, total: items.length })}
-                {!lesson.word && t("home.wordNotCounted")}
-              </p>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* Racha y nivel */}
-      <div className="grid grid-cols-2 gap-3 mb-6">
-        <div className="card p-4">
-          <div className="flex items-center gap-2 text-paper-muted mb-1">
-            <Flame size={15} className="text-coral" />
-            <span className="text-xs">{t("home.streakShort")}</span>
-          </div>
-          <p className="font-display text-2xl font-bold">
-            {streak} <span className="text-sm font-normal text-paper-muted">{streak === 1 ? t("home.streakDay") : t("home.streakDays")}</span>
-          </p>
-          {freezesLeft > 0 && <p className="text-[10px] text-paper-faint mt-0.5">❄️ {freezesLeft}</p>}
-        </div>
-        <Link to="/progress" className="card-interactive p-4">
-          <div className="flex items-center gap-2 text-paper-muted mb-1">
-            <Target size={15} className="text-mint" />
-            <span className="text-xs">{t("home.levelShort")}</span>
-          </div>
-          <p className="font-display text-2xl font-bold">{profile?.current_level ?? "—"}</p>
-        </Link>
-      </div>
-
-      {/* Coach nudge */}
-      {stats?.topError && (
-        <Link
-          to="/conversation"
-          className="card mb-8 flex items-center justify-between p-5 hover:border-coral/50 transition group"
-        >
-          <div>
-            <p className="eyebrow mb-1 text-coral">{t("home.coachNoticed")}</p>
-            <p className="font-medium">
-              {t("home.coachBefore")} <strong>{errorLabel(stats.topError)}</strong>{t("home.coachAfter")}
-            </p>
-          </div>
-          <span className="text-coral group-hover:translate-x-1 transition">→</span>
-        </Link>
-      )}
-      {stats?.topError && (
-        <p className="-mt-6 mb-8 text-right text-xs">
-          <Link to="/mistakes" className="text-paper-muted transition hover:text-coral">
-            {t("home.mistakesLink")}
-          </Link>
-        </p>
-      )}
+      <TodayCard
+        lang={learningLanguage}
+        lesson={lesson}
+        tasks={tasks}
+        loading={loadingLesson}
+        error={loadError}
+        itemError={itemError}
+        completing={completing}
+        streak={streak}
+        freezesLeft={freezesLeft}
+        wordDef={wordDef}
+        onRetry={() => {
+          setLoadingLesson(true);
+          setReloadKey((k) => k + 1);
+        }}
+        onToggle={toggleItem}
+        onComplete={handleComplete}
+        onSpeak={(word) =>
+          speak(word, {
+            voiceName: voicePrefs.voiceName ?? undefined,
+            rate: voicePrefs.voiceRate,
+            lang: voicePrefs.voiceAccent,
+          })
+        }
+      />
 
       <div className="mb-6"><XpCard compact /></div>
 
       <div className="mt-2 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm">
         <Link to="/progress" className="inline-flex items-center gap-2 text-paper-muted hover:text-paper">
-          <BarChart3 size={15} />
-          {t("home.seeProgress")}
+          <BarChart3 size={15} aria-hidden />
+          {profile?.current_level ? t("home.levelLink", { level: profile.current_level }) : t("home.seeProgress")}
+        </Link>
+        <Link to="/mistakes" className="text-paper-muted hover:text-paper">
+          {t("home.mistakesLink")}
         </Link>
       </div>
     </div>
