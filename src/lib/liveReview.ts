@@ -38,6 +38,8 @@ export interface CallReviewData {
   /** null cuando se habló demasiado poco para puntuar. */
   scores: Scores | null;
   scoreNote: string;
+  /** Datos nuevos sobre la persona para recordar en la próxima llamada. */
+  facts: string[];
 }
 
 export interface ScoreRecord extends Scores {
@@ -49,6 +51,7 @@ export interface ScoreRecord extends Scores {
 export const MIN_WORDS_FOR_SCORES = 30;
 export const MAX_MISTAKES = 8;
 export const MAX_SCORE_HISTORY = 30;
+export const MAX_MEMORY = 12;
 
 // El proxy admite 4000 caracteres por mensaje.
 const CHUNK_CHARS = 3800;
@@ -103,7 +106,7 @@ function findTurn(turns: ChatTurn[], said: string, hint: number): number | null 
 
 /** Valida la respuesta de la IA. Descarta errores cuya cita la persona nunca dijo. */
 export function parseReview(raw: string, turns: ChatTurn[]): CallReviewData | null {
-  const data = tryParseAiJson<{ mistakes?: unknown; scores?: unknown; scoreNote?: unknown }>(raw);
+  const data = tryParseAiJson<{ mistakes?: unknown; scores?: unknown; scoreNote?: unknown; facts?: unknown }>(raw);
   if (!data || !Array.isArray(data.mistakes)) return null;
 
   const seen = new Set<string>();
@@ -128,7 +131,9 @@ export function parseReview(raw: string, turns: ChatTurn[]): CallReviewData | nu
     scores = { grammar, vocabulary, fluency };
   }
 
-  return { mistakes: mistakes.sort((a, b) => a.turn! - b.turn!), scores, scoreNote: str(data.scoreNote, 240) };
+  const facts = Array.isArray(data.facts) ? data.facts.map((f) => str(f, 140)).filter(Boolean).slice(0, 3) : [];
+
+  return { mistakes: mistakes.sort((a, b) => a.turn! - b.turn!), scores, scoreNote: str(data.scoreNote, 240), facts };
 }
 
 export async function reviewCall(turns: ChatTurn[], level: string): Promise<CallReviewData | null> {
@@ -141,7 +146,8 @@ export async function reviewCall(turns: ChatTurn[], level: string): Promise<Call
     `"type" is one of: ${Object.keys(ERROR_TYPES).join(", ")}.`,
     `"why" is one short sentence ${beginner ? "in Spanish" : "in simple English"}.`,
     "Scores are 0-100 relative to the demands of the CEFR level above: grammar (accuracy), vocabulary (range and precision), fluency (how developed and connected the answers are, judged from the text only).",
-    'Reply ONLY with JSON: {"mistakes":[{"line":0,"said":"","better":"","type":"","why":""}],"scores":{"grammar":0,"vocabulary":0,"fluency":0},"scoreNote":"one sentence on what would raise the scores"}',
+    '"facts": up to 3 short things the learner said about their own life that a friendly tutor could ask about next time (hobbies, work, plans, pets, tastes). Never include health, religion, politics, sexuality, money, legal matters, addresses, contact details or full names. Empty if there are none.',
+    'Reply ONLY with JSON: {"mistakes":[{"line":0,"said":"","better":"","type":"","why":""}],"scores":{"grammar":0,"vocabulary":0,"fluency":0},"scoreNote":"one sentence on what would raise the scores","facts":[""]}',
   ].join(" ");
   const raw = await askCoach({
     system,
@@ -236,15 +242,53 @@ export async function loadScoreHistory(userId: string): Promise<ScoreRecord[]> {
   return readScoreHistory(data?.profile_json);
 }
 
-/** Agrega las notas y devuelve el historial anterior. Relee el perfil para no pisar otros datos. */
-export async function appendScores(userId: string, record: ScoreRecord): Promise<ScoreRecord[]> {
+// ── Memoria entre llamadas (profiles.profile_json.liveMemory) ────────────────────
+
+export function readMemory(profileJson: unknown): string[] {
+  const list = (profileJson as { liveMemory?: unknown } | null)?.liveMemory;
+  return Array.isArray(list) ? list.filter((f): f is string => typeof f === "string" && !!f.trim()).slice(-MAX_MEMORY) : [];
+}
+
+export function mergeMemory(old: string[], added: string[]): string[] {
+  const out = [...old];
+  for (const fact of added) {
+    if (!out.some((f) => loose(f) === loose(fact))) out.push(fact);
+  }
+  return out.slice(-MAX_MEMORY);
+}
+
+/**
+ * Guarda notas y recuerdos en una sola escritura. Relee el perfil para no pisar
+ * otros datos. Devuelve las notas anteriores a esta llamada.
+ */
+export async function saveInsights(userId: string, insights: { score: ScoreRecord | null; facts: string[] }): Promise<ScoreRecord[]> {
+  if (!insights.score && insights.facts.length === 0) return [];
   const { data, error } = await supabase.from("profiles").select("profile_json").eq("id", userId).maybeSingle();
   if (error || !data) return [];
   const profileJson = (data.profile_json ?? {}) as Record<string, unknown>;
   const previous = readScoreHistory(profileJson);
   await supabase
     .from("profiles")
-    .update({ profile_json: { ...profileJson, liveScores: [...previous, record].slice(-MAX_SCORE_HISTORY) } })
+    .update({
+      profile_json: {
+        ...profileJson,
+        ...(insights.score ? { liveScores: [...previous, insights.score].slice(-MAX_SCORE_HISTORY) } : {}),
+        ...(insights.facts.length ? { liveMemory: mergeMemory(readMemory(profileJson), insights.facts) } : {}),
+      },
+    })
     .eq("id", userId);
   return previous;
+}
+
+export async function loadMemory(userId: string): Promise<string[]> {
+  const { data } = await supabase.from("profiles").select("profile_json").eq("id", userId).maybeSingle();
+  return readMemory(data?.profile_json);
+}
+
+export async function forgetMemory(userId: string): Promise<boolean> {
+  const { data, error } = await supabase.from("profiles").select("profile_json").eq("id", userId).maybeSingle();
+  if (error || !data) return false;
+  const { liveMemory: _gone, ...rest } = (data.profile_json ?? {}) as Record<string, unknown>;
+  const res = await supabase.from("profiles").update({ profile_json: rest }).eq("id", userId);
+  return !res.error;
 }

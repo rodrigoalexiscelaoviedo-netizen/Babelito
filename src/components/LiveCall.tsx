@@ -1,17 +1,30 @@
-import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { ArrowLeft, Loader2, Mic, MessageCircle, Phone, PhoneOff, RotateCcw, Sparkles, Clock } from "lucide-react";
+import { ArrowLeft, Check, Loader2, RotateCcw, Sparkles, Clock, Target } from "lucide-react";
 import { LiveSession, LIVE_MAX_SECONDS, type LiveCorrection, type LiveSituation } from "../lib/liveSession";
 import { liveReport, type LiveReport } from "../lib/geminiTools";
-import { SITUATIONS } from "../lib/situationsData";
+import { SITUATIONS, type Situation } from "../lib/situationsData";
 import { SITUATIONS_CA } from "../lib/situationsDataCa";
-import { SITUATION_ICONS } from "./situationIcons";
 import { awardXp } from "../lib/xp";
 import CallReview, { EMPTY_REVIEW, type CallReviewState } from "./CallReview";
-import { appendScores, mistakesFromCorrections, reviewCall, saveCall, toTurns, type CallReviewData } from "../lib/liveReview";
+import LivePicker from "./live/LivePicker";
+import LiveStage from "./live/LiveStage";
+import type { TutorMode } from "./live/TutorStage";
+import { forgetMemory, loadMemory, mergeMemory, mistakesFromCorrections, reviewCall, saveCall, saveInsights, toTurns, type CallReviewData } from "../lib/liveReview";
+import { loadLivePrefs, saveLivePrefs, type LivePrefs } from "../lib/liveHelp";
+import { goalsFor } from "../lib/liveGoals";
+import { loadErrorRows, summarizeErrors } from "../lib/mistakes";
+import { errorLabel } from "../lib/errorTypes";
 import { tFor } from "../i18n";
 
-type Choice = { kind: "free" } | { kind: "situation"; situation: LiveSituation } | { kind: "surprise" };
+/** Silencio, tras el turno del coach, a partir del cual se ofrece ayuda. */
+const STUCK_AFTER_MS = 9000;
+/** Sin voz propia ni del coach durante este tiempo: se muestra "Thinking". */
+const THINKING_AFTER_MS = 1800;
+/** Cuando queda este tiempo, el coach se despide. */
+const WRAP_UP_SECONDS = 45;
+
+type Choice = { kind: "free" } | { kind: "situation"; situation: Situation } | { kind: "surprise" };
 type State = "pick" | "connecting" | "live" | "ended" | "error";
 type T = ReturnType<typeof tFor>;
 
@@ -72,11 +85,69 @@ function LiveCallView({
   const callId = useRef(0);
   const savedCall = useRef(0);
 
-  function appendLog(who: "learner" | "coach", text: string) {
+  const english = lang === "en";
+  const [prefs, setPrefs] = useState<LivePrefs>(loadLivePrefs);
+  const [memory, setMemory] = useState<string[]>([]);
+  const focusRef = useRef<string[]>([]);
+  const [goals, setGoals] = useState<string[]>([]);
+  const [goalsDone, setGoalsDone] = useState<number[]>([]);
+  const [muted, setMuted] = useState(false);
+  const [thinking, setThinking] = useState(false);
+  const [stuck, setStuck] = useState(false);
+  const [tab, setTab] = useState<"lines" | "report">("lines");
+  const newCoachTurn = useRef(false);
+  const wrappedUp = useRef(false);
+  const thinkingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  function updatePrefs(patch: Partial<LivePrefs>) {
+    setPrefs((current) => {
+      const next = { ...current, ...patch };
+      saveLivePrefs(next);
+      return next;
+    });
+  }
+
+  // Lo que el coach ya sabe: recuerdos de charlas y errores que se repiten.
+  useEffect(() => {
+    if (!english) return;
+    let cancelled = false;
+    void loadMemory(userId)
+      .then((facts) => {
+        if (!cancelled) setMemory(facts);
+      })
+      .catch(() => {
+        /* sin memoria la llamada funciona igual */
+      });
+    void loadErrorRows(userId)
+      .then((rows) => {
+        focusRef.current = summarizeErrors(rows)
+          .stats.slice(0, 3)
+          .map((st) => errorLabel(st.type));
+      })
+      .catch(() => {
+        /* sin historial no hay foco */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [userId, english]);
+
+  useEffect(() => () => {
+    if (thinkingTimer.current) clearTimeout(thinkingTimer.current);
+  }, []);
+
+  /** Agrega al registro y devuelve el turno completo en curso. */
+  function appendLog(who: "learner" | "coach", text: string): string {
     const log = logRef.current;
     const last = log[log.length - 1];
-    if (last && last.who === who) last.text += text;
-    else log.push({ who, text });
+    const sameTurn = last && last.who === who && !(who === "coach" && newCoachTurn.current);
+    if (who === "coach") newCoachTurn.current = false;
+    if (sameTurn) {
+      last.text += text;
+      return last.text;
+    }
+    log.push({ who, text });
+    return text;
   }
 
   function start(c: Choice) {
@@ -93,11 +164,21 @@ function LiveCallView({
     setReportState("idle");
     reportRequested.current = false;
     setReview(EMPTY_REVIEW);
+    setGoalsDone([]);
+    setMuted(false);
+    setThinking(false);
+    setStuck(false);
+    setTab("lines");
+    newCoachTurn.current = false;
+    wrappedUp.current = false;
     callId.current++;
     startedAt.current = null;
     rewarded.current = false;
     setXp(0);
-    const situation = c.kind === "free" ? null : c.kind === "situation" ? c.situation : pickSurprise(bank).situation;
+    const chosen = c.kind === "free" ? null : c.kind === "situation" ? c.situation : pickSurprise(bank);
+    const situation = chosen ? toLiveSituation(chosen) : null;
+    const callGoals = english && chosen ? goalsFor(chosen.id) : [];
+    setGoals(callGoals);
     const session = new LiveSession(
       {
         onState: (s, d) => {
@@ -106,21 +187,39 @@ function LiveCallView({
           if (s === "live") startedAt.current = Date.now();
         },
         onHeard: (tx) => {
-          setHeard((prev) => (prev + tx).slice(-220));
-          appendLog("learner", tx);
+          setHeard(appendLog("learner", tx));
+          setStuck(false);
+          // Si deja de hablar y el coach aún no contesta, está pensando.
+          setThinking(false);
+          if (thinkingTimer.current) clearTimeout(thinkingTimer.current);
+          thinkingTimer.current = setTimeout(() => setThinking(true), THINKING_AFTER_MS);
         },
         onSaid: (tx) => {
-          setSaid((prev) => (prev + tx).slice(-260));
-          appendLog("coach", tx);
+          setSaid(appendLog("coach", tx));
         },
-        onSpeaking: setSpeaking,
+        onSpeaking: (on) => {
+          setSpeaking(on);
+          if (on) {
+            if (thinkingTimer.current) clearTimeout(thinkingTimer.current);
+            setThinking(false);
+            setStuck(false);
+          }
+        },
+        onGoal: (index) => setGoalsDone((done) => (done.includes(index) ? done : [...done, index])),
         onCorrection: (cor) => {
           correctionsRef.current = [...correctionsRef.current, cor];
           setCorrections(correctionsRef.current);
           setTip(cor);
         },
       },
-      { level, name, topic: c.kind === "free" ? topic : null, situation, lang }
+      {
+        level,
+        name,
+        topic: c.kind === "free" ? topic : null,
+        situation,
+        lang,
+        ...(english ? { correction: prefs.correction, goals: callGoals, memory, focus: focusRef.current } : {}),
+      }
     );
     sessionRef.current = session;
     void session.start();
@@ -186,9 +285,13 @@ function LiveCallView({
     show({ status: lang === "en" ? (data ? "done" : "error") : "idle", data, mistakes, saved: "saving" });
     const result = await saveCall({ userId, topic: topicTitle, turns, mistakes, startedAt: started, endedAt: ended }).catch(() => ({ ok: false }));
     show({ saved: result.ok ? "saved" : "failed" });
-    if (data?.scores) {
-      const previous = await appendScores(userId, { at: new Date(ended).toISOString(), ...data.scores }).catch(() => []);
+    if (data) {
+      // Solo se recuerda lo de la charla libre: en un roleplay lo que se dice es inventado.
+      const facts = choice?.kind === "free" ? data.facts : [];
+      const score = data.scores ? { at: new Date(ended).toISOString(), ...data.scores } : null;
+      const previous = await saveInsights(userId, { score, facts }).catch(() => []);
       show({ previous });
+      if (facts.length) setMemory((m) => mergeMemory(m, facts));
     }
   }
 
@@ -198,6 +301,21 @@ function LiveCallView({
     const tm = setInterval(() => setSeconds(Math.round((Date.now() - (startedAt.current ?? Date.now())) / 1000)), 1000);
     return () => clearInterval(tm);
   }, [state]);
+
+  // Poco antes del tope, el coach se despide en vez de cortarse a mitad de frase.
+  useEffect(() => {
+    if (state !== "live" || wrappedUp.current || seconds < LIVE_MAX_SECONDS - WRAP_UP_SECONDS) return;
+    wrappedUp.current = true;
+    sessionRef.current?.sendInstruction("Time is almost up: wrap up warmly in one or two sentences and say goodbye");
+  }, [state, seconds]);
+
+  // Silencio largo después del coach: se resalta la ayuda.
+  const lastWho = logRef.current[logRef.current.length - 1]?.who;
+  useEffect(() => {
+    if (state !== "live" || speaking || muted || lastWho !== "coach") return;
+    const tm = setTimeout(() => setStuck(true), STUCK_AFTER_MS);
+    return () => clearTimeout(tm);
+  }, [state, speaking, muted, lastWho, said]);
 
   // Tope de tiempo: al llegar a 15 minutos la llamada se corta sola (y muestra el informe).
   useEffect(() => {
@@ -230,58 +348,24 @@ function LiveCallView({
 
   if (state === "pick") {
     return (
-      <div className="fixed inset-0 z-[100] flex flex-col overflow-y-auto bg-ink-900 p-6" role="dialog" aria-label={t("live.chooseAria")}>
-        <div className="mx-auto w-full max-w-2xl animate-fade-up">
-          <div className="flex items-center justify-between">
-            <p className="eyebrow flex items-center gap-2">
-              <span className="relative flex h-2 w-2" aria-hidden>
-                <span className="absolute inline-flex h-full w-full rounded-full bg-mint opacity-60 motion-safe:animate-ping" />
-                <span className="relative inline-flex h-2 w-2 rounded-full bg-mint" />
-              </span>
-              {t("live.beta")}
-            </p>
-            <button onClick={onClose} className="text-xs text-paper-muted hover:text-coral" aria-label={t("live.close")}>{t("live.cancel")}</button>
-          </div>
-          <h2 className="page-title mt-3 mb-1">{t("live.pickTitle")}</h2>
-          <p className="mb-6 text-sm text-paper-muted">{t("live.pickSub")}</p>
-
-          <div className="grid gap-3 sm:grid-cols-2 stagger">
-            <ChoiceCard
-              onClick={() => start({ kind: "free" })}
-              icon={MessageCircle}
-              title={t("live.freeTitle")}
-              text={topic ?? t("live.freeText")}
-            />
-            <ChoiceCard onClick={() => start({ kind: "surprise" })} icon={Sparkles} title={t("live.surpriseTitle")} text={t("live.surpriseText")} />
-          </div>
-
-          <p className="mb-3 mt-8 eyebrow">{t("live.realCalls")}</p>
-          <div className="grid gap-3 sm:grid-cols-2 stagger">
-            {bank.map((s) => {
-              const Icon = SITUATION_ICONS[s.icon] ?? Phone;
-              return (
-                <button
-                  key={s.id}
-                  onClick={() => start({ kind: "situation", situation: toLiveSituation(s) })}
-                  className="hub-card group flex items-start gap-3 p-4 text-left"
-                  style={{ ["--accent-rgb" as string]: "var(--coral)" } as CSSProperties}
-                >
-                  <span className="hub-icon grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[rgb(var(--accent-rgb)/0.14)] text-[rgb(var(--accent-rgb))]">
-                    <Icon size={18} />
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="flex items-center justify-between gap-2">
-                      <span className="font-display font-bold">{s.title}</span>
-                      <span className="rounded bg-ink-600 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-widest text-paper-muted">{s.level}</span>
-                    </span>
-                    <span className="mt-0.5 block text-xs text-paper-muted">{s.blurb}</span>
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      </div>
+      <LivePicker
+        t={t}
+        english={english}
+        topic={topic}
+        bank={bank}
+        correction={prefs.correction}
+        onCorrection={(correction) => updatePrefs({ correction })}
+        memory={memory}
+        onForget={() => {
+          void forgetMemory(userId).then((ok) => {
+            if (ok) setMemory([]);
+          });
+        }}
+        onFree={() => start({ kind: "free" })}
+        onSurprise={() => start({ kind: "surprise" })}
+        onSituation={(situation) => start({ kind: "situation", situation })}
+        onClose={onClose}
+      />
     );
   }
 
@@ -311,8 +395,54 @@ function LiveCallView({
               </div>
             )}
           </div>
-          {state === "ended" && <TeacherReport status={reportState} report={report} corrections={lang === "en" ? [] : corrections} t={t} />}
-          {lang === "en" && <CallReview key={callId.current} userId={userId} level={level} review={review} />}
+          {state === "ended" && goals.length > 0 && (
+            <section aria-label="Goals" className="mt-4 rounded-xl bg-ink-800 p-3 text-left">
+              <p className="mb-2 flex items-center gap-1.5 text-sm font-semibold">
+                <Target size={15} className="text-mint" aria-hidden /> Goals: {goalsDone.length} of {goals.length}
+              </p>
+              <ul className="space-y-1 text-sm">
+                {goals.map((goal, i) => (
+                  <li key={goal} className="flex items-start gap-2">
+                    <span className={`mt-0.5 grid h-4 w-4 shrink-0 place-items-center rounded-full ${goalsDone.includes(i) ? "bg-mint text-ink-900" : "border border-paper-faint"}`} aria-hidden>
+                      {goalsDone.includes(i) && <Check size={11} />}
+                    </span>
+                    <span className={goalsDone.includes(i) ? "" : "text-paper-muted"}>
+                      {goal}
+                      <span className="sr-only">{goalsDone.includes(i) ? " (done)" : " (not yet)"}</span>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+          {english && state === "ended" && (
+            <div role="tablist" aria-label="Call feedback" className="mt-5 grid grid-cols-2 gap-1 rounded-xl bg-ink-800 p-1">
+              {([["lines", "Your lines"], ["report", "Teacher report"]] as const).map(([id, label]) => (
+                <button
+                  key={id}
+                  type="button"
+                  role="tab"
+                  id={`call-tab-${id}`}
+                  aria-selected={tab === id}
+                  aria-controls={`call-panel-${id}`}
+                  onClick={() => setTab(id)}
+                  className={`rounded-lg py-2 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mint ${tab === id ? "bg-ink-600 text-paper" : "text-paper-muted"}`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          )}
+          {state === "ended" && (
+            <div role={english ? "tabpanel" : undefined} id="call-panel-report" aria-labelledby={english ? "call-tab-report" : undefined} hidden={english && tab !== "report"}>
+              <TeacherReport status={reportState} report={report} corrections={english ? [] : corrections} t={t} />
+            </div>
+          )}
+          {english && (
+            <div role="tabpanel" id="call-panel-lines" aria-labelledby="call-tab-lines" hidden={state === "ended" && tab !== "lines"}>
+              <CallReview key={callId.current} userId={userId} level={level} review={review} />
+            </div>
+          )}
           <div className="mt-6 flex flex-col gap-2">
             <button onClick={() => setState("pick")} className="btn-coral inline-flex items-center justify-center gap-2">
               <RotateCcw size={16} /> {t("live.pickAnother")}
@@ -326,154 +456,46 @@ function LiveCallView({
     );
   }
 
-  const coachLive = state === "live" && speaking;
-  const userLive = state === "live" && !speaking;
+  const mode: TutorMode =
+    state === "connecting" ? "connecting" : muted && !speaking ? "muted" : speaking ? "speaking" : thinking ? "thinking" : "listening";
 
   return (
-    <div className="fixed inset-0 z-[100] flex flex-col items-center justify-between overflow-hidden bg-ink-900 p-6" role="dialog" aria-label={t("live.callAria")}>
-      {/* Fondo: un halo que cambia de color según quién habla. */}
-      <div
-        aria-hidden
-        className={`pointer-events-none absolute inset-0 transition-opacity duration-700 ${coachLive ? "opacity-100" : "opacity-60"}`}
-        style={{
-          background: coachLive
-            ? "radial-gradient(60% 50% at 50% 40%, rgb(var(--coral) / 0.22), transparent 70%)"
-            : "radial-gradient(60% 50% at 50% 40%, rgb(var(--mint) / 0.16), transparent 70%)",
-        }}
-      />
-
-      <div className="relative pt-6 text-center animate-fade-up">
-        <p className="eyebrow">{t("live.callEyebrow")}</p>
-        <p className="mt-1 text-xs text-paper-faint">{title}</p>
-        {state === "live" && (
-          <p className={`mt-1 font-mono text-xs ${nearEnd ? "text-gold" : "text-mint"}`}>
-            {mm}:{ss} · {nearEnd ? t("live.endsIn", { t: remaining }) : t("live.maxMin", { n: Math.round(LIVE_MAX_SECONDS / 60) })}
-          </p>
-        )}
-      </div>
-
-      <div className="relative w-full max-w-md space-y-6 text-center">
-        <div className="relative mx-auto grid h-44 w-44 place-items-center" aria-hidden>
-          {/* Anillo de progreso del tiempo */}
-          <svg className="absolute inset-0 -rotate-90" viewBox="0 0 100 100">
-            <circle cx="50" cy="50" r="47" fill="none" className="stroke-ink-600" strokeWidth="2" />
-            <circle
-              cx="50"
-              cy="50"
-              r="47"
-              fill="none"
-              className={nearEnd ? "stroke-gold" : "stroke-mint"}
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              strokeDasharray={2 * Math.PI * 47}
-              strokeDashoffset={2 * Math.PI * 47 * (1 - progress)}
-              style={{ transition: "stroke-dashoffset 1s linear" }}
-            />
-          </svg>
-
-          {/* Anillos que salen del orbe cuando habla el coach */}
-          {coachLive &&
-            [0, 1, 2].map((i) => (
-              <span
-                key={i}
-                className="absolute inset-4 rounded-full border-2 border-coral/60 motion-safe:animate-live-ring"
-                style={{ animationDelay: `${i * 0.6}s` }}
-              />
-            ))}
-          {/* Respiración suave cuando te toca hablar */}
-          {userLive && <span className="absolute inset-4 rounded-full bg-mint/20 motion-safe:animate-live-breathe" />}
-
-          <span
-            className={`relative grid h-28 w-28 place-items-center rounded-full transition-colors duration-500 ${
-              coachLive ? "bg-coral text-white shadow-[0_0_60px_-8px_rgb(var(--coral)/0.8)]" : userLive ? "bg-mint/25 text-mint" : "bg-ink-700 text-paper-muted"
-            }`}
-          >
-            {state === "connecting" ? (
-              <Loader2 className="animate-spin" size={30} />
-            ) : coachLive ? (
-              <div className="flex h-8 items-end gap-1">
-                {[0, 1, 2, 3, 4].map((i) => (
-                  <span key={i} className="motion-safe:animate-live-bar h-2 w-1 rounded-full bg-white" style={{ animationDelay: `${i * 0.12}s` }} />
-                ))}
-              </div>
-            ) : (
-              <Mic size={30} />
-            )}
-          </span>
-        </div>
-
-        <p className="font-display text-xl font-bold" role="status">
-          {state === "connecting" && t("live.connecting")}
-          {state === "live" && (speaking ? t("live.coachTalking") : t("live.yourTurn"))}
-        </p>
-
-        {tip && state === "live" && (
-          <div key={tip.original + tip.correction} role="status" className="mx-auto max-w-sm rounded-xl border border-gold/40 bg-ink-800/90 px-4 py-2 text-left animate-fade-up">
-            <p className="font-mono text-[10px] uppercase tracking-widest text-gold">{t("live.quickTip")}</p>
-            <p className="text-sm">
-              <span className="text-paper-faint line-through">{tip.original}</span> → <strong>{tip.correction}</strong>
-            </p>
-            {tip.explanation && <p className="text-xs text-paper-muted">{tip.explanation}</p>}
-          </div>
-        )}
-
-        {state === "live" && (
-          <div className="min-h-[5.5rem] space-y-2 text-sm">
-            {said && (
-              <p key={said.slice(-30)} className="rounded-xl bg-ink-800/70 px-4 py-2 text-paper-muted animate-fade-up">
-                {said}
-              </p>
-            )}
-            {heard && (
-              <p key={heard.slice(-30)} className="italic text-paper-faint animate-fade-up">
-                {t("live.youLine", { t: heard })}
-              </p>
-            )}
-          </div>
-        )}
-        {state === "live" && <p className="text-[11px] text-paper-faint">{t("live.headphones")}</p>}
-      </div>
-
-      <div className="relative flex flex-col items-center gap-3 pb-6">
-        <button
-          onClick={endCall}
-          className="group relative grid h-16 w-16 place-items-center rounded-full bg-red-600 text-white transition hover:scale-105 active:scale-95"
-          aria-label={t("live.hangUp")}
-        >
-          <span className="absolute inset-0 rounded-full bg-red-600/40 motion-safe:animate-ping" aria-hidden />
-          <PhoneOff size={22} className="relative" />
-        </button>
-        <span className="text-[11px] text-paper-faint">{t("live.hangUp")}</span>
-      </div>
-    </div>
+    <LiveStage
+      t={t}
+      english={english}
+      level={level}
+      title={title}
+      mode={mode}
+      live={state === "live"}
+      timer={`${mm}:${ss} · ${nearEnd ? t("live.endsIn", { t: remaining }) : t("live.maxMin", { n: Math.round(LIVE_MAX_SECONDS / 60) })}`}
+      nearEnd={nearEnd}
+      progress={progress}
+      coachLine={said}
+      learnerLine={heard}
+      tip={tip}
+      goals={goals}
+      goalsDone={goalsDone}
+      stuck={stuck}
+      muted={muted}
+      captions={prefs.captions}
+      getLevel={() => sessionRef.current?.outputLevel?.() ?? 0}
+      onToggleMute={() => {
+        sessionRef.current?.setMuted?.(!muted);
+        setMuted(!muted);
+        setStuck(false);
+      }}
+      onToggleCaptions={() => updatePrefs({ captions: !prefs.captions })}
+      onRequest={(instruction) => {
+        newCoachTurn.current = true;
+        setStuck(false);
+        sessionRef.current?.sendInstruction?.(instruction);
+      }}
+      onHangUp={endCall}
+    />
   );
 }
 
-function ChoiceCard({
-  onClick,
-  icon: Icon,
-  title,
-  text,
-}: {
-  onClick: () => void;
-  icon: typeof MessageCircle;
-  title: string;
-  text: string;
-}) {
-  return (
-    <button onClick={onClick} className="hub-card group flex items-start gap-3 p-5 text-left" style={{ ["--accent-rgb" as string]: "var(--mint)" } as CSSProperties}>
-      <span className="hub-icon grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-[rgb(var(--accent-rgb)/0.14)] text-[rgb(var(--accent-rgb))]">
-        <Icon size={20} />
-      </span>
-      <span className="min-w-0">
-        <span className="block font-display text-lg font-bold">{title}</span>
-        <span className="mt-0.5 block text-sm text-paper-muted">{text}</span>
-      </span>
-    </button>
-  );
-}
-
-function toLiveSituation(s: (typeof SITUATIONS)[number]): LiveSituation {
+function toLiveSituation(s: Situation): LiveSituation {
   return {
     title: s.title,
     coachRole: s.roleplay.coachRole,
@@ -580,7 +602,6 @@ function TeacherReport({
   );
 }
 
-function pickSurprise(bank: typeof SITUATIONS): { situation: LiveSituation } {
-  const s = bank[Math.floor(Math.random() * bank.length)];
-  return { situation: toLiveSituation(s) };
+function pickSurprise(bank: Situation[]): Situation {
+  return bank[Math.floor(Math.random() * bank.length)];
 }
