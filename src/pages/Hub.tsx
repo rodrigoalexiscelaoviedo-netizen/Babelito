@@ -153,12 +153,13 @@ export default function Hub({ id }: { id: HubId }) {
 function HubCard({ item, token }: { item: VisibleItem; token: string }) {
   const Icon = HUB_ICONS[item.icon];
   return (
-    <Link to={item.to} className="hub-card group flex flex-col gap-3 p-5" style={accentStyle(token)}>
-      <div className="flex items-start justify-between gap-3">
-        <span className="hub-icon grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-[rgb(var(--accent-rgb)/0.14)] text-[rgb(var(--accent-rgb))]">
-          {Icon && <Icon size={22} />}
-        </span>
+    <Link to={item.to} className="hub-card group flex items-center gap-4 p-4" style={accentStyle(token)}>
+      <span className="hub-icon grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-[rgb(var(--accent-rgb)/0.14)] text-[rgb(var(--accent-rgb))]">
+        {Icon && <Icon size={22} />}
+      </span>
+      <span className="min-w-0 flex-1">
         <span className="flex items-center gap-2">
+          <span className="font-display text-lg font-bold leading-snug">{item.text.title}</span>
           {item.badge && (
             <span className="rounded bg-gold/20 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-widest text-ongold">{item.badge}</span>
           )}
@@ -168,13 +169,10 @@ function HubCard({ item, token }: { item: VisibleItem; token: string }) {
               <span className="relative inline-flex h-2 w-2 rounded-full bg-mint" />
             </span>
           )}
-          <ArrowRight size={16} className="hub-arrow text-paper-faint" aria-hidden />
         </span>
-      </div>
-      <div className="min-w-0">
-        <span className="block font-display text-lg font-bold leading-snug">{item.text.title}</span>
-        <span className="mt-0.5 block text-sm text-paper-muted">{item.text.desc}</span>
-      </div>
+        <span className="mt-0.5 block text-sm leading-snug text-paper-muted">{item.text.desc}</span>
+      </span>
+      <ArrowRight size={18} className="hub-arrow shrink-0 text-paper-faint" aria-hidden />
     </Link>
   );
 }
