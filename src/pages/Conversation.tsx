@@ -5,7 +5,7 @@ import { splitCoachReply } from "../lib/coachFormat";
 import { openingLine } from "../lib/conversationOpeners";
 import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Mic, Send, Square, Loader2, Drama } from "lucide-react";
+import { Mic, Send, Square, Loader2, Drama, Briefcase, Sun, Target, Heart, MessagesSquare, Sparkles, Check, type LucideIcon } from "lucide-react";
 import { RoleplayChat, SCENARIO_ICONS } from "./Roleplay";
 import { SCENARIOS, SCENARIOS_CA, type Scenario } from "../lib/scenarios";
 import { useHistoryBack } from "../lib/useHistoryBack";
@@ -401,37 +401,35 @@ export default function Conversation() {
         <p className="text-paper-muted mb-8">
           {tr("conversation.introLive", { level: profile?.current_level ?? "" })}
         </p>
-        <div className="grid sm:grid-cols-2 gap-3 mb-8">
-          {TOPICS.map((tp) => (
-            <button
-              key={tp}
-              onClick={() => setTopic(tp)}
-              className={`card px-4 py-4 text-left font-medium transition ${
-                topic === tp ? "ring-2 ring-coral border-coral" : "hover:border-ink-500"
-              }`}
-            >
-              {tp}
-            </button>
-          ))}
-          {/* Show daily topic if it's not in the list */}
+        <div className="mb-8 grid grid-cols-2 gap-3" role="radiogroup" aria-label={tr("conversation.titleLive")}>
+          {/* El tema del día, si llegó desde Inicio, va primero y a lo ancho. */}
           {locationTopic && !TOPICS.includes(locationTopic) && (
-            <button
-              onClick={() => setTopic(locationTopic)}
-              className={`card px-4 py-4 text-left font-medium transition sm:col-span-2 ${
-                topic === locationTopic ? "ring-2 ring-coral border-coral" : "hover:border-ink-500"
-              }`}
-            >
-              {locationTopic}
-              <span className="ml-2 text-xs text-coral font-mono">
-                · {tr("conversation.todayTopic")}
-              </span>
-            </button>
+            <TopicTile
+              label={locationTopic}
+              note={tr("conversation.todayTopic")}
+              icon={Sparkles}
+              tone="bg-gold/20 text-gold"
+              selected={topic === locationTopic}
+              onSelect={() => setTopic(locationTopic)}
+              wide
+            />
           )}
+          {TOPICS.map((tp, i) => {
+            const look = TOPIC_LOOK[i % TOPIC_LOOK.length];
+            return (
+              <TopicTile
+                key={tp}
+                label={tp}
+                icon={look.icon}
+                tone={look.tone}
+                selected={topic === tp}
+                onSelect={() => setTopic(tp)}
+                wide={i === TOPICS.length - 1 && TOPICS.length % 2 === 1}
+              />
+            );
+          })}
         </div>
-        <button
-          className="btn-coral w-full"
-          onClick={startConversation}
-        >
+        <button className="btn-coral group w-full py-3.5 text-base" onClick={startConversation}>
           {tr("conversation.startTalking")}
         </button>
 
@@ -663,5 +661,57 @@ export default function Conversation() {
       </div>
 
     </div>
+  );
+}
+
+/** Icono y color de cada tema del selector (mismo orden en inglés y catalán). */
+const TOPIC_LOOK: { icon: LucideIcon; tone: string }[] = [
+  { icon: Briefcase, tone: "bg-sky/15 text-sky" },
+  { icon: Sun, tone: "bg-gold/20 text-gold" },
+  { icon: Target, tone: "bg-coral/15 text-coral" },
+  { icon: Heart, tone: "bg-mint/15 text-mint" },
+  { icon: MessagesSquare, tone: "bg-coral/15 text-coral" },
+];
+
+function TopicTile({
+  label,
+  note,
+  icon: Icon,
+  tone,
+  selected,
+  onSelect,
+  wide,
+}: {
+  label: string;
+  note?: string;
+  icon: LucideIcon;
+  tone: string;
+  selected: boolean;
+  onSelect: () => void;
+  wide?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      role="radio"
+      aria-checked={selected}
+      onClick={onSelect}
+      className={`press relative flex min-h-[6.5rem] flex-col items-start justify-between gap-3 rounded-xl2 p-4 text-left transition-[background-color,box-shadow,color] duration-200 ${
+        wide ? "col-span-2 min-h-0 flex-row items-center" : ""
+      } ${selected ? "bg-coral text-ink-900 shadow-[0_14px_30px_-16px_rgb(var(--coral)/0.9)]" : "card hover:border-ink-500"}`}
+    >
+      <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl transition-colors ${selected ? "bg-ink-900/15 text-ink-900" : tone}`}>
+        <Icon size={20} aria-hidden />
+      </span>
+      <span className={`min-w-0 ${wide ? "flex-1" : ""}`}>
+        <span className="block font-semibold leading-snug">{label}</span>
+        {note && <span className={`mt-0.5 block text-xs font-medium ${selected ? "opacity-80" : "text-gold"}`}>{note}</span>}
+      </span>
+      {selected && (
+        <span className="absolute right-3 top-3 grid h-6 w-6 animate-check-pop place-items-center rounded-full bg-ink-900 text-coral" aria-hidden>
+          <Check size={14} strokeWidth={3} />
+        </span>
+      )}
+    </button>
   );
 }

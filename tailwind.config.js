@@ -48,8 +48,8 @@ export default {
       },
       keyframes: {
         "fade-up": {
-          "0%": { opacity: "0", transform: "translateY(12px)", filter: "blur(4px)" },
-          "100%": { opacity: "1", transform: "none", filter: "none" },
+          "0%": { opacity: "0", transform: "translateY(12px)" },
+          "100%": { opacity: "1", transform: "none" },
         },
         "pulse-ring": {
           "0%": { transform: "scale(0.95)", opacity: "0.7" },
