@@ -696,8 +696,8 @@ function TopicTile({
       role="radio"
       aria-checked={selected}
       onClick={onSelect}
-      className={`press relative flex min-h-[6.5rem] flex-col items-start justify-between gap-3 rounded-xl2 p-4 text-left transition-[background-color,box-shadow,color] duration-200 ${
-        wide ? "col-span-2 min-h-0 flex-row items-center" : ""
+      className={`press relative flex gap-3 rounded-xl2 p-4 text-left transition-[background-color,box-shadow,color] duration-200 ${
+        wide ? "col-span-2 flex-row items-center" : "min-h-[6.5rem] flex-col items-start justify-between"
       } ${selected ? "bg-coral text-ink-900 shadow-[0_14px_30px_-16px_rgb(var(--coral)/0.9)]" : "card hover:border-ink-500"}`}
     >
       <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl transition-colors ${selected ? "bg-ink-900/15 text-ink-900" : tone}`}>
