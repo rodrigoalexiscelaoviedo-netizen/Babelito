@@ -120,7 +120,7 @@ export default function XpCard({ compact = false }: { compact?: boolean }) {
       </div>
 
       <div
-        className="h-2.5 rounded-full bg-ink-700 overflow-hidden"
+        className="h-2.5 rounded-full bg-ink-600 overflow-hidden"
         role="progressbar"
         aria-valuemin={0}
         aria-valuemax={100}

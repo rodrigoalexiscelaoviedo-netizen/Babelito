@@ -504,6 +504,7 @@ export const en = {
     wordsPractice: "words in practice",
     wordsKnown: "words you know",
     startHere: "Start here",
+    open: "Open",
     dueAria: "{{n}} due",
   },
   lens: {

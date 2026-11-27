@@ -509,6 +509,7 @@ export const ca: Shape<typeof en> = {
     wordsPractice: "paraules en pràctica",
     wordsKnown: "paraules que saps",
     startHere: "Comença aquí",
+    open: "Obre",
     dueAria: "{{n}} pendents",
   },
   lens: {

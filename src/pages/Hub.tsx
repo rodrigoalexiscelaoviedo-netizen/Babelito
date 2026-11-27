@@ -114,25 +114,29 @@ export default function Hub({ id }: { id: HubId }) {
       )}
 
       {featured && FeaturedIcon && (
-        <Link to={featured.to} className="hub-card hub-featured group mb-5 flex items-center gap-5 p-6" style={accentStyle(accent.token)}>
-          <span className="relative grid h-16 w-16 shrink-0 place-items-center">
-            <span className="absolute inset-0 rounded-2xl bg-[rgb(var(--accent-rgb))] opacity-30 motion-safe:animate-pulse-ring" aria-hidden />
-            <span className="hub-icon relative grid h-16 w-16 place-items-center rounded-2xl bg-[rgb(var(--accent-rgb))] text-white shadow-[0_10px_30px_-10px_rgb(var(--accent-rgb)/0.7)]">
-              <FeaturedIcon size={28} />
-            </span>
+        <Link
+          to={featured.to}
+          className="hero-block group mb-6 block transition-transform duration-200 ease-out-expo active:scale-[0.98]"
+          style={{ ["--hero-rgb" as string]: `var(--${accent.token})` } as CSSProperties}
+        >
+          <span aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden rounded-[inherit]">
+            <span className="hero-shape absolute -right-16 -top-20 h-64 w-64 rounded-full" />
+            <span className="hero-shape hero-shape-2 absolute -bottom-24 right-10 h-48 w-48 rounded-[3rem]" />
+            <FeaturedIcon size={180} strokeWidth={1.25} className="absolute -bottom-8 -right-6 rotate-[-12deg] opacity-15" />
           </span>
-          <span className="min-w-0 flex-1">
-            <span className={`mb-1 block font-mono text-[10px] uppercase tracking-[0.2em] ${accent.text}`}>{t("hub.startHere")}</span>
-            <span className="block font-display text-2xl font-extrabold leading-tight">{featured.text.title}</span>
-            <span className="mt-1 block text-sm text-paper-muted">{featured.text.desc}</span>
-          </span>
-          {featured.dueBadge && due > 0 && (
-            <span className="rounded-full bg-gold px-2.5 py-1 text-xs font-bold text-ongold" aria-label={t("hub.dueAria", { n: due })}>
-              {due}
+          <span className="hero-eyebrow block">{t("hub.startHere")}</span>
+          <span className="hero-title block">{featured.text.title}</span>
+          <span className="mt-2 block max-w-sm text-sm font-medium opacity-85">{featured.text.desc}</span>
+          <span className="mt-6 flex items-center gap-3">
+            <span className="hero-cta">
+              <FeaturedIcon size={18} aria-hidden /> {t("hub.open")}
+              <ArrowRight size={18} className="transition-transform duration-300 ease-out-expo group-hover:translate-x-1" aria-hidden />
             </span>
-          )}
-          <span className="hub-arrow grid h-11 w-11 shrink-0 place-items-center rounded-full bg-[rgb(var(--accent-rgb)/0.12)] text-[rgb(var(--accent-rgb))]">
-            <ArrowRight size={20} />
+            {featured.dueBadge && due > 0 && (
+              <span className="rounded-full bg-ink-900/90 px-3 py-1.5 text-sm font-bold text-gold" aria-label={t("hub.dueAria", { n: due })}>
+                {due}
+              </span>
+            )}
           </span>
         </Link>
       )}
@@ -151,8 +155,8 @@ function HubCard({ item, token }: { item: VisibleItem; token: string }) {
   return (
     <Link to={item.to} className="hub-card group flex flex-col gap-3 p-5" style={accentStyle(token)}>
       <div className="flex items-start justify-between gap-3">
-        <span className="hub-icon grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-[rgb(var(--accent-rgb)/0.14)] text-[rgb(var(--accent-rgb))]">
-          {Icon && <Icon size={20} />}
+        <span className="hub-icon grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-[rgb(var(--accent-rgb)/0.14)] text-[rgb(var(--accent-rgb))]">
+          {Icon && <Icon size={22} />}
         </span>
         <span className="flex items-center gap-2">
           {item.badge && (
