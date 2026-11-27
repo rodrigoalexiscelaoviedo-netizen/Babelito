@@ -275,18 +275,39 @@ export default function Progress() {
         : t("progress.toMilestone", { n: streakMilestone - streak, m: streakMilestone });
 
   return (
-    <div className="animate-fade-up">
+    <div>
       <p className="eyebrow mb-2">{t("progress.eyebrow")}</p>
       <h1 className="page-title mb-6">{t("progress.title")}</h1>
+
+      {/* ── Lo primero: dónde estás (nivel, objetivo y racha) ─────────────── */}
+      <section className="hero-block hero-coral mb-6" aria-label={t("progress.levelHero")}>
+        <span aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden rounded-[inherit]">
+          <span className="hero-shape absolute -right-16 -top-20 h-64 w-64 rounded-full" />
+          <span className="hero-shape hero-shape-2 absolute -bottom-24 right-10 h-48 w-48 rounded-[3rem]" />
+        </span>
+        <p className="hero-eyebrow">{t("progress.levelHero")}</p>
+        <div className="flex items-end gap-4">
+          <p className="font-display text-7xl font-extrabold leading-none tracking-tight">{profile?.current_level ?? "—"}</p>
+          {profile?.target_level && (
+            <p className="mb-2 text-sm font-semibold opacity-85">
+              → {profile.target_level}
+              <span className="block text-xs font-medium opacity-80">{t("progress.goal")}</span>
+            </p>
+          )}
+        </div>
+        <div className="mt-5 flex flex-wrap gap-2">
+          <span className="rounded-full bg-ink-900/90 px-3 py-1.5 text-sm font-bold text-paper">🔥 {streak} {t("progress.days")}</span>
+          <span className="rounded-full bg-ink-900/90 px-3 py-1.5 text-sm font-bold text-paper">{sessions.length} {t("progress.sessions").toLowerCase()}</span>
+          <span className="rounded-full bg-ink-900/90 px-3 py-1.5 text-sm font-bold text-paper">{totalMinutes} {t("progress.min")}</span>
+        </div>
+      </section>
+
+      <div className="mb-6"><XpCard /></div>
       <div className="mb-6">
-        <SkillLevels />
         <WeekGoals />
         <LevelLadder />
-        <LevelHistory />
-        <LiveScoreHistory />
+        <SkillLevels />
       </div>
-
-      <div className="mb-8"><XpCard /></div>
 
       {/* ── Ring stats ─────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-3 lg:grid-cols-6 gap-3 mb-8">
@@ -532,6 +553,11 @@ export default function Progress() {
             </div>
           </>
         )}
+      </div>
+
+      <div className="mt-6">
+        <LevelHistory />
+        <LiveScoreHistory />
       </div>
     </div>
   );

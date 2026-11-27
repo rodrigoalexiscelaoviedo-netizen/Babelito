@@ -37,6 +37,8 @@ export const en = {
     brand: "Babelito",
   },
   progress: {
+    levelHero: "Your English level",
+    goal: "your goal",
     eyebrow: "Your progress",
     title: "How you're doing",
     streak: "Streak",

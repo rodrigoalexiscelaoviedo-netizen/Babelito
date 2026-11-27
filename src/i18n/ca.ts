@@ -42,6 +42,8 @@ export const ca: Shape<typeof en> = {
     brand: "Babelito",
   },
   progress: {
+    levelHero: "El teu nivell de català",
+    goal: "el teu objectiu",
     eyebrow: "El teu progrés",
     title: "Com estàs",
     streak: "Racha",

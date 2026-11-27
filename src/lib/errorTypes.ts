@@ -83,12 +83,18 @@ export const ERROR_TYPES_CA: Record<string, ErrorTypeMeta> = {
   other: { key: "other", label: "Altre", hint: "Revisa-ho amb el coach." },
 };
 
+/** Tipos que se registran pero no son de gramática (no tienen lección). */
+const NON_GRAMMAR: Record<"en" | "ca", Record<string, { label: string; hint: string }>> = {
+  en: { pronunciation_error: { label: "Pronunciation", hint: "Sounds your coach flagged when you spoke. Train them in Pronunciation." } },
+  ca: { pronunciation_error: { label: "Pronunciació", hint: "Sons que el coach ha marcat quan parlaves. Entrena'ls a Pronunciació." } },
+};
+
 export function errorLabel(key: string, lang: "en" | "ca" = "en"): string {
   const table = lang === "ca" ? ERROR_TYPES_CA : ERROR_TYPES;
-  return table[key]?.label ?? key;
+  return table[key]?.label ?? NON_GRAMMAR[lang][key]?.label ?? key;
 }
 
 export function errorHint(key: string, lang: "en" | "ca" = "en"): string {
   const table = lang === "ca" ? ERROR_TYPES_CA : ERROR_TYPES;
-  return table[key]?.hint ?? "";
+  return table[key]?.hint ?? NON_GRAMMAR[lang][key]?.hint ?? "";
 }
