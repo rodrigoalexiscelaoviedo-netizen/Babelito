@@ -19,6 +19,19 @@ import {
  *
  * compact: solo la barra (para Inicio). Sin compact: añade el historial reciente.
  */
+/** Junta los eventos seguidos de la misma fuente ("Review ×9 +27"). */
+function groupRecent(events: XpEvent[]) {
+  const out: { id: string; source: XpEvent["source"]; amount: number; count: number }[] = [];
+  for (const e of events) {
+    const last = out[out.length - 1];
+    if (last && last.source === e.source) {
+      last.amount += e.amount;
+      last.count += 1;
+    } else out.push({ id: String(e.id), source: e.source, amount: e.amount, count: 1 });
+  }
+  return out;
+}
+
 /** Número que sube contando (aislado para no re-renderizar toda la tarjeta en cada cuadro). */
 function CountUp({ value }: { value: number }) {
   return <>{useCountUp(value)}</>;
@@ -146,10 +159,13 @@ export default function XpCard({ compact = false }: { compact?: boolean }) {
         <div className="mt-5 pt-4 border-t border-ink-600">
           <p className="eyebrow mb-3">Recent activity</p>
           <ul className="space-y-2">
-            {recent.map((e) => (
-              <li key={e.id} className="flex items-center justify-between text-sm">
-                <span className="text-paper-muted">{SOURCE_LABEL[e.source]}</span>
-                <span className="font-mono text-mint">+{e.amount}</span>
+            {groupRecent(recent).map((g) => (
+              <li key={g.id} className="flex items-center justify-between text-sm">
+                <span className="text-paper-muted">
+                  {SOURCE_LABEL[g.source]}
+                  {g.count > 1 && <span className="ml-1.5 text-paper-faint">×{g.count}</span>}
+                </span>
+                <span className="font-mono text-mint">+{g.amount}</span>
               </li>
             ))}
           </ul>
