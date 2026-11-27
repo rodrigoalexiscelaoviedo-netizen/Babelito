@@ -1,14 +1,13 @@
 import { useEffect, useRef, type CSSProperties } from "react";
 import { Loader2, MicOff } from "lucide-react";
+import TutorAvatar from "./TutorAvatar";
 
 export type TutorMode = "connecting" | "speaking" | "listening" | "thinking" | "muted";
 
-const BAR_SHAPE = [0.45, 0.75, 1, 0.75, 0.45];
-
 /**
- * El recuadro del coach, como la ventana de una videollamada. Se mueve con el
- * volumen real de su voz. El avatar, cuando lo haya, va aquí dentro: recibe el
- * mismo estado y el mismo volumen.
+ * El recuadro del coach, como la ventana de una videollamada. El avatar
+ * (TutorAvatar) mueve la boca con el volumen real de su voz, que llega en la
+ * variable CSS --voice sin volver a dibujar React.
  */
 export default function TutorStage({
   mode,
@@ -63,36 +62,16 @@ export default function TutorStage({
         }}
       />
 
-      <div className="relative mb-6 grid aspect-square h-[min(10rem,55%)] place-items-center" aria-hidden>
-        <span
-          className="absolute inset-0 rounded-full bg-[rgb(var(--accent)/0.14)]"
-          style={{ transform: "scale(calc(0.82 + var(--voice) * 0.38))" }}
-        />
-        <span
-          className={`absolute inset-3 rounded-full bg-[rgb(var(--accent)/0.2)] ${mode === "listening" ? "motion-safe:animate-live-breathe" : ""}`}
-          style={mode === "speaking" ? { transform: "scale(calc(0.9 + var(--voice) * 0.22))" } : undefined}
-        />
-        <span className="relative grid h-[60%] w-[60%] place-items-center rounded-full bg-[rgb(var(--accent))] text-ink-900">
-          {mode === "connecting" ? (
-            <Loader2 className="animate-spin motion-reduce:animate-none" size={30} />
-          ) : mode === "muted" ? (
-            <MicOff size={30} />
-          ) : (
-            <span className="flex h-10 items-center gap-1">
-              {BAR_SHAPE.map((shape, i) => (
-                <span
-                  key={i}
-                  className={`w-1.5 rounded-full bg-current ${mode === "thinking" ? "motion-safe:animate-pulse" : ""}`}
-                  style={{
-                    height: `calc(0.4rem + var(--voice) * ${shape * 2}rem)`,
-                    animationDelay: mode === "thinking" ? `${i * 0.15}s` : undefined,
-                  }}
-                />
-              ))}
-            </span>
-          )}
-        </span>
+      {/* El coach, de los hombros para arriba, apoyado en el borde de abajo como en una videollamada. */}
+      <div className="absolute inset-x-0 bottom-0 top-[12%] flex justify-center">
+        <TutorAvatar mode={mode} />
       </div>
+
+      {(mode === "connecting" || mode === "muted") && (
+        <span className="absolute right-3 top-3 grid h-9 w-9 place-items-center rounded-full bg-[rgb(var(--accent))] text-ink-900" aria-hidden>
+          {mode === "connecting" ? <Loader2 className="animate-spin motion-reduce:animate-none" size={18} /> : <MicOff size={18} />}
+        </span>
+      )}
 
       <div className="absolute inset-x-3 bottom-3 flex flex-wrap items-center justify-between gap-2">
         <span className="max-w-[60%] truncate rounded-full bg-ink-900/80 px-3 py-1 text-xs font-semibold">{name}</span>

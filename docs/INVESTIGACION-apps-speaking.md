@@ -26,7 +26,11 @@ Basado en páginas públicas y blogs; **no se probó ninguna app**. Las afirmaci
 
 No aplicado: detector de turnos propio y modelos separados para juzgar (arquitectura de Speak).
 
-## Avatar humano (pendiente de decisión)
+## Avatar humano
+
+**Primera versión hecha (2026-11-27): enfoque C, personaje 2D propio.** `components/live/TutorAvatar.tsx` dibuja cara y hombros en SVG dentro de `TutorStage`. La boca se abre con el volumen real de la voz (`--voice`), la cabeza acompaña un poco, parpadea y respira (solo con movimiento permitido); al pensar mira hacia arriba, al escuchar inclina la cabeza. Sin imágenes, sin librerías y sin costo por minuto. Colores en tokens `--avatar-*` de `index.css`. Se ve en `/dev/ui` (solo desarrollo). Supuestos a validar: el aspecto del personaje (mujer joven, pelo oscuro, jersey verde), que mueva la boca por volumen y no por fonemas, y que el nombre siga siendo Babelito.
+
+Opciones evaluadas:
 
 El recuadro `components/live/TutorStage.tsx` recibe estado y volumen; el avatar va ahí.
 

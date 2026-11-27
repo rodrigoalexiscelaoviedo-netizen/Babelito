@@ -83,6 +83,15 @@ export default {
           "0%, 100%": { height: "6px" },
           "50%": { height: "30px" },
         },
+        // Avatar de Live: parpadeo y respiración
+        "avatar-blink": {
+          "0%, 93%, 100%": { transform: "scaleY(1)" },
+          "96%": { transform: "scaleY(0.1)" },
+        },
+        "avatar-breathe": {
+          "0%, 100%": { transform: "translateY(0)" },
+          "50%": { transform: "translateY(-1.5px)" },
+        },
         // Entrada suave para cards en lista
         "card-in": {
           "0%": { opacity: "0", transform: "translateY(6px)" },
@@ -98,6 +107,8 @@ export default {
         "live-ring": "live-ring 1.8s ease-out infinite",
         "live-breathe": "live-breathe 2.4s ease-in-out infinite",
         "live-bar": "live-bar 0.9s ease-in-out infinite",
+        "avatar-blink": "avatar-blink 4.6s ease-in-out infinite",
+        "avatar-breathe": "avatar-breathe 4s ease-in-out infinite",
       },
     },
   },

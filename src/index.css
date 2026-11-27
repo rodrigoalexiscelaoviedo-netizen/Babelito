@@ -28,6 +28,12 @@
   --pop-shadow: 0 -10px 30px -12px rgb(var(--shadow) / 0.4);
   --btn-coral-shadow: 0 3px 0 rgb(var(--coral-deep));
   --btn-mint-shadow: 0 3px 0 rgb(var(--mint-deep));
+  /* Avatar del coach en Live: el mismo personaje en Día y Noche. */
+  --avatar-skin: 224 172 134;
+  --avatar-skin-shade: 196 140 104;
+  --avatar-hair: 52 36 30;
+  --avatar-mouth: 92 36 34;
+  --avatar-shirt: 247 243 234;
 }
 :root[data-theme="night"] {
   color-scheme: dark;

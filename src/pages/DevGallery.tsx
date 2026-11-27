@@ -3,6 +3,11 @@ import { BRAND } from "../lib/theme";
 import { ActivityArea, HorizontalBars } from "../components/Charts";
 import CoachFeedback from "../components/CoachFeedback";
 import { splitCoachReply } from "../lib/coachFormat";
+import TutorStage, { type TutorMode } from "../components/live/TutorStage";
+
+const AVATAR_MODES: TutorMode[] = ["speaking", "listening", "thinking", "connecting", "muted"];
+// Voz simulada para ver la boca moverse sin conectar con Gemini.
+const fakeVoice = () => Math.max(0, Math.sin(Date.now() / 90) * 0.5 + Math.sin(Date.now() / 37) * 0.3);
 
 /**
  * Galería visual SOLO para desarrollo (ruta /dev/ui, no existe en producción).
@@ -18,6 +23,17 @@ export default function DevGallery() {
         <h1 className="page-title mb-2">Babelito UI gallery</h1>
         <p className="page-sub">Every shared style in one place, without signing in.</p>
       </header>
+
+      <section className="space-y-3">
+        <p className="eyebrow">Live coach avatar</p>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+          {AVATAR_MODES.map((m) => (
+            <div key={m} className={`flex flex-col ${m === "speaking" ? "col-span-2 h-80 sm:col-span-1 sm:h-56" : "h-56"}`}>
+              <TutorStage mode={m} name="Babelito" label={m} getLevel={fakeVoice} />
+            </div>
+          ))}
+        </div>
+      </section>
 
       <section className="space-y-3">
         <p className="eyebrow">Buttons</p>
