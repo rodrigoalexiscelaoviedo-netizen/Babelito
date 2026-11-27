@@ -165,7 +165,7 @@ function WeekBar({ label, value, max, color }: { label: string; value: number; m
       <span className="text-xs text-paper-muted w-24 shrink-0">{label}</span>
       <div className="flex-1 h-2 bg-ink-600 rounded-full overflow-hidden">
         <div
-          className="h-full rounded-full transition-all duration-700"
+          className="bar-grow h-full rounded-full transition-[width] duration-700"
           style={{ width: `${width}%`, background: color }}
         />
       </div>
@@ -407,7 +407,7 @@ export default function Progress() {
             </div>
             <div className="flex-1 h-3 bg-ink-600 rounded-full overflow-hidden">
               <div
-                className="h-full bg-mint rounded-full transition-all"
+                className="bar-grow h-full bg-mint rounded-full transition-[width]"
                 style={{ width: vocabTotal > 0 ? `${Math.round((vocabKnown / vocabTotal) * 100)}%` : "0%" }}
               />
             </div>

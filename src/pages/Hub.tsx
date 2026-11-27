@@ -12,6 +12,11 @@ import { scopeByLanguage } from "../lib/language";
 import { geminiToolsAvailable } from "../lib/geminiTools";
 import { liveSupported } from "../lib/liveSession";
 import { tFor } from "../i18n";
+import { useCountUp } from "../lib/useCountUp";
+
+function CountUp({ value }: { value: number }) {
+  return <>{useCountUp(value, 700)}</>;
+}
 
 /** Cada puerta tiene su color (token de index.css): se reconoce dónde estás de un vistazo. */
 const ACCENT: Record<HubId, { token: string; text: string }> = {
@@ -82,7 +87,7 @@ export default function Hub({ id }: { id: HubId }) {
   const accent = ACCENT[id];
 
   return (
-    <div className="animate-fade-up mx-auto max-w-3xl">
+    <div className="mx-auto max-w-3xl">
       <h1 className="page-title mb-1">{copy.title}</h1>
       <p className="mb-6 text-paper-muted">{copy.subtitle}</p>
 
@@ -97,7 +102,9 @@ export default function Hub({ id }: { id: HubId }) {
                 { n: stats.known, label: t("hub.wordsKnown"), tone: "text-mint" },
               ].map((x) => (
                 <div key={x.label} className="card p-3 text-center">
-                  <p className={`font-display text-2xl font-extrabold ${x.tone}`}>{x.n}</p>
+                  <p className={`font-display text-2xl font-extrabold tabular-nums ${x.tone}`}>
+                    <CountUp value={x.n} />
+                  </p>
                   <p className="text-[11px] leading-tight text-paper-muted">{x.label}</p>
                 </div>
               ))}

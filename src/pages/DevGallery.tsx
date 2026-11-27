@@ -8,6 +8,8 @@ import TutorStage, { type TutorMode } from "../components/live/TutorStage";
 const AVATAR_MODES: TutorMode[] = ["speaking", "listening", "thinking", "connecting", "muted"];
 // Voz simulada para ver la boca moverse sin conectar con Gemini.
 const fakeVoice = () => Math.max(0, Math.sin(Date.now() / 90) * 0.5 + Math.sin(Date.now() / 37) * 0.3);
+import { useState } from "react";
+import Confetti from "../components/Confetti";
 
 /**
  * Galería visual SOLO para desarrollo (ruta /dev/ui, no existe en producción).
@@ -16,8 +18,22 @@ const fakeVoice = () => Math.max(0, Math.sin(Date.now() / 90) * 0.5 + Math.sin(D
 export default function DevGallery() {
   const days = Array.from({ length: 14 }, (_, i) => ({ day: `${i + 1}`, sessions: [0, 1, 2, 1, 3, 0, 2, 4, 1, 2, 3, 2, 5, 3][i] }));
 
+  const [burst, setBurst] = useState(0);
+
   return (
     <div className="space-y-12">
+      <section className="space-y-3">
+        <p className="eyebrow">Celebration (confetti + pop-in)</p>
+        <div key={burst} className="card relative mx-auto max-w-xs animate-pop-in p-8 text-center">
+          <Confetti pieces={34} spread={190} />
+          <p className="font-display text-7xl font-extrabold leading-none text-coral">7</p>
+          <p className="font-display text-lg font-bold">day streak</p>
+        </div>
+        <div className="text-center">
+          <button className="btn-ghost" onClick={() => setBurst((b) => b + 1)}>Replay</button>
+        </div>
+      </section>
+
       <header>
         <p className="eyebrow mb-2">Design system</p>
         <h1 className="page-title mb-2">Babelito UI gallery</h1>

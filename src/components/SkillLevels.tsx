@@ -84,7 +84,7 @@ export default function SkillLevels() {
             </div>
             <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-ink-600" aria-hidden>
               <div
-                className="h-1.5 rounded-full bg-mint transition-all duration-700"
+                className="bar-grow h-1.5 rounded-full bg-mint transition-[width] duration-700"
                 style={{ width: `${Math.min(100, Math.round(((e.accuracy ?? 0) * 100)))}%` }}
               />
             </div>

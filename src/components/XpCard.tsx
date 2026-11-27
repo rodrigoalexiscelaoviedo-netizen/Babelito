@@ -1,5 +1,6 @@
-import { BRAND } from "../lib/theme";
 import { useEffect, useState } from "react";
+import Confetti, { haptic } from "./Confetti";
+import { useCountUp } from "../lib/useCountUp";
 import { Sparkles } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import {
@@ -18,6 +19,11 @@ import {
  *
  * compact: solo la barra (para Inicio). Sin compact: añade el historial reciente.
  */
+/** Número que sube contando (aislado para no re-renderizar toda la tarjeta en cada cuadro). */
+function CountUp({ value }: { value: number }) {
+  return <>{useCountUp(value)}</>;
+}
+
 export default function XpCard({ compact = false }: { compact?: boolean }) {
   const { profile } = useAuth();
   const [total, setTotal] = useState<number | null>(null);
@@ -62,6 +68,7 @@ export default function XpCard({ compact = false }: { compact?: boolean }) {
     }
     if (previous !== null && level > previous) {
       setLevelUp(level);
+      haptic([15, 60, 25]);
       const t = window.setTimeout(() => setLevelUp(null), 3200);
       return () => window.clearTimeout(t);
     }
@@ -93,18 +100,7 @@ export default function XpCard({ compact = false }: { compact?: boolean }) {
           className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-ink-800/90 backdrop-blur-sm"
           role="status"
         >
-          {Array.from({ length: 14 }).map((_, i) => (
-            <span
-              key={i}
-              aria-hidden="true"
-              className="confetti-piece absolute top-0 h-2 w-1.5 rounded-sm"
-              style={{
-                left: `${6 + i * 6.5}%`,
-                background: [BRAND.coral, BRAND.mint, BRAND.gold][i % 3],
-                animationDelay: `${(i % 5) * 0.12}s`,
-              }}
-            />
-          ))}
+          <Confetti pieces={22} spread={140} />
           <p className="eyebrow text-gold level-up-pop">Level up!</p>
           <p className="font-display text-3xl font-extrabold level-up-pop">Level {levelUp}</p>
           <p className="text-sm text-paper-muted mt-1">{levelTitle(levelUp)}</p>
@@ -116,7 +112,9 @@ export default function XpCard({ compact = false }: { compact?: boolean }) {
           <p className="font-display text-xl font-extrabold">{info.title}</p>
         </div>
         <div className="text-right">
-          <p className="font-display text-2xl font-extrabold text-gold">{total}</p>
+          <p className="font-display text-2xl font-extrabold text-gold tabular-nums">
+            <CountUp value={total} />
+          </p>
           <p className="text-[11px] text-paper-faint uppercase tracking-widest font-mono">XP</p>
         </div>
       </div>
@@ -130,7 +128,7 @@ export default function XpCard({ compact = false }: { compact?: boolean }) {
         aria-label={`Progress to level ${info.level + 1}`}
       >
         <div
-          className="h-full rounded-full bg-gradient-to-r from-coral to-gold transition-[width] duration-700 ease-out"
+          className={`bar-grow h-full rounded-full bg-gradient-to-r from-coral to-gold transition-[width] duration-700 ease-out-expo ${today > 0 ? "bar-sheen" : ""}`}
           style={{ width: `${Math.round(info.progress * 100)}%` }}
         />
       </div>

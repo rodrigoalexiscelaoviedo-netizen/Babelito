@@ -11,8 +11,8 @@ export default function Layout({ children }: { children: ReactNode }) {
       <div className="ambient" aria-hidden="true" />
       <Nav />
       <main className="md:pl-60">
-        {/* key por ruta: cada pantalla entra con un fade suave */}
-        <div key={pathname} className="mx-auto max-w-5xl px-4 py-6 pb-24 md:py-10 md:pb-10 animate-fade-up">
+        {/* key por ruta: al cambiar de pantalla, sus bloques entran escalonados (ver .route-enter) */}
+        <div key={pathname} className="route-enter mx-auto max-w-5xl px-4 py-6 pb-24 md:py-10 md:pb-10">
           {children}
         </div>
       </main>

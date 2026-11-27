@@ -51,7 +51,7 @@ export default function Login() {
           </div>
           <span className="font-display text-2xl font-bold">Babelito</span>
         </div>
-        <div>
+        <div className="page-enter">
           <p className="eyebrow mb-4">/ˈbæb.əl/ · your english coach</p>
           <h1 className="font-display text-5xl font-extrabold leading-tight">
             Talk every day.
@@ -63,12 +63,13 @@ export default function Login() {
             and adapts every single conversation around them.
           </p>
         </div>
-        <div className="flex gap-1.5">
-          {Array.from({ length: 12 }).map((_, i) => (
+        {/* Onda de voz que "habla" sola: la marca en movimiento. */}
+        <div className="flex h-14 items-end gap-1.5" aria-hidden>
+          {Array.from({ length: 18 }).map((_, i) => (
             <div
               key={i}
-              className="w-1.5 rounded-full bg-coral/70"
-              style={{ height: `${12 + ((i * 37) % 40)}px` }}
+              className="login-wave w-1.5 rounded-full bg-coral/70"
+              style={{ height: `${14 + ((i * 37) % 40)}px`, animationDelay: `${-((i * 173) % 1100)}ms` }}
             />
           ))}
         </div>
@@ -76,7 +77,7 @@ export default function Login() {
 
       {/* Form */}
       <div className="flex items-center justify-center p-6">
-        <div className="w-full max-w-sm">
+        <div className="page-enter w-full max-w-sm">
           <div className="lg:hidden flex items-center gap-2 mb-8">
             <div className="grid h-9 w-9 place-items-center rounded-xl bg-coral text-ink-900 font-display font-extrabold">
               B

@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from "react";
-import { Captions, CaptionsOff, Check, Gauge, Languages, Lightbulb, Loader2, Mic, MicOff, PhoneOff, Repeat2, Sparkles, X } from "lucide-react";
+import { Captions, CaptionsOff, Check, Gauge, Languages, Lightbulb, Loader2, Mic, MicOff, PhoneOff, Repeat2, Sparkles, Volume2, VolumeX, X } from "lucide-react";
 import TutorStage, { type TutorMode } from "./TutorStage";
 import type { LiveCorrection } from "../../lib/liveSession";
 import { suggestReplies, translateToSpanish, type Suggestion } from "../../lib/liveHelp";
@@ -33,9 +33,12 @@ export interface LiveStageProps {
   goalsDone: number[];
   stuck: boolean;
   muted: boolean;
+  /** La voz del coach suena dentro de la app (no depende del volumen del equipo). */
+  voiceOn: boolean;
   captions: boolean;
   getLevel: () => number;
   onToggleMute: () => void;
+  onToggleVoice: () => void;
   onToggleCaptions: () => void;
   onRequest: (instruction: string) => void;
   onHangUp: () => void;
@@ -199,6 +202,9 @@ export default function LiveStage(p: LiveStageProps) {
         </button>
         <ControlButton label="Captions" pressed={p.captions} onClick={p.onToggleCaptions}>
           {p.captions ? <Captions size={20} aria-hidden /> : <CaptionsOff size={20} aria-hidden />}
+        </ControlButton>
+        <ControlButton label={p.voiceOn ? "Turn coach voice off" : "Turn coach voice on"} pressed={!p.voiceOn} onClick={p.onToggleVoice} disabled={!live}>
+          {p.voiceOn ? <Volume2 size={20} aria-hidden /> : <VolumeX size={20} aria-hidden />}
         </ControlButton>
       </div>
     </div>

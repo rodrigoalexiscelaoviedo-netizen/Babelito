@@ -92,6 +92,7 @@ function LiveCallView({
   const [goals, setGoals] = useState<string[]>([]);
   const [goalsDone, setGoalsDone] = useState<number[]>([]);
   const [muted, setMuted] = useState(false);
+  const [voiceOn, setVoiceOn] = useState(true);
   const [thinking, setThinking] = useState(false);
   const [stuck, setStuck] = useState(false);
   const [tab, setTab] = useState<"lines" | "report">("lines");
@@ -166,6 +167,7 @@ function LiveCallView({
     setReview(EMPTY_REVIEW);
     setGoalsDone([]);
     setMuted(false);
+    setVoiceOn(true);
     setThinking(false);
     setStuck(false);
     setTab("lines");
@@ -477,12 +479,17 @@ function LiveCallView({
       goalsDone={goalsDone}
       stuck={stuck}
       muted={muted}
+      voiceOn={voiceOn}
       captions={prefs.captions}
       getLevel={() => sessionRef.current?.outputLevel?.() ?? 0}
       onToggleMute={() => {
         sessionRef.current?.setMuted?.(!muted);
         setMuted(!muted);
         setStuck(false);
+      }}
+      onToggleVoice={() => {
+        sessionRef.current?.setVoiceOn?.(!voiceOn);
+        setVoiceOn(!voiceOn);
       }}
       onToggleCaptions={() => updatePrefs({ captions: !prefs.captions })}
       onRequest={(instruction) => {

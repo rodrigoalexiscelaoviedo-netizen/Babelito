@@ -38,7 +38,7 @@ export default function HomeNudges({ userId, language }: { userId: string; langu
   }
 
   return (
-    <div className="mb-6 space-y-3">
+    <div className="space-y-3">
       {session && (
         <Link
           to="/conversation"

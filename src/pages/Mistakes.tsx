@@ -91,7 +91,7 @@ export default function Mistakes() {
                     <span className="font-mono text-sm text-paper-muted">{s.count}×</span>
                   </div>
                   <div className="mt-2 h-1.5 rounded-full bg-ink-600" aria-hidden>
-                    <div className="h-1.5 rounded-full bg-coral" style={{ width: `${(s.count / max) * 100}%` }} />
+                    <div className="bar-grow h-1.5 rounded-full bg-coral" style={{ width: `${(s.count / max) * 100}%` }} />
                   </div>
                   <p className="mt-2 flex items-center gap-1.5 text-[11px] text-paper-faint">
                     <TrendIcon trend={s.trend} /> {t(TREND_KEY[s.trend])}

@@ -60,7 +60,7 @@ export default function LevelLadder() {
             </span>
           </div>
           <div className="relative h-2 rounded-full bg-ink-600">
-            <div className="h-2 rounded-full bg-coral" style={{ width: `${ladder.readiness}%` }} />
+            <div className="bar-grow h-2 rounded-full bg-coral" style={{ width: `${ladder.readiness}%` }} />
             <span className="absolute -top-1 h-4 w-0.5 bg-paper/60" style={{ left: `${ladder.needed}%` }} aria-hidden />
           </div>
         </div>
@@ -78,7 +78,7 @@ export default function LevelLadder() {
                 <span className={`font-mono text-xs ${g.met ? "text-mint" : "text-paper-muted"}`}>{g.value}</span>
               </div>
               <div className="mt-1 h-1.5 rounded-full bg-ink-600" aria-hidden>
-                <div className={`h-1.5 rounded-full ${g.met ? "bg-mint" : "bg-gold"}`} style={{ width: `${g.percent}%` }} />
+                <div className={`bar-grow h-1.5 rounded-full ${g.met ? "bg-mint" : "bg-gold"}`} style={{ width: `${g.percent}%` }} />
               </div>
               <p className="mt-0.5 text-[11px] text-paper-faint">{g.hint}</p>
             </li>

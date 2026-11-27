@@ -68,7 +68,7 @@ export function HorizontalBars({ data, color = BRAND.mint }: HBarsProps) {
           <span className="w-32 shrink-0 text-xs text-paper-muted truncate" title={d.label}>{d.label}</span>
           <div className="flex-1 h-4 rounded-md bg-ink-700 overflow-hidden">
             <div
-              className="h-full rounded-md transition-[width] duration-700"
+              className="bar-grow h-full rounded-md transition-[width] duration-700"
               style={{ width: `${(d.count / max) * 100}%`, background: color }}
             />
           </div>

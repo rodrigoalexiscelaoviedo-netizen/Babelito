@@ -1,4 +1,5 @@
-import { BRAND } from "../lib/theme";
+import Confetti, { haptic } from "../components/Confetti";
+import { useCountUp } from "../lib/useCountUp";
 import XpCard from "../components/XpCard";
 import TodayCard from "../components/TodayCard";
 import HomeNudges from "../components/HomeNudges";
@@ -7,7 +8,7 @@ import { consolidateLevel } from "../lib/leveling";
 import { localDateISO, addLocalDays, timestampToLocalDate } from "../lib/dates";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { BarChart3 } from "lucide-react";
+import { BarChart3, Flame } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabaseClient";
 import { buildPlan, loadPlanInput, type PlanTask } from "../lib/plan";
@@ -148,6 +149,7 @@ export default function Dashboard() {
 
       setCelebMsg(congrats[Math.floor(Math.random() * congrats.length)]);
       setShowCelebration(true);
+      haptic([20, 70, 30]);
       setTimeout(() => setShowCelebration(false), 4500);
 
       checkAchievements(profile.id).then((newly) => {
@@ -192,70 +194,36 @@ export default function Dashboard() {
     : t("home.maicaWaiting");
 
   return (
-    <div className="animate-fade-up">
+    <div>
       {/* ── Celebration overlay ── */}
       {showCelebration && (
-        <>
-          <style>{`
-            @keyframes bbl-scale-up { from { transform: scale(0.75); opacity: 0; } to { transform: scale(1); opacity: 1; } }
-            @keyframes bbl-float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
-            .bbl-celebrate { animation: bbl-scale-up 0.35s cubic-bezier(0.34,1.56,0.64,1) both; }
-            .bbl-float { animation: bbl-float 1.8s ease-in-out infinite; }
-          `}</style>
-          <div
-            className="fixed inset-0 z-50 flex items-center justify-center"
-            style={{ background: "rgba(10,16,30,0.88)", backdropFilter: "blur(6px)" }}
-            onClick={() => setShowCelebration(false)}
-          >
-            <div className="card max-w-xs w-full mx-4 p-8 text-center bbl-celebrate">
-              {/* Confetti strip */}
-              <svg viewBox="0 0 260 48" className="w-full mb-2" aria-hidden="true">
-                {[
-                  { x: 10,  y: 18, r: 6,  fill: BRAND.coral },
-                  { x: 35,  y: 8,  r: 4,  fill: BRAND.mint },
-                  { x: 60,  y: 28, r: 5,  fill: BRAND.gold },
-                  { x: 90,  y: 12, r: 7,  fill: BRAND.coral },
-                  { x: 120, y: 30, r: 4,  fill: BRAND.mint },
-                  { x: 148, y: 10, r: 6,  fill: BRAND.gold },
-                  { x: 175, y: 24, r: 5,  fill: BRAND.coral },
-                  { x: 205, y: 8,  r: 4,  fill: BRAND.mint },
-                  { x: 235, y: 32, r: 6,  fill: BRAND.gold },
-                  { x: 255, y: 15, r: 3,  fill: BRAND.coral },
-                ].map((c, i) => (
-                  <circle key={i} cx={c.x} cy={c.y} r={c.r} fill={c.fill} opacity={0.85} />
-                ))}
-                {[
-                  { x: 22, y: 36, w: 10, h: 5, fill: BRAND.gold, rx: 2 },
-                  { x: 108, y: 38, w: 8,  h: 4, fill: BRAND.mint, rx: 2 },
-                  { x: 190, y: 40, w: 12, h: 5, fill: BRAND.coral, rx: 2 },
-                ].map((r, i) => (
-                  <rect key={i} x={r.x} y={r.y} width={r.w} height={r.h} fill={r.fill} rx={r.rx} opacity={0.8} />
-                ))}
-              </svg>
-
-              {/* Maica celebrating + streak number */}
-              <div className="bbl-float mb-1">
-                <Maica mood="celebrating" size="md" className="mx-auto" />
-              </div>
-              <p className="font-display text-7xl font-extrabold text-coral leading-none mb-1">{streak}</p>
-              <p className="font-display text-lg font-bold mb-4">
-                {t("home.streakLabel", { word: streak === 1 ? t("home.streakDay") : t("home.streakDays") })}
-              </p>
-
-              {/* Message */}
-              <p className="text-sm text-paper-muted leading-relaxed mb-4">{celebMsg}</p>
-
-              {/* Freezes */}
-              {freezesLeft > 0 && (
-                <p className="text-xs text-paper-faint mb-3">
-                  ❄️ {freezesLeft} {freezesLeft !== 1 ? t("home.freezeMany") : t("home.freezeOne")}
-                </p>
-              )}
-
-              <p className="text-xs text-paper-faint">{t("home.tapContinue")}</p>
+        <div
+          className="overlay-fade fixed inset-0 z-50 flex items-center justify-center bg-ink-900/85 backdrop-blur-md"
+          onClick={() => setShowCelebration(false)}
+          role="dialog"
+          aria-label={t("home.streakLabel", { word: streak === 1 ? t("home.streakDay") : t("home.streakDays") })}
+        >
+          <div className="card relative mx-4 w-full max-w-xs animate-pop-in p-8 text-center">
+            <Confetti pieces={34} spread={190} />
+            <div className="mb-1">
+              <Maica mood="celebrating" size="md" className="mx-auto" />
             </div>
+            <p className="mb-1 flex items-center justify-center gap-2 font-display text-7xl font-extrabold leading-none text-coral tabular-nums">
+              <Flame size={44} className="flame-live text-gold" aria-hidden />
+              <StreakCount value={streak} />
+            </p>
+            <p className="mb-4 font-display text-lg font-bold">
+              {t("home.streakLabel", { word: streak === 1 ? t("home.streakDay") : t("home.streakDays") })}
+            </p>
+            <p className="mb-4 text-sm leading-relaxed text-paper-muted">{celebMsg}</p>
+            {freezesLeft > 0 && (
+              <p className="mb-3 text-xs text-paper-faint">
+                ❄️ {freezesLeft} {freezesLeft !== 1 ? t("home.freezeMany") : t("home.freezeOne")}
+              </p>
+            )}
+            <p className="text-xs text-paper-faint">{t("home.tapContinue")}</p>
           </div>
-        </>
+        </div>
       )}
 
       {/* ── Achievement celebration ── */}
@@ -268,16 +236,26 @@ export default function Dashboard() {
           setNewAchievements([]);
         }}
       />
-      <header className="mb-8 flex items-start justify-between gap-4">
-        <div className="flex-1 min-w-0">
+      <header className="mb-6 flex items-start justify-between gap-4">
+        <div className="min-w-0 flex-1">
           <p className="eyebrow mb-2">{new Date().toLocaleDateString(isCa ? "ca-ES" : "en-GB", { weekday: "long", day: "numeric", month: "long" })}</p>
           <h1 className="page-title">{t("home.title", { greeting, name: firstName })}</h1>
-          <p className="text-paper-muted mt-1">{maicaText}</p>
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <span className={`stat-chip ${streak > 0 ? "text-coral" : "text-paper-muted"}`} title={t("home.streakAtRisk")}>
+              <Flame size={16} className={streak > 0 ? "flame-live text-gold" : ""} aria-hidden />
+              {streak} {streak === 1 ? t("home.streakDay") : t("home.streakDays")}
+            </span>
+            {freezesLeft > 0 && (
+              <span className="stat-chip text-sky">
+                ❄️ {freezesLeft}
+                <span className="sr-only"> {freezesLeft !== 1 ? t("home.freezeWordMany") : t("home.freezeWordOne")}</span>
+              </span>
+            )}
+            <span className="text-sm text-paper-muted">{maicaText}</span>
+          </div>
         </div>
-        <Maica mood={maicaMood} size="md" className="shrink-0 mt-1" />
+        <Maica mood={maicaMood} size="md" className="mt-1 shrink-0" />
       </header>
-
-      {profile && <HomeNudges userId={profile.id} language={learningLanguage} />}
 
       <TodayCard
         lang={learningLanguage}
@@ -303,9 +281,15 @@ export default function Dashboard() {
             lang: voicePrefs.voiceAccent,
           })
         }
+        between={profile ? <HomeNudges userId={profile.id} language={learningLanguage} /> : null}
       />
 
-      <div className="mb-6"><XpCard compact /></div>
+      <section aria-labelledby="level-title" className="mb-6">
+        <h2 id="level-title" className="mb-3 font-display text-xl font-extrabold tracking-tight">
+          {t("home.levelTitle")}
+        </h2>
+        <XpCard compact />
+      </section>
 
       <div className="mt-2 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm">
         <Link to="/progress" className="inline-flex items-center gap-2 text-paper-muted hover:text-paper">
@@ -318,4 +302,9 @@ export default function Dashboard() {
       </div>
     </div>
   );
+}
+
+/** La racha sube contando desde la anterior. */
+function StreakCount({ value }: { value: number }) {
+  return <>{useCountUp(value, 1100)}</>;
 }

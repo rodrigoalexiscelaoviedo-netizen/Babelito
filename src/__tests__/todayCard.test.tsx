@@ -65,11 +65,25 @@ describe("TodayCard (una sola lista del día)", () => {
     expect(screen.getByText("about 3 min")).toBeInTheDocument();
   });
 
-  it("la frase se marca con un botón y no se puede cerrar el día incompleto", () => {
+  it("lo próximo es la conversación; la frase se marca en el camino y no se cierra el día incompleto", () => {
     const props = setup();
+    expect(screen.getByRole("link", { name: /Start talking/ })).toHaveAttribute("href", "/conversation");
     fireEvent.click(screen.getByRole("button", { name: "Mark as done: Chunk of the day" }));
     expect(props.onToggle).toHaveBeenCalledWith("chunk_done");
-    expect(screen.getByRole("button", { name: /Complete today's practice/ })).toBeDisabled();
+    expect(screen.queryByRole("button", { name: /Complete today's practice/ })).not.toBeInTheDocument();
+  });
+
+  it("con la conversación hecha, el protagonista es la frase del día", () => {
+    const props = setup({ lesson: { ...lesson, convo_done: true } });
+    expect(screen.getByRole("heading", { name: /It slipped my mind/ })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /I said it 3 times/ }));
+    expect(props.onToggle).toHaveBeenCalledWith("chunk_done");
+  });
+
+  it("con todo tildado, el botón para cerrar el día aparece arriba", () => {
+    const props = setup({ lesson: { ...lesson, convo_done: true, chunk_done: true, word_done: true } });
+    fireEvent.click(screen.getByRole("button", { name: /Complete today's practice/ }));
+    expect(props.onComplete).toHaveBeenCalled();
   });
 
   it("con el día cerrado siguen visibles las recomendadas", () => {

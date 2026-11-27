@@ -1,5 +1,5 @@
-import { BRAND } from "../lib/theme";
 import { useEffect } from "react";
+import Confetti, { haptic } from "./Confetti";
 import type { AchievementDef } from "../lib/achievements";
 import Maica from "./Maica";
 
@@ -10,6 +10,11 @@ interface Props {
 }
 
 export default function AchievementCelebration({ achievements, onClose }: Props) {
+  // Vibra una sola vez por tanda de logros (onClose cambia en cada render del padre).
+  useEffect(() => {
+    if (achievements.length > 0) haptic([15, 50, 15]);
+  }, [achievements]);
+
   useEffect(() => {
     if (achievements.length === 0) return;
     const t = setTimeout(onClose, 5000);
@@ -21,33 +26,9 @@ export default function AchievementCelebration({ achievements, onClose }: Props)
   const single = achievements.length === 1 ? achievements[0] : null;
 
   return (
-    <>
-      <style>{`
-        @keyframes bbl-ach-up { from { transform: scale(0.7) translateY(20px); opacity: 0; } to { transform: scale(1) translateY(0); opacity: 1; } }
-        .bbl-ach-card { animation: bbl-ach-up 0.4s cubic-bezier(0.34,1.56,0.64,1) both; }
-      `}</style>
-      <div
-        className="fixed inset-0 z-50 flex items-center justify-center"
-        style={{ background: "rgba(10,16,30,0.88)", backdropFilter: "blur(6px)" }}
-        onClick={onClose}
-      >
-        <div className="card max-w-xs w-full mx-4 p-8 text-center bbl-ach-card">
-          {/* Confetti strip */}
-          <svg viewBox="0 0 220 36" className="w-full mb-3" aria-hidden="true">
-            {[
-              { cx: 12,  cy: 18, r: 5,  fill: BRAND.gold },
-              { cx: 38,  cy: 8,  r: 4,  fill: BRAND.coral },
-              { cx: 66,  cy: 24, r: 6,  fill: BRAND.mint },
-              { cx: 94,  cy: 10, r: 4,  fill: BRAND.gold },
-              { cx: 120, cy: 26, r: 5,  fill: BRAND.coral },
-              { cx: 148, cy: 8,  r: 6,  fill: BRAND.mint },
-              { cx: 176, cy: 22, r: 4,  fill: BRAND.gold },
-              { cx: 205, cy: 12, r: 5,  fill: BRAND.coral },
-            ].map((c, i) => (
-              <circle key={i} cx={c.cx} cy={c.cy} r={c.r} fill={c.fill} opacity={0.9} />
-            ))}
-          </svg>
-
+    <div className="overlay-fade fixed inset-0 z-50 flex items-center justify-center bg-ink-900/85 backdrop-blur-md" onClick={onClose} role="dialog" aria-label="Achievement unlocked">
+        <div className="card relative mx-4 w-full max-w-xs animate-pop-in p-8 text-center">
+          <Confetti pieces={30} spread={180} />
           <p className="font-mono text-[10px] uppercase tracking-widest text-paper-faint mb-3">
             {achievements.length === 1 ? "Achievement unlocked 🏆" : `${achievements.length} achievements unlocked 🏆`}
           </p>
@@ -76,7 +57,6 @@ export default function AchievementCelebration({ achievements, onClose }: Props)
 
           <p className="text-xs text-paper-faint mt-5">Tap anywhere to continue</p>
         </div>
-      </div>
-    </>
+    </div>
   );
 }

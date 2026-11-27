@@ -237,7 +237,7 @@ function Reader({ text, onBack }: { text: ReadingText; onBack: () => void }) {
         aria-valuenow={scrollProgress}
         className="h-1 w-full bg-ink-600 rounded-full mb-4"
       >
-        <div className="h-1 bg-coral rounded-full transition-all" style={{ width: `${scrollProgress}%` }} />
+        <div className="h-1 bg-coral rounded-full transition-[width] duration-300" style={{ width: `${scrollProgress}%` }} />
       </div>
 
       {/* Scrollable text area */}

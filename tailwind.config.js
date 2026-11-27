@@ -48,8 +48,8 @@ export default {
       },
       keyframes: {
         "fade-up": {
-          "0%": { opacity: "0", transform: "translateY(8px)" },
-          "100%": { opacity: "1", transform: "translateY(0)" },
+          "0%": { opacity: "0", transform: "translateY(12px)", filter: "blur(4px)" },
+          "100%": { opacity: "1", transform: "none", filter: "none" },
         },
         "pulse-ring": {
           "0%": { transform: "scale(0.95)", opacity: "0.7" },
@@ -94,16 +94,29 @@ export default {
         },
         // Entrada suave para cards en lista
         "card-in": {
-          "0%": { opacity: "0", transform: "translateY(6px)" },
-          "100%": { opacity: "1", transform: "translateY(0)" },
+          "0%": { opacity: "0", transform: "translateY(10px) scale(0.985)" },
+          "100%": { opacity: "1", transform: "none" },
+        },
+        "pop-in": {
+          "0%": { opacity: "0", transform: "scale(0.85) translateY(12px)" },
+          "100%": { opacity: "1", transform: "none" },
         },
       },
+      transitionTimingFunction: {
+        // Curvas de marca: salida rápida que frena suave, y un resorte corto.
+        "out-expo": "cubic-bezier(0.16, 1, 0.3, 1)",
+        spring: "cubic-bezier(0.34, 1.56, 0.64, 1)",
+      },
       animation: {
-        "fade-up": "fade-up 0.4s ease-out both",
+        // "backwards" (no "both"): al terminar no queda ningún transform puesto.
+        // Un transform residual convierte al contenedor en referencia de los
+        // overlays `fixed` de adentro y los descoloca.
+        "fade-up": "fade-up 0.45s cubic-bezier(0.16, 1, 0.3, 1) backwards",
         "pulse-ring": "pulse-ring 1.5s ease-out infinite",
         "check-pop": "check-pop 0.35s cubic-bezier(0.34,1.56,0.64,1) both",
         "wave-dot": "wave-dot 1.2s ease-in-out infinite",
-        "card-in": "card-in 0.3s ease-out both",
+        "card-in": "card-in 0.4s cubic-bezier(0.16, 1, 0.3, 1) backwards",
+        "pop-in": "pop-in 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) backwards",
         "live-ring": "live-ring 1.8s ease-out infinite",
         "live-breathe": "live-breathe 2.4s ease-in-out infinite",
         "live-bar": "live-bar 0.9s ease-in-out infinite",

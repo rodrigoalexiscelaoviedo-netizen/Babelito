@@ -57,6 +57,9 @@ export default function Nav() {
         : "text-paper-muted hover:bg-ink-700 hover:text-paper"
     }`;
 
+  const tabClass = (active: boolean) =>
+    `tab-item flex flex-1 flex-col items-center justify-center gap-1 pt-1 text-[10px] font-medium ${active ? "text-coral" : "text-paper-muted"}`;
+
   return (
     <>
       {/* ── Sidebar desktop ──────────────────────────────────────────── */}
@@ -84,7 +87,7 @@ export default function Nav() {
                   {dueBadge(hub.id)}
                 </Link>
                 {active && (
-                  <ul className="mb-1 ml-5 mt-0.5 space-y-0.5 border-l border-ink-600 pl-3">
+                  <ul className="stagger mb-1 ml-5 mt-0.5 space-y-0.5 border-l border-ink-600 pl-3">
                     {items.map((item) => {
                       const on = location.pathname === item.to || location.pathname.startsWith(`${item.to}/`);
                       return (
@@ -115,15 +118,12 @@ export default function Nav() {
         aria-label="Main"
       >
         <div className="flex h-14">
-          <NavLink
-            to="/"
-            end
-            className={({ isActive }) =>
-              `flex flex-1 flex-col items-center justify-center gap-0.5 text-[10px] font-medium transition ${isActive ? "text-coral" : "text-paper-muted"}`
-            }
-          >
-            <LayoutDashboard size={20} />
-            {t("nav.home")}
+          <NavLink to="/" end className={({ isActive }) => tabClass(isActive)} data-active={location.pathname === "/"}>
+            <span className="tab-pill" aria-hidden />
+            <span className="tab-icon">
+              <LayoutDashboard size={20} />
+            </span>
+            <span className="relative">{t("nav.home")}</span>
           </NavLink>
           {HUBS.map((hub) => {
             const Icon = HUB_ICONS[hub.icon];
@@ -133,13 +133,15 @@ export default function Nav() {
                 key={hub.id}
                 to={hub.path}
                 aria-current={active ? "true" : undefined}
-                className={`flex flex-1 flex-col items-center justify-center gap-0.5 text-[10px] font-medium transition ${active ? "text-coral" : "text-paper-muted"}`}
+                data-active={active}
+                className={tabClass(active)}
               >
-                <div className="relative">
+                <span className="tab-pill" aria-hidden />
+                <span className="tab-icon">
                   {Icon && <Icon size={20} />}
                   {dueBadge(hub.id, true)}
-                </div>
-                {(ca ? hub.ca : hub.en).nav}
+                </span>
+                <span className="relative">{(ca ? hub.ca : hub.en).nav}</span>
               </Link>
             );
           })}

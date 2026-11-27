@@ -252,7 +252,7 @@ export default function Review() {
       </header>
 
       <div className="mb-5 h-1.5 overflow-hidden rounded-full bg-ink-600" aria-hidden>
-        <div className="h-full rounded-full bg-coral transition-all" style={{ width: `${progress}%` }} />
+        <div className="h-full rounded-full bg-coral transition-[width] duration-500 ease-out-expo" style={{ width: `${progress}%` }} />
       </div>
 
       <CardBody key={`${entry.item.id}-${pos}`} entry={entry} say={say} onAnswer={onAnswer} answered={answered} t={t} accentFallback={accentFallback} />

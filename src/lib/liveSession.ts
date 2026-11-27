@@ -380,6 +380,8 @@ export class LiveSession {
   private muted = false;
   private analyser: AnalyserNode | null = null;
   private levels: Uint8Array<ArrayBuffer> | null = null;
+  /** Control de la voz del coach dentro de la app: 0 la silencia sin depender del volumen del sistema. */
+  private voiceGain: GainNode | null = null;
 
   /**
    * `examiner` cambia la sesión a modo examinador (test de nivel): otro prompt y solo la
@@ -406,6 +408,10 @@ export class LiveSession {
         this.analyser.fftSize = 512;
         this.analyser.connect(this.ctx.destination);
         this.levels = new Uint8Array(this.analyser.fftSize);
+      }
+      if (typeof this.ctx.createGain === "function") {
+        this.voiceGain = this.ctx.createGain();
+        this.voiceGain.connect(this.analyser ?? this.ctx.destination);
       }
       this.connect(token, model);
     } catch (e) {
@@ -459,6 +465,12 @@ export class LiveSession {
     this.muted = muted;
     // Avisa que el audio se cortó, para que el turno no quede abierto.
     if (muted && this.ws?.readyState === WebSocket.OPEN) this.ws.send(JSON.stringify({ realtimeInput: { audioStreamEnd: true } }));
+  }
+
+  /** Enciende o silencia la voz del coach dentro de la app, sin tocar el volumen del equipo. */
+  setVoiceOn(on: boolean) {
+    if (!this.voiceGain || !this.ctx || this.closed) return;
+    this.voiceGain.gain.setTargetAtTime(on ? 1 : 0, this.ctx.currentTime, 0.02);
   }
 
   /** Volumen actual de la voz del coach, 0–1. */
@@ -532,7 +544,7 @@ export class LiveSession {
     buf.copyToChannel(f as Float32Array<ArrayBuffer>, 0);
     const src = this.ctx.createBufferSource();
     src.buffer = buf;
-    src.connect(this.analyser ?? this.ctx.destination);
+    src.connect(this.voiceGain ?? this.analyser ?? this.ctx.destination);
     const now = this.ctx.currentTime;
     this.playhead = Math.max(this.playhead, now + 0.02);
     src.start(this.playhead);

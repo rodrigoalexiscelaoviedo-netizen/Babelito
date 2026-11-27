@@ -61,7 +61,7 @@ export default function WeekGoals() {
                 aria-valuemax={g.target}
                 aria-valuenow={Math.min(g.current, g.target)}
               >
-                <div className={`h-1.5 rounded-full ${met ? "bg-mint" : "bg-coral"}`} style={{ width: `${pctVal}%` }} />
+                <div className={`bar-grow h-1.5 rounded-full ${met ? "bg-mint" : "bg-coral"}`} style={{ width: `${pctVal}%` }} />
               </div>
             </li>
           );

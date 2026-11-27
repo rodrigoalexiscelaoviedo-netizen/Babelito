@@ -109,7 +109,7 @@ export default function Chunks() {
       {/* Progreso */}
       <div className="h-1.5 w-full rounded-full bg-ink-600 mb-6 overflow-hidden">
         <div
-          className="h-full rounded-full bg-mint transition-all"
+          className="bar-grow h-full rounded-full bg-mint transition-[width]"
           style={{ width: `${chunks.length ? (learned.size / chunks.length) * 100 : 0}%` }}
         />
       </div>
